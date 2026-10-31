@@ -23,7 +23,8 @@ uses
   Granular.Lang,
   Winapi.Windows, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
   GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Vst3, Granular.VstHost,
-  Vcl.Forms, Granular.Editor, Granular.InfoView;
+  Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
+  Granular.Editor, Granular.InfoView;
 
 const
   SR = 44100;
@@ -1792,6 +1793,165 @@ begin
   Result := Length(Miss);
 end;
 
+{ Platz der Texte: Oberflaeche in einer Sprache aufbauen (Fenstergroesse wie im Plugin) und jeden Text gegen
+  sein Steuerelement messen - Knopf zu schmal, Beschriftung abgeschnitten oder vom Nachbarn verdeckt,
+  Listeneintrag breiter als die geschlossene Liste. Ergebnis: bin\<Plattform>\text_platz_<Sprache>.txt }
+type
+  TCtrlAccess = class(TControl);
+
+function TextFitRun(const Code, FileName: string; out List: TStringList): Integer;
+const
+  ED_W = 1260;
+  ED_H = 712;
+var
+  E: TGranularEngine;
+  Frm: TForm;
+  Bmp: TBitmap;
+  I, K, TW, Need: Integer;
+  C, O: TControl;
+  T, Where: string;
+  R: TRect;
+
+  function PathOf(X: TControl): string;
+  begin
+    Result := '';
+    while (X <> nil) and (X.Parent <> nil) do
+    begin
+      if (X.Parent is TPanel) and (TPanel(X.Parent).Caption <> '') then
+        Exit(TPanel(X.Parent).Caption);
+      if X.Parent is TTabSheet then
+        Exit(Trim(TTabSheet(X.Parent).Caption));
+      X := X.Parent;
+    end;
+  end;
+
+  procedure Add(X: TControl; const Txt: string; NeedW, HaveW: Integer);
+  begin
+    List.Add(Format('%s'#9'%s'#9'%s'#9'braucht %d, hat %d', [PathOf(X), X.ClassName, Txt, NeedW, HaveW]));
+  end;
+
+begin
+  List := TStringList.Create;
+  LangLoadFile(Code, FileName);
+  E := TGranularEngine.Create;
+  Frm := TForm.CreateNew(nil);
+  Bmp := TBitmap.Create;
+  try
+    Frm.SetBounds(-4000, -4000, ED_W, ED_H);   // ausserhalb des Bildschirms; Groesse wie das Plugin-Fenster
+    E.SetSampleRate(SR);
+    TGranularEditor.Create(Frm, Frm, E);
+    Frm.HandleNeeded;
+    for I := 0 to Frm.ComponentCount - 1 do
+      ;
+    // alle Steuerelemente unterhalb des Editors
+    for I := 0 to Frm.Components[0].ComponentCount - 1 do
+    begin
+      if not (Frm.Components[0].Components[I] is TControl) then
+        Continue;
+      C := TControl(Frm.Components[0].Components[I]);
+      if not C.Visible or (C.Parent = nil) then
+        Continue;
+      Bmp.Canvas.Font := TCtrlAccess(C).Font;
+      if C is TButton then
+      begin
+        T := TButton(C).Caption;
+        TW := Bmp.Canvas.TextWidth(StringReplace(T, '&', '', [rfReplaceAll]));
+        if TW + 10 > C.Width then
+          Add(C, T, TW + 10, C.Width);
+      end
+      else if C is TLabel then
+      begin
+        T := TLabel(C).Caption;
+        if T = '' then
+          Continue;
+        if TLabel(C).WordWrap then
+        begin
+          R := Rect(0, 0, C.Width, 0);
+          DrawText(Bmp.Canvas.Handle, PChar(T), Length(T), R, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+          if R.Bottom > C.Height + 2 then
+            Add(C, Copy(T, 1, 60) + '...', R.Bottom, C.Height);
+          Continue;
+        end;
+        TW := Bmp.Canvas.TextWidth(T);
+        if not TLabel(C).AutoSize and (TW > C.Width + 1) then
+        begin
+          Add(C, T, TW, C.Width);
+          Continue;
+        end;
+        // Nachbar rechts daneben in derselben Zeile verdeckt den Text?
+        for K := 0 to C.Parent.ControlCount - 1 do
+        begin
+          O := C.Parent.Controls[K];
+          if (O = C) or not O.Visible or (O.Left <= C.Left) or (O.Left >= C.Left + TW) then
+            Continue;
+          if (O.Top < C.Top + C.Height - 2) and (O.Top + O.Height > C.Top + 2) then
+          begin
+            Add(C, T, TW, O.Left - C.Left);
+            Break;
+          end;
+        end;
+      end
+      else if (C is TComboBox) and (TComboBox(C).Style = csDropDownList) and (TComboBox(C).Items.Count < 40) then
+      begin
+        Need := 0;
+        T := '';
+        for K := 0 to TComboBox(C).Items.Count - 1 do
+          if Bmp.Canvas.TextWidth(TComboBox(C).Items[K]) > Need then
+          begin
+            Need := Bmp.Canvas.TextWidth(TComboBox(C).Items[K]);
+            T := TComboBox(C).Items[K];
+          end;
+        if Need + 24 > C.Width then
+          Add(C, T, Need + 24, C.Width);
+      end;
+    end;
+  finally
+    Bmp.Free;
+    Frm.Free;
+    E.Free;
+  end;
+  LangLoadFile('de', '');
+  List.Sort;
+  Result := List.Count;
+end;
+
+function CheckTextFit: string;
+var
+  Dir: string;
+  SR: TSearchRec;
+  L: TStringList;
+  N: Integer;
+  Bad: Boolean;
+
+  procedure Run(const Code, F: string);
+  begin
+    N := TextFitRun(Code, F, L);
+    try
+      L.SaveToFile(ExtractFilePath(ParamStr(0)) + 'text_platz_' + Code + '.txt', TEncoding.UTF8);
+    finally
+      L.Free;
+    end;
+    Result := Result + Format(' %s: %d', [Code, N]);
+    Bad := Bad or (N > 0);
+  end;
+
+begin
+  Bad := False;
+  Result := 'Textplatz (zu lange Beschriftungen):';
+  Run('de', '');
+  Dir := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\' + LANG_DIR + '\');
+  if FindFirst(Dir + '*.txt', faAnyFile, SR) = 0 then
+  try
+    repeat
+      if SR.Name[1] <> '_' then
+        Run(ChangeFileExt(SR.Name, ''), Dir + SR.Name);
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+  Result := Result + IfThen(Bad, ' (Liste: text_platz_<Sprache>.txt) -> FEHLER', ' -> OK');
+end;
+
 function CheckLanguage: string;
 var
   Dir: string;
@@ -2641,7 +2801,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;
 

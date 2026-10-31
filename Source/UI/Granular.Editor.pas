@@ -550,6 +550,8 @@ begin
   for I := 0 to High(FStretch) do
     PanelResize(FStretch[I].Ctrl.Parent);
   // Sprachflagge ueber dem freien Ende der Reiterzeile
+  if FStatus <> nil then
+    FStatus.Width := Max(60, FStatus.Parent.ClientWidth - FStatus.Left - 6);
   if (FLangFlagHost <> nil) and (FPages <> nil) then
   begin
     FLangFlagHost.SetBounds(ClientWidth - 30, FPages.Top + 5, 21, 14);
@@ -783,7 +785,7 @@ begin
   FPresetCat := TComboBox.Create(Self);
   FPresetCat.Parent := FTopBar;
   FPresetCat.Style := csDropDownList;
-  FPresetCat.SetBounds(350, 8, 92, 21);
+  FPresetCat.SetBounds(350, 8, 116, 21);
   FPresetCat.DropDownCount := 20;
   FPresetCat.TabStop := False;
   for var CatName in PRESET_CATS do
@@ -794,7 +796,7 @@ begin
   FPresetCat.OnChange := PresetCatChange;
   FPresetFilter := TEdit.Create(Self);
   FPresetFilter.Parent := FTopBar;
-  FPresetFilter.SetBounds(446, 8, 58, 21);
+  FPresetFilter.SetBounds(470, 8, 40, 21);
   FPresetFilter.TextHint := Tr('Filter');
   FPresetFilter.Color := $00A09C98;       // Metallgrau wie die Aufklapplisten
   FPresetFilter.Hint := Tr('Presetliste filtern: nur Namen, die diesen Text enthalten (z.B. FM, Arp, Natur, Stimme). ' +
@@ -848,7 +850,10 @@ begin
       [FLangNames[(Max(0, FLangCodes.IndexOf(LangCode)) + 1) mod FLangCodes.Count]])
   else
     FLangFlag.Hint := Tr('Sprache wechseln');
-  FStatus.SetBounds(1034, 11, 800, 16);
+  FStatus.AutoSize := False;
+  FStatus.EllipsisPosition := epEndEllipsis;
+  FStatus.SetBounds(1034, 11, 220, 16);
+  FStatus.Anchors := [akLeft, akTop, akRight];
   FStatus.Hint := Tr('PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave');
   FStatus.ShowHint := True;
   FStatus.Font.Color := COL_NAME;
@@ -1052,7 +1057,7 @@ begin
     AddParam(FCols[2], Ord(COL2[I]), 8, 114 + I * ROW_H, 70, 66);
   // Anlauf vor der Auswahl und Art der Schleife in der Auswahl
   AddParam(FCols[2], Ord(gpPreOn), 8, 114 + 4 * ROW_H + 2, 70, 0, 0, Tr('Anlauf'));
-  AddParam(FCols[2], Ord(gpLoopMode), 150, 114 + 4 * ROW_H + 2, 0, 0, 0, Tr('Schleife hin und her'));
+  AddParam(FCols[2], Ord(gpLoopMode), 158, 114 + 4 * ROW_H + 2, 0, 0, 0, Tr('Schleife hin und her'));
   AddParam(FCols[2], Ord(gpPreStart), 8, 114 + 5 * ROW_H + 2, 70, 66, 0, Tr('Anlauf-Start'));
 end;
 
@@ -1079,7 +1084,7 @@ begin
   Left := TPanel.Create(Self);
   Left.Parent := FTabMod2;
   Left.Align := alLeft;
-  Left.Width := 330;
+  Left.Width := 356;      // breit genug fuer die Listen Neustart/Stopp (auch englisch)
   Left.BevelOuter := bvNone;
   Left.ParentBackground := False;
   Left.Color := BG_MAIN;
@@ -1178,7 +1183,7 @@ begin
   begin
     Y := 80 + K * 50;
     AddParam(Right, Ord(UMAC_IDS[K]), 728, Y, 62, 46, 0, '', 170);
-    AddParam(Right, Ord(UMAC_CURVE_IDS[K]), 1012, Y, 0, 0, 130);
+    AddParam(Right, Ord(UMAC_CURVE_IDS[K]), 1012, Y, 0, 0, 138);
     FMacroTargets[K] := TLabel.Create(Self);
     FMacroTargets[K].Parent := Right;
     FMacroTargets[K].AutoSize := False;
@@ -1237,6 +1242,7 @@ begin
       Parent := Right;
       SetBounds(496 + MX + 120 + 2 + 50 + 6, Y, 26, 22);
       Caption := #$00D7;
+      Glyph := 1;              // Papierkorb-Symbol
       Tag := S;
       TabStop := False;
       Hint := Tr('Diese Matrix-Zeile leeren (Quelle aus, Ziel aus, Menge 0) - Strg+Z nimmt es zurück');
@@ -1903,13 +1909,13 @@ begin
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
   for K in [2, 3, 6, 7] do
-    BuildLfoPanel(Area, K, ((K mod 4) - 2) * 172, 340);
+    BuildLfoPanel(Area, K, ((K mod 4) - 2) * 172, 356);
   // Umschalter LFO 1-4 / 5-8 (unter der Erklaerung in der dritten Spalte)
   for K := 0 to 1 do
   begin
     FLfoPageBtn[K] := TButton.Create(Self);
     FLfoPageBtn[K].Parent := Area;
-    FLfoPageBtn[K].SetBounds(358 + K * 160, 380, 154, 26);
+    FLfoPageBtn[K].SetBounds(374 + K * 160, 380, 154, 26);
     FLfoPageBtn[K].Tag := K;
     FLfoPageBtn[K].TabStop := False;
     FLfoPageBtn[K].OnClick := LfoPageClick;
@@ -1920,8 +1926,8 @@ begin
   L.Parent := Area;
   // dritte Spalte: Trigger-Schwellen, darunter diese Erklaerung
   FTrigPanel.Parent := Area;
-  FTrigPanel.SetBounds(350, 0, 330, 204);
-  L.SetBounds(358, 212, 320, 164);
+  FTrigPanel.SetBounds(366, 0, 330, 204);
+  L.SetBounds(374, 212, 320, 164);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -1955,8 +1961,8 @@ begin
   AddParam(P, Ord(LFO_RATE_IDS[K]), 124, 22, 40, 56, 0, Tr('Rate'));
   AddParam(P, Ord(LFO_SHAPE_IDS[K]), 124, 22 + ROW_H, 40, 0, 120, Tr('Form'));
   AddParam(P, Ord(LFO_SYNC_IDS[K]), 86, 22 + 2 * ROW_H, 0, 0, 0, Tr('Sync'));
-  AddParam(P, Ord(LFO_TRIG_IDS[K]), 164 + COMBO_INSET, 22 + 2 * ROW_H, 0, 0, 120);   // Neustart, buendig unter Form
-  AddParam(P, Ord(LFO_STOP_IDS[K]), 124, 22 + 3 * ROW_H, 40, 0, 120, Tr('Stopp'));        // Aus-Trigger
+  AddParam(P, Ord(LFO_TRIG_IDS[K]), 164 + COMBO_INSET, 22 + 2 * ROW_H, 0, 0, 166);   // Neustart, buendig unter Form
+  AddParam(P, Ord(LFO_STOP_IDS[K]), 124, 22 + 3 * ROW_H, 40, 0, 166, Tr('Stopp'));        // Aus-Trigger
   FStopSyncIdx[K] := AddParam(P, Ord(LFO_STOP_SYNC[K]), 8 + COMBO_INSET, 22 + 4 * ROW_H, 0, 0, 100);
   FStopMsIdx[K] := AddParam(P, Ord(LFO_STOP_MS[K]), 124, 22 + 4 * ROW_H, 40, 66, 0, Tr('Zeit'));
   FPartnerIdx[K] := AddParam(P, Ord(LFO_PARTNER_IDS[K]), 8 + COMBO_INSET, 22 + 3 * ROW_H, 0, 0, 100);
@@ -2146,7 +2152,7 @@ begin
     AddParam(P1, Ord(Col1[I]), 8, ENV_Y + I * ROW_H, 70, 62);
   // Unison: mehrere verstimmte Stimmen je Note, ueber das Stereobild verteilt
   AddParam(P1, Ord(UNI[O, 0]), 8, ENV_Y + 4 * ROW_H + 6, 70, 0, 120, Tr('Unison'));
-  AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 70, 62, 0, Tr('Verstimmung'));
+  AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 78, 62, 0, Tr('Verstimmung'));
   AddParam(P1, Ord(UNI[O, 2]), 8, ENV_Y + 6 * ROW_H + 6, 70, 62, 0, Tr('Breite'));
   L := TLabel.Create(Self);
   L.Parent := P1;
@@ -2216,7 +2222,7 @@ begin
     L := TLabel.Create(Self);
     L.Parent := FZoneRow[Z];
     L.SetBounds(60, 9, 40, 16);
-    L.Caption := 'ab';
+    L.Caption := Tr('ab');
     L.Font.Color := COL_NAME;
     L.Transparent := True;
     FZoneNote[Z] := TComboBox.Create(Self);

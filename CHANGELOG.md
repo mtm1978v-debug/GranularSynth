@@ -6,6 +6,20 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.5 – 31.10.2026
+
+### Behoben
+- Abgeschnittene Beschriftungen in beiden Sprachen: Listen Neustart/Stopp im Reiter LFO, Faktor-Liste der Matrix, Morph-LFO, Kurve der freien Makros, Preset-Kategorie, Unison-Verstimmung, Zonen und Anlauf.
+- Die Statuszeile endet bei Platzmangel mit „…“. Der volle Text steht im Tooltip.
+
+### Geändert
+- **Neuer, flacher dunkler Stil** für Knöpfe, Auswahllisten, Eingabefelder und Reiter: feine Ränder, Bernstein als Akzent (gewählter Reiter, gewählte Seite, Listenpfeil), passend zu den Schiebereglern und Kippschaltern.
+- Die Matrix-Zeilen haben ein **Papierkorb-Symbol** statt „×“.
+- Die Pegelanzeigen für Sidechain und Ausgang (Reiter LFO) sind jetzt **Segmentanzeigen** (grün, bernstein, rot) mit dem Wert rechts.
+- Der Prüfstand misst jetzt jeden Text gegen den Platz seines Steuerelements, in jeder Sprache. Zu lange Beschriftungen fallen so vor der Auslieferung auf.
+
+---
+
 ## Version 2.4 – 31.10.2026
 
 ### Neu

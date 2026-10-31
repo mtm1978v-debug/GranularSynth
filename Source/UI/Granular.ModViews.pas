@@ -836,10 +836,46 @@ begin
   end;
 end;
 
+{ Segmentkette ueber die ganze Breite (der Wert steht rechts auf dunklem Grund): gruen, ab 75 % bernstein, ab 95 % rot;
+  beim Ausgang ab der Schwellenmarke bernstein }
+procedure DrawSegments(B: TBitmap32; L: Double; IsOutput: Boolean);
+const
+  SEG = 20;
+var
+  I, X0, X1, W, H: Integer;
+  F: Double;
+  C: TColor32;
+begin
+  W := B.Width;
+  H := B.Height;
+  for I := 0 to SEG - 1 do
+  begin
+    X0 := 2 + Round(I * (W - 4) / SEG);
+    X1 := 2 + Round((I + 1) * (W - 4) / SEG) - 1;
+    F := (I + 0.5) / SEG;
+    if F >= 0.95 then C := $FFE04030
+    else if F >= 0.75 then C := $FFE0A040
+    else C := $FF60C060;
+    if F > L then
+      C := (C and $00FFFFFF) or $38000000;          // unbeleuchtet: schwach
+    B.FillRectTS(X0, 3, X1, H - 3, C);
+  end;
+end;
+
+procedure ValueText(B: TBitmap32; const T: string);
+var
+  TW, Y: Integer;
+begin
+  TW := B.TextWidth(T);
+  Y := (B.Height - 12) div 2;
+  B.FillRectTS(B.Width - TW - 6, 2, B.Width - 2, B.Height - 2, $D0202020);
+  B.Textout(B.Width - TW - 4, Y, T);
+end;
+
 procedure TLevelView.DoPaintBuffer;
 var
   B: TBitmap32;
-  W, H, X, X2: Integer;
+  W, H, X2: Integer;
   L: Double;
 begin
   Buffer.BeginUpdate;   // Aenderungsmeldungen je Zeichenaufruf unterdruecken (sehr teuer)
@@ -849,31 +885,21 @@ begin
   H := B.Height;
   B.Clear(COL_BG);
   L := Level;
-  X := Round(L * (W - 2));
-  if FOutput then
-  begin
-    // Ausgang: Balken orange, sobald er die Schwelle erreicht; weisse Marke = Schwelle
-    X2 := 1 + Round(ParamToPlain(gpOutTrigLevel, FEngine.GetParam(Ord(gpOutTrigLevel))) / 100 * (W - 2));
-    if X > 0 then
-      B.FillRectS(1, 1, 1 + X, H - 1, IfThen(1 + X >= X2, Integer($FFFFA040), Integer(COL_CURVE)));
-    B.VertLineS(X2, 0, H - 1, $FFFFFFFF);
-    B.Font.Name := 'Tahoma';
-    B.Font.Size := 7;
-    B.Font.Color := COL_TEXT;
-    B.Textout(4, (H - 12) div 2, Format(Tr('Ausgang %.0f %%'), [L * 100]));
-  end
-  else
-  begin
-  if X > 0 then
-    B.FillRectS(1, 1, 1 + X, H - 1, IfThen(L > 0.95, Integer(COL_MARK), Integer(COL_CURVE)));
+  // Pegelkette: 20 Segmente, unbeleuchtet schwach sichtbar - so wirkt die Anzeige auch bei Stille als Messgeraet
+  DrawSegments(B, L, FOutput);
   B.Font.Name := 'Tahoma';
   B.Font.Size := 7;
-  B.Font.Color := COL_TEXT;
-  if FEngine.SidechainActive then
-    B.Textout(4, (H - 12) div 2, Format(Tr('Sidechain %.0f %%'), [L * 100]))
+  B.Font.Color := $FFB0B0B0;
+  if FOutput then
+  begin
+    X2 := 1 + Round(ParamToPlain(gpOutTrigLevel, FEngine.GetParam(Ord(gpOutTrigLevel))) / 100 * (W - 2));
+    B.VertLineS(X2, 0, H - 1, $FFFFFFFF);
+    ValueText(B, Format(Tr('Ausgang %.0f %%'), [L * 100]));
+  end
+  else if FEngine.SidechainActive then
+    ValueText(B, Format(Tr('Sidechain %.0f %%'), [L * 100]))
   else
-    B.Textout(4, (H - 12) div 2, Tr('kein Sidechain-Signal'));
-  end;
+    ValueText(B, Tr('kein Sidechain-Signal'));
   finally
     Buffer.EndUpdate;
   end;

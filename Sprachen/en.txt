@@ -171,7 +171,7 @@ Aufnahme starten	Start recording
 Aus	Off
 Aus (chromatisch frei)	Off (chromatic, free)
 Aus (ms)	Off (ms)
-Aus (nur Regler)	Off (controls only)
+Aus (nur Regler)	Off (ctrl only)
 Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. "nie" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei "frei"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält "Note aus" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Events). "nach Zeit": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T ...; ein Notenwert gilt vor den ms).	Off trigger: the event (Note on, Note off, End partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) halts the LFO - no modulation until its start event starts it again. "never" = keeps running. Only works with a start event (not with "free"); with Stop the LFO also waits for its first start initially. For per-note LFOs, "Note off" halts only the released note. Delay as for the start (Timing / Events tab). "after time": the LFO halts after a fixed run time from its start - in ms or as a note value (2/1, 1/1, 1/2, 1/4, 1/4T ...; a note value takes precedence over ms).
 Ausgang	Output
 Ausgang %.0f %%	Output %.0f %%
@@ -324,7 +324,7 @@ Eingänge (DAW): Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar \nSide
 Einmal	One-shot
 Einmal: Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).	One-shot: the LFO runs a single cycle and then stops (melodies, effect entries).
 Einmal: Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, \nEffekt-Einsatz).	One-shot: the LFO runs a single cycle and then stops (melodies, \neffect entries).
-Ende Partner-LFO (Einmal)	End of partner LFO (One-shot)
+Ende Partner-LFO (Einmal)	Partner LFO end
 Equalizer	Equalizer
 Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)	Equalizer (draw the curve with the mouse, right button = 0 dB)
 Ereignis	Event
@@ -1432,7 +1432,7 @@ Zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gem
 Zwischen zwei Fassungen hin- und herschalten und vergleichen.	Switch back and forth between two versions and compare.
 [nur eingeschaltet, solange	[only on while
 [wird zusätzlich von	[additionally influenced by
-ab	from
+ab	at
 aktuelle Einstellung als Preset speichern; eigene Töne werden nach „Eigene Töne“ kopiert. Dateityp „mit eingebetteten Samples“: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach „Eigene Töne“ ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste.	save the current settings as a preset; your own sounds are copied to "Eigene Töne". File type "with embedded samples": all samples used (main sample, sound B, zones) go into the preset file - a single file to pass on. On another computer, missing samples are unpacked to "Eigene Töne" when loading. The choice is remembered; older versions load such presets too (without unpacking). After saving, the new name appears in the preset list.
 aktuellen Klang oder ein anderes Preset als Ziel B festlegen.	set the current sound or another preset as target B.
 aktueller Wirkwert. Tonhöhe folgen: SC-Tonhöhe -> Pitch, Faktor x2,65 Ton, Offset -125 %, Menge 100 % (C4 = Originalhöhe).	current effective value. Pitch follow: SC pitch -> Pitch, Factor x2.65 pitch, Offset -125 %, Amount 100 % (C4 = original pitch).
@@ -1557,7 +1557,7 @@ x1/4	x1/4
 x1/8	x1/8
 x16	x16
 x2	x2
-x2,65 Ton	x2.65 pitch
+x2,65 Ton	x2.65 st
 x4	x4
 x8	x8
 yyyy-mm-dd hh-nn-ss	yyyy-mm-dd hh-nn-ss

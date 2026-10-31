@@ -81,6 +81,7 @@ Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüsse
 - Der Prüfstand meldet „Uebersetzung: … en: N fehlen -> FEHLER“ und schreibt die Liste nach `bin\<Plattform>\lang_fehlend_<Kürzel>.txt`.
 - `python Tools/lang_check.py` prüft zusätzlich alle `Tr`-Literale im Quelltext, die Tooltips und die Reglertabelle der Hilfe. Fehlende Texte stehen danach in `Sprachen/_fehlend_<Kürzel>.txt`. Sie werden übersetzt und in `Sprachen/<Kürzel>.txt` eingetragen.
 - `deploy.bat` bricht ab, solange etwas fehlt.
+- **Textplatz:** Der Prüfstand baut die Oberfläche in jeder Sprache auf und misst jeden Text gegen sein Steuerelement: Knöpfe, Beschriftungen mit fester Breite oder mit Nachbarn daneben und geschlossene Listen. Zu lange Texte meldet er als FEHLER und schreibt sie nach `bin\<Plattform>	ext_platz_<Sprache>.txt`. Abhilfe ist eine kürzere Übersetzung oder ein breiteres Steuerelement.
 
 **Übersetzte Dokumente:**
 

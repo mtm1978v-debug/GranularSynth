@@ -73,6 +73,7 @@ type
   private
     FHot: Boolean;
     FActive: Boolean;
+    FGlyph: Integer;
     procedure SetActive(Value: Boolean);
     procedure CNDrawItem(var Message: TWMDrawItem); message CN_DRAWITEM;
     procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
@@ -83,6 +84,8 @@ type
   public
     { hervorgehoben (bernsteinfarben): gewaehlte Seite eines Umschalters }
     property Active: Boolean read FActive write SetActive;
+    { Symbol statt Text: 0 = keins, 1 = Papierkorb (die Beschriftung bleibt fuer Tooltip/Barrierefreiheit) }
+    property Glyph: Integer read FGlyph write FGlyph;
   end;
 
   { Aufklappliste: geschlossenes Feld in gebuerstetem Aluminium (selbst gezeichnet), Liste dunkel mit
@@ -102,6 +105,8 @@ type
   TEdit = class(Vcl.StdCtrls.TEdit)
   private
     procedure WMNCPaint(var Message: TWMNCPaint); message WM_NCPAINT;
+  protected
+    procedure CreateWnd; override;
   end;
 
   { Reiter: der weisse Rahmen um die Seite wird nach dem Zeichnen durch einen dunklen Metallrahmen ersetzt }
@@ -414,9 +419,26 @@ const
   LIST_TEXT = $00DCDCDC;
   LIST_SEL = $0040A8E0;      // Bernstein wie die Ueberschriften
   LIST_SEL_TEXT = $00101010;
+  { Stil der Knoepfe, Listen, Eingabefelder und Reiter: True = flach und dunkel (Rand fein, Bernstein als
+    Akzent), False = gebuerstetes Aluminium (bisheriger Stil) }
+  FLAT_UI = True;
+  FLAT_FACE = $00403A37;     // Flaeche (BGR)
+  FLAT_HOT = $004C4642;      // unter der Maus
+  FLAT_DOWN = $00302B29;     // gedrueckt
+  FLAT_BORDER = $00605954;
+  FLAT_TEXT = $00E2DED9;
+  FLAT_DIM = $00787370;      // gesperrt
+  FLAT_ACT_FACE = $00284C66; // gewaehlter Umschalter: gedecktes Bernstein
+  FLAT_ACT_TEXT = $0070D0F8;
+  FLAT_TAB_OFF = $002E2A28;  // Reiter nicht gewaehlt
 
 { gebuerstetes Aluminium: feine waagrechte Striche (je Zeile leicht andere Helligkeit, fest verteilt),
   oben etwas heller (Licht von oben), Rand dunkel mit heller Oberkante }
+function IfThenColor(Cond: Boolean; A, B: TColor): TColor;
+begin
+  if Cond then Result := A else Result := B;
+end;
+
 procedure DrawBrushed(DC: HDC; const R: TRect; Base: TColor; Lift: Integer);
 var
   Y, H, D: Integer;
@@ -439,6 +461,28 @@ begin
   LineColor(DC, R.Left, R.Bottom - 1, R.Right, R.Bottom - 1, $00303030);
   LineColor(DC, R.Left, R.Top, R.Left, R.Bottom, $00505050);
   LineColor(DC, R.Right - 1, R.Top, R.Right - 1, R.Bottom, $00303030);
+end;
+
+{ flache Flaeche mit 1-Pixel-Rand }
+procedure DrawFlat(DC: HDC; const R: TRect; Face, Border: TColor);
+begin
+  FillRectColor(DC, R, Face);
+  LineColor(DC, R.Left, R.Top, R.Right, R.Top, Border);
+  LineColor(DC, R.Left, R.Bottom - 1, R.Right, R.Bottom - 1, Border);
+  LineColor(DC, R.Left, R.Top, R.Left, R.Bottom, Border);
+  LineColor(DC, R.Right - 1, R.Top, R.Right - 1, R.Bottom, Border);
+end;
+
+{ schmaler Winkel (Chevron) nach unten als Listenpfeil }
+procedure DrawChevron(DC: HDC; Cx, Cy: Integer; C: TColor);
+var
+  I: Integer;
+begin
+  for I := 0 to 3 do
+  begin
+    LineColor(DC, Cx - 4 + I, Cy - 2 + I, Cx - 2 + I, Cy - 2 + I, C);
+    LineColor(DC, Cx + 3 - I, Cy - 2 + I, Cx + 5 - I, Cy - 2 + I, C);
+  end;
 end;
 
 procedure TButton.CreateParams(var Params: TCreateParams);
@@ -484,6 +528,8 @@ var
   Txt: string;
   OldF: HFONT;
   Down: Boolean;
+  Cx, Cy: Integer;
+  Gc: TColor;
 begin
   DS := Message.DrawItemStruct;
   R := DS.rcItem;
@@ -491,18 +537,52 @@ begin
   if Parent <> nil then
     FillRectColor(DS.hDC, R, TControlAccess(Parent).Color);
   InflateRect(R, -1, -1);
-  Lift := 0;
-  if FHot then Lift := 12;
-  if Down then Lift := -18;
-  if FActive then
-    DrawBrushed(DS.hDC, R, ACTIVE_BASE, Lift)
-  else
-    DrawBrushed(DS.hDC, R, ALU_BASE, Lift);
   Txt := Caption;
   SetBkMode(DS.hDC, TRANSPARENT);
-  if Enabled then SetTextColor(DS.hDC, ALU_TEXT) else SetTextColor(DS.hDC, $00505050);
-  OldF := SelectObject(DS.hDC, Font.Handle);
+  if FLAT_UI then
+  begin
+    if FActive then
+      DrawFlat(DS.hDC, R, FLAT_ACT_FACE, LIST_SEL)
+    else if Down then
+      DrawFlat(DS.hDC, R, FLAT_DOWN, FLAT_BORDER)
+    else if FHot then
+      DrawFlat(DS.hDC, R, FLAT_HOT, $00807870)
+    else
+      DrawFlat(DS.hDC, R, FLAT_FACE, FLAT_BORDER);
+    if not Enabled then SetTextColor(DS.hDC, FLAT_DIM)
+    else if FActive then SetTextColor(DS.hDC, FLAT_ACT_TEXT)
+    else SetTextColor(DS.hDC, FLAT_TEXT);
+  end
+  else
+  begin
+    Lift := 0;
+    if FHot then Lift := 12;
+    if Down then Lift := -18;
+    if FActive then
+      DrawBrushed(DS.hDC, R, ACTIVE_BASE, Lift)
+    else
+      DrawBrushed(DS.hDC, R, ALU_BASE, Lift);
+    if Enabled then SetTextColor(DS.hDC, ALU_TEXT) else SetTextColor(DS.hDC, $00505050);
+  end;
   if Down then OffsetRect(R, 1, 1);
+  if FGlyph = 1 then
+  begin
+    // Papierkorb: Deckel mit Griff, Korpus mit drei Rillen
+    Cx := (R.Left + R.Right) div 2;
+    Cy := (R.Top + R.Bottom) div 2;
+    if FHot and Enabled then Gc := LIST_SEL else if Enabled then Gc := FLAT_TEXT else Gc := FLAT_DIM;
+    LineColor(DS.hDC, Cx - 5, Cy - 4, Cx + 6, Cy - 4, Gc);
+    LineColor(DS.hDC, Cx - 1, Cy - 6, Cx + 2, Cy - 6, Gc);
+    LineColor(DS.hDC, Cx - 4, Cy - 3, Cx - 4, Cy + 5, Gc);
+    LineColor(DS.hDC, Cx + 4, Cy - 3, Cx + 4, Cy + 5, Gc);
+    LineColor(DS.hDC, Cx - 4, Cy + 5, Cx + 5, Cy + 5, Gc);
+    LineColor(DS.hDC, Cx - 2, Cy - 2, Cx - 2, Cy + 4, Gc);
+    LineColor(DS.hDC, Cx, Cy - 2, Cx, Cy + 4, Gc);
+    LineColor(DS.hDC, Cx + 2, Cy - 2, Cx + 2, Cy + 4, Gc);
+    Message.Result := 1;
+    Exit;
+  end;
+  OldF := SelectObject(DS.hDC, Font.Handle);
   DrawText(DS.hDC, PChar(Txt), Length(Txt), R, DT_CENTER or DT_VCENTER or DT_SINGLELINE);
   SelectObject(DS.hDC, OldF);
   Message.Result := 1;
@@ -543,6 +623,16 @@ begin
     RemoveWindowSubclass(hWnd, @ListFrameProc, 1);
 end;
 
+procedure TEdit.CreateWnd;
+begin
+  inherited;
+  if FLAT_UI then
+  begin
+    if Color <> FLAT_FACE then Color := FLAT_FACE;
+    if Font.Color <> FLAT_TEXT then Font.Color := FLAT_TEXT;
+  end;
+end;
+
 procedure TEdit.WMNCPaint(var Message: TWMNCPaint);
 var
   DC: HDC;
@@ -553,6 +643,19 @@ begin
   try
     GetWindowRect(Handle, R);
     OffsetRect(R, -R.Left, -R.Top);
+    if FLAT_UI then
+    begin
+      LineColor(DC, R.Left, R.Top, R.Right, R.Top, FLAT_BORDER);
+      LineColor(DC, R.Left, R.Top, R.Left, R.Bottom, FLAT_BORDER);
+      LineColor(DC, R.Left, R.Bottom - 1, R.Right, R.Bottom - 1, FLAT_BORDER);
+      LineColor(DC, R.Right - 1, R.Top, R.Right - 1, R.Bottom, FLAT_BORDER);
+      InflateRect(R, -1, -1);
+      LineColor(DC, R.Left, R.Top, R.Right, R.Top, ColorToRGB(Color));
+      LineColor(DC, R.Left, R.Top, R.Left, R.Bottom, ColorToRGB(Color));
+      LineColor(DC, R.Left, R.Bottom - 1, R.Right, R.Bottom - 1, ColorToRGB(Color));
+      LineColor(DC, R.Right - 1, R.Top, R.Right - 1, R.Bottom, ColorToRGB(Color));
+      Exit;
+    end;
     LineColor(DC, R.Left, R.Top, R.Right, R.Top, $00505050);
     LineColor(DC, R.Left, R.Top, R.Left, R.Bottom, $00505050);
     LineColor(DC, R.Left, R.Bottom - 1, R.Right, R.Bottom - 1, $00303030);
@@ -580,8 +683,16 @@ begin
   // Neuzeichnen bzw. bei der Schrift das Fenster neu, mit allen ~300 Eintraegen)
   if Style = csDropDown then
   begin
-    if Color <> $00A09C98 then Color := $00A09C98;
-    if Font.Color <> ALU_TEXT then Font.Color := ALU_TEXT;
+    if FLAT_UI then
+    begin
+      if Color <> FLAT_FACE then Color := FLAT_FACE;
+      if Font.Color <> FLAT_TEXT then Font.Color := FLAT_TEXT;
+    end
+    else
+    begin
+      if Color <> $00A09C98 then Color := $00A09C98;
+      if Font.Color <> ALU_TEXT then Font.Color := ALU_TEXT;
+    end;
   end;
 end;
 
@@ -591,9 +702,17 @@ var
 begin
   if odComboBoxEdit in State then
   begin
-    // Eingabefeld-Teil (nur csDropDown sichtbar): Metallgrau
-    Canvas.Brush.Color := $00A09C98;
-    Canvas.Font.Color := ALU_TEXT;
+    // Eingabefeld-Teil (nur csDropDown sichtbar)
+    if FLAT_UI then
+    begin
+      Canvas.Brush.Color := FLAT_FACE;
+      Canvas.Font.Color := FLAT_TEXT;
+    end
+    else
+    begin
+      Canvas.Brush.Color := $00A09C98;
+      Canvas.Font.Color := ALU_TEXT;
+    end;
   end
   else if odSelected in State then
   begin
@@ -626,6 +745,19 @@ begin
   MapWindowPoints(0, Handle, E, 2);
   DC := GetDC(Handle);
   try
+    if FLAT_UI then
+    begin
+      FillRectColor(DC, Rect(R.Left, R.Top, R.Right, E.Top), FLAT_FACE);
+      FillRectColor(DC, Rect(R.Left, E.Bottom, R.Right, R.Bottom), FLAT_FACE);
+      FillRectColor(DC, Rect(R.Left, R.Top, E.Left, R.Bottom), FLAT_FACE);
+      FillRectColor(DC, Rect(E.Right, R.Top, R.Right, R.Bottom), FLAT_FACE);
+      LineColor(DC, R.Left, R.Top, R.Right, R.Top, FLAT_BORDER);
+      LineColor(DC, R.Left, R.Bottom - 1, R.Right, R.Bottom - 1, FLAT_BORDER);
+      LineColor(DC, R.Left, R.Top, R.Left, R.Bottom, FLAT_BORDER);
+      LineColor(DC, R.Right - 1, R.Top, R.Right - 1, R.Bottom, FLAT_BORDER);
+      DrawChevron(DC, (E.Right + R.Right) div 2, (R.Top + R.Bottom) div 2, IfThenColor(Enabled, LIST_SEL, FLAT_DIM));
+      Exit;
+    end;
     // Rahmen zwischen Aussenkante und Edit (oben/unten/links)
     FillRectColor(DC, Rect(R.Left, R.Top, R.Right, E.Top), $00A09C98);
     FillRectColor(DC, Rect(R.Left, E.Bottom, R.Right, R.Bottom), $00A09C98);
@@ -683,17 +815,29 @@ begin
     R := ClientRect;
     if Parent <> nil then
       FillRectColor(DC, R, TControlAccess(Parent).Color);
-    DrawBrushed(DC, R, ALU_BASE, IfThenInt(Focused, 6, 0));
-    // Pfeil
-    Ax := R.Right - 10; Ay := (R.Top + R.Bottom) div 2 - 1;
-    for I := 0 to 3 do
-      LineColor(DC, Ax - 3 + I, Ay + I, Ax + 4 - I, Ay + I, $00202020);
-    LineColor(DC, R.Right - 19, R.Top + 4, R.Right - 19, R.Bottom - 4, $00505050);
+    if FLAT_UI then
+    begin
+      DrawFlat(DC, R, FLAT_FACE, IfThenColor(Focused or DroppedDown, LIST_SEL, FLAT_BORDER));
+      DrawChevron(DC, R.Right - 10, (R.Top + R.Bottom) div 2, IfThenColor(Enabled, LIST_SEL, FLAT_DIM));
+    end
+    else
+    begin
+      DrawBrushed(DC, R, ALU_BASE, IfThenInt(Focused, 6, 0));
+      // Pfeil
+      Ax := R.Right - 10; Ay := (R.Top + R.Bottom) div 2 - 1;
+      for I := 0 to 3 do
+        LineColor(DC, Ax - 3 + I, Ay + I, Ax + 4 - I, Ay + I, $00202020);
+      LineColor(DC, R.Right - 19, R.Top + 4, R.Right - 19, R.Bottom - 4, $00505050);
+    end;
     // Text
     if ItemIndex >= 0 then Txt := Items[ItemIndex] else Txt := Text;
     TR := Rect(R.Left + 5, R.Top, R.Right - 22, R.Bottom);
     SetBkMode(DC, TRANSPARENT);
-    if Enabled then SetTextColor(DC, ALU_TEXT) else SetTextColor(DC, $00505050);
+    if FLAT_UI then
+    begin
+      if Enabled then SetTextColor(DC, FLAT_TEXT) else SetTextColor(DC, FLAT_DIM);
+    end
+    else if Enabled then SetTextColor(DC, ALU_TEXT) else SetTextColor(DC, $00505050);
     OldF := SelectObject(DC, Font.Handle);
     DrawText(DC, PChar(Txt), Length(Txt), TR, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_END_ELLIPSIS or DT_NOPREFIX);
     SelectObject(DC, OldF);
@@ -744,7 +888,25 @@ begin
       R := TabRect(Vis);
       Inc(Vis);
       Act := Pages[J] = ActivePage;
-      if Act then
+      if FLAT_UI then
+      begin
+        if Act then
+        begin
+          Dec(R.Top, 2);
+          Inc(R.Bottom, 1);
+          DrawFlat(DC, R, Bg, FLAT_BORDER);
+          LineColor(DC, R.Left + 1, R.Bottom - 1, R.Right - 1, R.Bottom - 1, Bg);   // offen zur Seite
+          LineColor(DC, R.Left + 1, R.Top, R.Right - 1, R.Top, LIST_SEL);
+          LineColor(DC, R.Left + 1, R.Top + 1, R.Right - 1, R.Top + 1, LIST_SEL);
+          SetTextColor(DC, FLAT_ACT_TEXT);
+        end
+        else
+        begin
+          DrawFlat(DC, Rect(R.Left, R.Top, R.Right, R.Bottom), FLAT_TAB_OFF, $00403B38);
+          SetTextColor(DC, $00B8B4B0);
+        end;
+      end
+      else if Act then
       begin
         Dec(R.Top, 2);
         Inc(R.Bottom, 1);                         // aktiver Reiter verbindet sich mit dem Rahmen
