@@ -19,6 +19,7 @@ unit Granular.LoadView;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, System.Classes, System.SysUtils, System.Math, Vcl.Controls, Vcl.Graphics,
   GR32, GR32_Polygons, GR32_VectorUtils,
   Granular.Params, Granular.Engine;
@@ -173,23 +174,23 @@ procedure TLoadList.Build;
 begin
   FItems := nil;
   FLayerB := FEngine.LayerMode;
-  Add('Grundlast (Stimmen, Hüllkurven, LFOs)', 14, True, True);
-  Add('Grains', 30, OnOf(gpGrainOn, False), OnOf(gpGrainOn, True));
-  Add('HQ-Interpolation', 8, OnOf(gpGrainOn, False) and OnOf(gpQuality, False),
+  Add(Tr('Grundlast (Stimmen, Hüllkurven, LFOs)'), 14, True, True);
+  Add(Tr('Grains'), 30, OnOf(gpGrainOn, False), OnOf(gpGrainOn, True));
+  Add(Tr('HQ-Interpolation'), 8, OnOf(gpGrainOn, False) and OnOf(gpQuality, False),
     OnOf(gpGrainOn, True) and OnOf(gpQuality, True));
-  Add('Oszillator 1', 6, OscOn(0, False), OscOn(0, True));
-  Add('Oszillator 2', 6, OscOn(1, False), OscOn(1, True));
-  Add('Oszillator 3', 6, OscOn(2, False), OscOn(2, True));
-  Add('Filter je Note', 9, FilterOn(False), FilterOn(True));
-  Add('Modulation je Note (Matrix)', 7, MatrixOn, MatrixOn);
-  Add('Echo', 4, OnOf(gpEchoOn, False), OnOf(gpEchoOn, True));
-  Add('Hall', 6, OnOf(gpRevOn, False), OnOf(gpRevOn, True));
-  Add('Equalizer', 2, OnOf(gpEqOn, False), OnOf(gpEqOn, True));
-  Add('Sättigung', 1, DriveOn(False), DriveOn(True));
-  Add('Arpeggiator', 1, OnOf(gpArpOn, False), OnOf(gpArpOn, True));
+  Add(Tr('Oszillator 1'), 6, OscOn(0, False), OscOn(0, True));
+  Add(Tr('Oszillator 2'), 6, OscOn(1, False), OscOn(1, True));
+  Add(Tr('Oszillator 3'), 6, OscOn(2, False), OscOn(2, True));
+  Add(Tr('Filter je Note'), 9, FilterOn(False), FilterOn(True));
+  Add(Tr('Modulation je Note (Matrix)'), 7, MatrixOn, MatrixOn);
+  Add(Tr('Echo'), 4, OnOf(gpEchoOn, False), OnOf(gpEchoOn, True));
+  Add(Tr('Hall'), 6, OnOf(gpRevOn, False), OnOf(gpRevOn, True));
+  Add(Tr('Equalizer'), 2, OnOf(gpEqOn, False), OnOf(gpEqOn, True));
+  Add(Tr('Sättigung'), 1, DriveOn(False), DriveOn(True));
+  Add(Tr('Arpeggiator'), 1, OnOf(gpArpOn, False), OnOf(gpArpOn, True));
   // Summen-Effekte aus dem Reiter Effekte zusammengefasst Gewicht gemessen:
   // Pruefstand 'FX-Last', alle vier an = etwa 12 (Grains = 30)
-  Add('FX (Chorus, Phaser, Bitcrusher, Gate)', 12, FxOn(False), FxOn(True));
+  Add(Tr('FX (Chorus, Phaser, Bitcrusher, Gate)'), 12, FxOn(False), FxOn(True));
 end;
 
 function TLoadList.TheoryPercent: Double;
@@ -249,7 +250,7 @@ var
     C.Brush.Style := bsClear;
     if On_ then C.Font.Color := COL_TEXT else C.Font.Color := COL_DIM;
     if On_ then
-      C.TextOut(X + BAR_W + 6, Y + 2, Format('%.0f %%', [Frac * 30]))
+      C.TextOut(X + BAR_W + 6, Y + 2, Format(Tr('%.0f %%'), [Frac * 30]))
     else
       C.TextOut(X + BAR_W + 6, Y + 2, 'aus');
     C.Brush.Style := bsSolid;
@@ -265,12 +266,12 @@ begin
   C.Brush.Style := bsClear;
   C.Font.Color := COL_AMBER;
   C.Font.Style := [fsBold];
-  C.TextOut(X_NAME, 4, 'Rechenblock');
-  C.TextOut(X_A, 4, 'Klang A');
+  C.TextOut(X_NAME, 4, Tr('Rechenblock'));
+  C.TextOut(X_A, 4, Tr('Klang A'));
   if FLayerB then
-    C.TextOut(X_B, 4, 'Klang B')
+    C.TextOut(X_B, 4, Tr('Klang B'))
   else
-    C.TextOut(X_B, 4, 'Klang B (aus)');
+    C.TextOut(X_B, 4, Tr('Klang B (aus)'));
   C.Font.Style := [];
   C.Brush.Style := bsSolid;
   for I := 0 to High(FItems) do
@@ -289,10 +290,10 @@ begin
   C.Brush.Style := bsClear;
   C.Font.Color := COL_AMBER;
   C.Font.Style := [fsBold];
-  C.TextOut(X_NAME, Y, Format('Theoretische Last: %.0f %% der Volllast (alles an, A + B, 32 Stimmen)', [T]));
+  C.TextOut(X_NAME, Y, Format(Tr('Theoretische Last: %.0f %% der Volllast (alles an, A + B, 32 Stimmen)'), [T]));
   C.Font.Style := [];
   C.Font.Color := COL_DIM;
-  C.TextOut(X_NAME, Y + 20, 'Prozentangabe je Block: Anteil an einem voll belegten Klang (Messwerte des Prüfstands).');
+  C.TextOut(X_NAME, Y + 20, Tr('Prozentangabe je Block: Anteil an einem voll belegten Klang (Messwerte des Prüfstands).'));
   Canvas.Draw(0, 0, FBuf);
 end;
 
@@ -418,12 +419,12 @@ begin
     end;
   C.Font.Size := 16;
   C.Font.Style := [fsBold];
-  S := Format('%.1f %%', [FShown]);
+  S := Format(Tr('%.1f %%'), [FShown]);
   C.TextOut(Round(Cx) - C.TextWidth(S) div 2, Round(Cy) + 16, S);
   C.Font.Size := Font.Size;
   C.Font.Style := [];
   C.Font.Color := COL_DIM;
-  S := 'Rechenzeit (Anteil eines Kerns)';
+  S := Tr('Rechenzeit (Anteil eines Kerns)');
   C.TextOut(Round(Cx) - C.TextWidth(S) div 2, Round(Cy + R / 2) + 16, S);
   FBuf.DrawTo(Canvas.Handle, 0, 0);
 end;

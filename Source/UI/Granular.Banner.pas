@@ -185,6 +185,7 @@ type
 implementation
 
 uses
+  Granular.Lang,
   Winapi.Windows;
 
 const
@@ -316,7 +317,7 @@ begin
   // Untertitel rechts neben dem Titel, an der Grundlinie
   FTitle.Font.Style := [];
   FTitle.Font.Height := -Round(H * 0.24);
-  Sub := BANNER_SUBTITLE;
+  Sub := StringReplace(BANNER_SUBTITLE, 'Synthese', Tr('Synthese'), []);   // Sprache der Oberflaeche
   if FFormatName <> '' then
     Sub := Sub + '  ' + #$00B7 + '  ' + FFormatName;     // "VST2", "VST3", "VST2 FX" ...
   SW := FTitle.TextWidth(Sub);

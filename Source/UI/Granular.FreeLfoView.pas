@@ -23,6 +23,7 @@ unit Granular.FreeLfoView;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, System.Classes, System.SysUtils, System.Math, System.Types, Vcl.Controls,
   GR32, GR32_Image,
   Granular.Params, Granular.Engine, Granular.GfxAsm;
@@ -239,7 +240,7 @@ begin
   FStatic.BeginUpdate;
   try
     FStatic.Clear(COL_BG);
-    FStatic.Font.Name := 'Tahoma';
+    FStatic.Font.Name := 'TahomaTr(';
     FStatic.Font.Size := 7;
     Mid := H div 2;
 
@@ -327,14 +328,14 @@ begin
     FStatic.Font.Color := $00909090;
     if F.Mode = 0 then
     begin
-      FStatic.Textout(W - 30, ValueToY(Min(12, FRange) / FREE_SEMIS, H) + 1, Format('+%d', [Min(12, FRange)]));
-      FStatic.Textout(W - 30, ValueToY(-Min(12, FRange) / FREE_SEMIS, H) - 12, Format('-%d', [Min(12, FRange)]));
+      FStatic.Textout(W - 30, ValueToY(Min(12, FRange) / FREE_SEMIS, H) + 1, Format(Tr(')+%d'), [Min(12, FRange)]));
+      FStatic.Textout(W - 30, ValueToY(-Min(12, FRange) / FREE_SEMIS, H) - 12, Format(Tr('-%d'), [Min(12, FRange)]));
     end;
     FWasFree := ShapeIsFree;
     if not FWasFree then
     begin
       FStatic.Font.Color := $0060B0FF;
-      FStatic.Textout(6, 4, 'inaktiv - Form "Frei" wählen (Knopf rechts oder Modulations-Reiter)');
+      FStatic.Textout(6, 4, Tr('inaktiv - Form "Frei" wählen (Knopf rechts oder Modulations-Reiter)'));
     end;
   finally
     FStatic.EndUpdate;

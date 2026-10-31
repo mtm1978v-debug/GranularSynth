@@ -1,1 +1,5 @@
 blank_issues_enabled: true
+contact_links:
+  - name: Ideen und Fragen diskutieren / Discuss ideas and questions
+    url: https://github.com/mtm1978v-debug/GranularSynth/discussions
+    about: Offene Ideen, Klangfragen und Austausch / open ideas, sound questions and exchange

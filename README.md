@@ -3,7 +3,7 @@
 **Granular- und FM-Synthesizer als VST2- und VST3-Plugin für Windows (32 und 64 Bit)**, mit eigenem Test-Host.
 Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind von Hand in SSE-Assembler optimiert, damit die CPU-Last niedrig bleibt.
 
-*Granular and FM synthesizer plugin (VST2/VST3, Windows 32/64 bit) with its own test host. The user interface and documentation are in German.*
+*Granular and FM synthesizer plugin (VST2/VST3, Windows 32/64 bit) with its own test host. **English user interface and help** from version 2.3 (switch: Extras tab › „Sprache / Language“); see [README_EN.txt](README_EN.txt).*
 
 ![Reiter Grain](docs/screenshots/grain.png)
 

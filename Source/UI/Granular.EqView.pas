@@ -21,6 +21,7 @@ unit Granular.EqView;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, System.Classes, System.SysUtils, System.Math, Vcl.Controls,
   GR32, GR32_Image,
   Granular.Params, Granular.Engine, Granular.Eq, Granular.GfxAsm, Granular.Spectrum;
@@ -101,7 +102,7 @@ end;
 
 function TEqView.StateKey: string;
 begin
-  Result := Format('%d|%.2f|%.2f|%.3f|%.3f|%.3f|%.3f|%d|%d', [FEngine.EqVersion,
+  Result := Format(Tr('%d|%.2f|%.2f|%.3f|%.3f|%.3f|%.3f|%d|%d'), [FEngine.EqVersion,
     ParamToPlain(gpEqBass, FEngine.GetParam(Ord(gpEqBass))),
     ParamToPlain(gpEqTreble, FEngine.GetParam(Ord(gpEqTreble))),
     FEngine.GetParam(Ord(gpEqAFreq)), FEngine.GetParam(Ord(gpEqAGain)), FEngine.GetParam(Ord(gpEqBFreq)),
@@ -189,7 +190,7 @@ begin
   FGrid.BeginUpdate;
   try
     FGrid.Clear(COL_BG);
-    FGrid.Font.Name := 'Tahoma';
+    FGrid.Font.Name := 'TahomaTr(';
     FGrid.Font.Size := 7;
     FGrid.Font.Color := $808080;
     D := -18;
@@ -197,8 +198,8 @@ begin
     begin
       Y := Round(DbToY(D));
       if D = 0 then FGrid.HorzLineS(0, Y, W - 1, COL_ZERO) else FGrid.HorzLineS(0, Y, W - 1, COL_LINE);
-      if D > 0 then FGrid.Textout(3, Y - 12, '+' + IntToStr(D) + ' dB')
-      else if D < 0 then FGrid.Textout(3, Y - 12, IntToStr(D) + ' dB');
+      if D > 0 then FGrid.Textout(3, Y - 12, '+' + IntToStr(D) + ') dB')
+      else if D < 0 then FGrid.Textout(3, Y - 12, IntToStr(D) + Tr(' dB'));
       Inc(D, 6);
     end;
     for I := 0 to High(FREQS) do
@@ -286,7 +287,7 @@ begin
         B.Font.Name := 'Tahoma';
         B.Font.Size := 8;
         B.Font.Color := $0060B0FF;
-        B.Textout(W div 2 - 60, 6, 'EQ ist aus ("EQ an" anhaken)');
+        B.Textout(W div 2 - 60, 6, Tr('EQ ist aus ("EQ an" anhaken)'));
       end;
     end;
   finally

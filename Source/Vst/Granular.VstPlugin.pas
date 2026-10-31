@@ -21,6 +21,7 @@ unit Granular.VstPlugin;
 interface
 
 uses
+  Granular.Lang,
   Granular.Vst2;
 
 function CreatePlugin(AudioMaster: TAudioMasterCallback): PAEffect;
@@ -28,9 +29,13 @@ function CreatePlugin(AudioMaster: TAudioMasterCallback): PAEffect;
 implementation
 
 uses
-  Winapi.Windows, System.SysUtils, System.Classes, System.Math,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, System.Math,
   Vcl.Controls, Vcl.Forms,
   Granular.Params, Granular.Sample, Granular.Engine, Granular.State, Granular.Editor, Granular.AudioDecode;
+
+const
+  WM_GRANULAR_RELANG = WM_USER + 711;   // Editor nach Sprachwechsel neu aufbauen
+
 
 const
   PLUGIN_NAME = 'GranularSynth';
@@ -48,6 +53,7 @@ type
     FEngine: TGranularEngine;
     FForm: TForm;
     FEditor: TGranularEditor;
+    FOldFormProc: TWndMethod;         // Fensterprozedur des Editor-Formulars (Sprachwechsel)
     FRect: TERect;
     FChunk: TBytes;          // muss bis zum naechsten getChunk gueltig bleiben
     FTempoWait: Integer;
@@ -60,6 +66,9 @@ type
     FBaseDir: string;       // Ordner der DLL (Presets\, Beispieltoene\)
     procedure OpenEditor(ParentWnd: HWND);
     procedure CloseEditor;
+    procedure CreateEditorPanel;
+    procedure EditorLanguageChange(Sender: TObject);
+    procedure FormWndProc(var Msg: TMessage);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ProcessEvents(Events: PVstEvents);
@@ -268,11 +277,9 @@ begin
   FForm.KeyPreview := True;
   FForm.OnKeyDown := FormKeyDown;
   FForm.OnKeyUp := FormKeyUp;
-  FEditor := TGranularEditor.Create(FForm, FForm, FEngine);
-  FEditor.BaseDir := FBaseDir;
-  FEditor.OnParamEdit := EditorParamEdit;   // Reglerbewegungen an die DAW melden
-  if FIsFx then FEditor.FormatName := 'VST2 FX' else FEditor.FormatName := 'VST2';
-  FEditor.SyncSampleFromEngine;
+  FOldFormProc := FForm.WindowProc;
+  FForm.WindowProc := FormWndProc;
+  CreateEditorPanel;
   // Testhilfe: Umgebungsvariable GRANULAR_TAB=1|2 oeffnet direkt einen Reiter
   FEditor.ShowPage(StrToIntDef(GetEnvironmentVariable('GRANULAR_TAB'), 0));
   // Testhilfe: GRANULAR_LFOPAGE=1 zeigt LFO 5-8, GRANULAR_MATPAGE=n die Matrix-Seite n (0-basiert)
@@ -288,6 +295,12 @@ begin
   // Testhilfe: GRANULAR_FREEEDIT=1|2 oeffnet das Fenster 'freie Form' des LFOs
   if StrToIntDef(GetEnvironmentVariable('GRANULAR_FREEEDIT'), 0) in [1, 2] then
     FEditor.OpenFreeEditor(StrToInt(GetEnvironmentVariable('GRANULAR_FREEEDIT')) - 1);
+  // Testhilfe: GRANULAR_LANGTEST=<Kuerzel> schaltet nach dem Oeffnen die Sprache um (wie die Auswahl im Reiter Extras)
+  if GetEnvironmentVariable('GRANULAR_LANGTEST') <> '' then
+  begin
+    LangSet(GetEnvironmentVariable('GRANULAR_LANGTEST'));
+    EditorLanguageChange(nil);
+  end;
   FForm.Visible := True;
 end;
 
@@ -308,6 +321,42 @@ begin
     pekChange: FAudioMaster(@FEffect, audioMasterAutomate, V, 0, nil, Value);
     pekEnd: FAudioMaster(@FEffect, audioMasterEndEdit, V, 0, nil, 0);
   end;
+end;
+
+{ Editor im Formular anlegen (beim Oeffnen und nach einem Sprachwechsel) }
+procedure TGranularPlugin.CreateEditorPanel;
+begin
+  LangInit(FBaseDir);
+  FEditor := TGranularEditor.Create(FForm, FForm, FEngine);
+  FEditor.BaseDir := FBaseDir;
+  FEditor.OnParamEdit := EditorParamEdit;   // Reglerbewegungen an die DAW melden
+  FEditor.OnLanguageChange := EditorLanguageChange;
+  if FIsFx then FEditor.FormatName := 'VST2 FX' else FEditor.FormatName := 'VST2';
+  FEditor.SyncSampleFromEngine;
+end;
+
+procedure TGranularPlugin.EditorLanguageChange(Sender: TObject);
+begin
+  if FForm <> nil then
+    PostMessage(FForm.Handle, WM_GRANULAR_RELANG, 0, 0);
+end;
+
+{ Sprachwechsel: Editor neu aufbauen, gleicher Reiter. Laeuft als Nachricht des Formulars - der alte
+  Editor ist dann nicht mehr auf dem Aufrufstapel. }
+procedure TGranularPlugin.FormWndProc(var Msg: TMessage);
+var
+  Page: Integer;
+begin
+  if (Msg.Msg = WM_GRANULAR_RELANG) and (FEditor <> nil) then
+  begin
+    Page := FEditor.PageIndex;
+    FEditor.ReleaseAllKeys;
+    FreeAndNil(FEditor);
+    CreateEditorPanel;
+    FEditor.ShowPage(Page);
+    Exit;
+  end;
+  FOldFormProc(Msg);
 end;
 
 procedure TGranularPlugin.CloseEditor;

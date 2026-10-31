@@ -18,6 +18,7 @@ unit Granular.InfoView;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, System.Math, System.Types,
   Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.ExtCtrls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ComCtrls,
   Granular.Params, Granular.Engine;
@@ -100,7 +101,7 @@ begin
     Exit;
   end;
   HelpForm := THelpForm.CreateNew(AOwner);
-  HelpForm.Caption := 'GRANULAR - Hilfe  (FM ' + #$00B7 + ' Synthese ' + #$00B7 + ' HABI M ' + #$00B7 + ' Version ' + APP_VERSION + ')';
+  HelpForm.Caption := Tr('GRANULAR - Hilfe  (FM ') + #$00B7 + Tr(' Synthese ') + #$00B7 + Tr(' HABI M ') + #$00B7 + Tr(' Version ') + APP_VERSION + ')';
   HelpForm.BorderStyle := bsSizeToolWin;
   HelpForm.FormStyle := fsStayOnTop;
   HelpForm.Position := poScreenCenter;
@@ -122,7 +123,7 @@ begin
   if FileExists(FileName) then
     Ed.Lines.LoadFromFile(FileName)
   else
-    Ed.Lines.Text := 'Hilfedatei nicht gefunden: ' + FileName;
+    Ed.Lines.Text := Tr('Hilfedatei nicht gefunden: ') + FileName;
   Ed.SelStart := 0;
   HelpForm.Show;
 end;
@@ -205,11 +206,11 @@ var
       Amt := ParamToPlain(SlotAmountIndex(S), E.GetParam(SlotAmountIndex(S)));
       F := ParamStep(SlotFactorIndex(S), E.GetParam(SlotFactorIndex(S)));
       Ofs := ParamToPlain(SlotOffsetIndex(S), E.GetParam(SlotOffsetIndex(S)));
-      Part := Format('%s (%s %%', [DestName(D), Sgn(Amt)]);
+      Part := Format(Tr('%s (%s %%'), [DestName(D), Sgn(Amt)]);
       if MOD_FACTORS[F] <> 1 then
         Part := Part + ', ' + MOD_FACTOR_NAMES[F];
       if Abs(Ofs) > 0.5 then
-        Part := Part + ', Offset ' + Sgn(Ofs) + ' %';
+        Part := Part + Tr(', Offset ') + Sgn(Ofs) + ' %';
       Part := Part + ')';
       if Result <> '' then Result := Result + ', ';
       Result := Result + Part;
@@ -242,8 +243,8 @@ var
     By := SwitchedBy(Id);
     Note := '';
     if By <> '' then
-      if IsOn(Id) then Note := ' [wird zusätzlich von ' + By + ' beeinflusst]'
-      else Note := ' [nur eingeschaltet, solange ' + By + ' es einschaltet]';
+      if IsOn(Id) then Note := Tr(' [wird zusätzlich von ') + By + Tr(' beeinflusst]')
+      else Note := Tr(' [nur eingeschaltet, solange ') + By + Tr(' es einschaltet]');
     Result := IsOn(Id) or (By <> '');
   end;
 
@@ -251,14 +252,14 @@ var
   var
     F: PFreeLfo;
     I: Integer;
-    Shp, Tr, Steps: string;
+    Shp, TrgTxt, Steps: string;
   begin
     Shp := LFO_SHAPE_NAMES[EnsureRange(St(LFO_SHAPE_IDS[K]), 0, 5)];
     if St(LFO_SHAPE_IDS[K]) = LFO_SHAPE_FREE then
     begin
       F := E.FreeLfo[LFO_FREE_IDX[K]];
       if F.Mode = 2 then
-        Shp := 'freie, gezeichnete Kurve'
+        Shp := Tr('freie, gezeichnete Kurve')
       else
       begin
         Steps := '';
@@ -266,33 +267,33 @@ var
           if F.Mode = 0 then
             Steps := Steps + Sgn(Round(F.Step[I] * FREE_SEMIS)) + ' '
           else
-            Steps := Steps + Format('%.0f%% ', [F.Step[I] * 100]);
+            Steps := Steps + Format(Tr('%.0f%% '), [F.Step[I] * 100]);
         if F.Steps > 16 then Steps := Steps + '...';
         if F.Mode = 0 then
-          Shp := Format('frei, %d Halbton-Stufen (%s)', [F.Steps, Trim(Steps)])
+          Shp := Format(Tr('frei, %d Halbton-Stufen (%s)'), [F.Steps, Trim(Steps)])
         else
-          Shp := Format('frei, %d Stufen (%s)', [F.Steps, Trim(Steps)]);
+          Shp := Format(Tr('frei, %d Stufen (%s)'), [F.Steps, Trim(Steps)]);
       end;
     end;
     if IsOn(LFO_SYNC_IDS[K]) then
-      Result := Format('%s, im Takt: ein Durchlauf = %s', [Shp, LFO_DIV_NAMES[LfoDivisionIndex(N(LFO_RATE_IDS[K]))]])
+      Result := Format(Tr('%s, im Takt: ein Durchlauf = %s'), [Shp, LFO_DIV_NAMES[LfoDivisionIndex(N(LFO_RATE_IDS[K]))]])
     else
-      Result := Format('%s, %s', [Shp, PV(LFO_RATE_IDS[K])]);
+      Result := Format(Tr('%s, %s'), [Shp, PV(LFO_RATE_IDS[K])]);
     case St(LFO_TRIG_IDS[K]) of
-      0: Tr := 'läuft frei durch';
-      1: Tr := 'startet mit jeder Note neu';
-      2: Tr := 'startet beim Loslassen einer Taste neu';
-      3: Tr := 'startet bei Note an und Note aus neu';
-      4: Tr := Format('startet, wenn LFO %d seinen Einmal-Durchlauf beendet', [(K xor 1) + 1]);
-      5: Tr := 'startet, wenn der Sidechain-Pegel ' + PV(gpScTrigLevel) + ' überschreitet';
-      6: Tr := 'startet, wenn die Sidechain-Tonhöhe über ' + PV(gpScTrigNote) + ' steigt';
-      7: Tr := 'startet, wenn das Schwellen-Tor öffnet';
+      0: TrgTxt := Tr('läuft frei durch');
+      1: TrgTxt := Tr('startet mit jeder Note neu');
+      2: TrgTxt := Tr('startet beim Loslassen einer Taste neu');
+      3: TrgTxt := Tr('startet bei Note an und Note aus neu');
+      4: TrgTxt := Format(Tr('startet, wenn LFO %d seinen Einmal-Durchlauf beendet'), [(K xor 1) + 1]);
+      5: TrgTxt := Tr('startet, wenn der Sidechain-Pegel ') + PV(gpScTrigLevel) + Tr(' überschreitet');
+      6: TrgTxt := Tr('startet, wenn die Sidechain-Tonhöhe über ') + PV(gpScTrigNote) + Tr(' steigt');
+      7: TrgTxt := Tr('startet, wenn das Schwellen-Tor öffnet');
     end;
-    Result := Result + '; ' + Tr;
+    Result := Result + '; ' + TrgTxt;
     if IsOn(LFO_ONCE_IDS[K]) then
-      Result := Result + ', läuft nur EINMAL und bleibt dann am Ende stehen'
+      Result := Result + Tr(', läuft nur EINMAL und bleibt dann am Ende stehen')
     else
-      Result := Result + ', wiederholt sich';
+      Result := Result + Tr(', wiederholt sich');
   end;
 
 var
@@ -304,8 +305,8 @@ var
 begin
   Rows := nil;
   if E.MorphSampleLoaded <> '' then
-    BInfo := ' Klang B spielt sein eigenes Sample (' + ChangeFileExt(ExtractFileName(E.MorphSampleLoaded), '') +
-      '): so viele Grains wie die Morph-Stellung kommen daraus.'
+    BInfo := Tr(' Klang B spielt sein eigenes Sample (') + ChangeFileExt(ExtractFileName(E.MorphSampleLoaded), '') +
+      Tr('): so viele Grains wie die Morph-Stellung kommen daraus.')
   else
     BInfo := '';
 
@@ -316,36 +317,36 @@ begin
     Pat := '';
     for K := 0 to St(gpArpSteps) do
       if Mask and (1 shl K) <> 0 then Pat := Pat + 'x' else Pat := Pat + '.';
-    Add('1. Taste',
-      Format('Arpeggiator: die gehaltenen Tasten laufen "%s" über %s in %s-Schritten (Länge %s, Swing %s). ' +
-        'Muster %s (x = spielt, . = Pause).%s',
+    Add(Tr('1. Taste'),
+      Format(Tr('Arpeggiator: die gehaltenen Tasten laufen "%s" über %s in %s-Schritten (Länge %s, Swing %s). ' +
+        'Muster %s (x = spielt, . = Pause).%s'),
         [PV(gpArpMode), PV(gpArpOct), PV(gpArpRate), PV(gpArpGate), PV(gpArpSwing), Pat, Nt]));
   end
   else
-    Add('1. Taste', 'Jede Taste startet eine eigene Stimme (mehrstimmig).');
+    Add(Tr('1. Taste'), Tr('Jede Taste startet eine eigene Stimme (mehrstimmig).'));
 
   // 2) Tonhoehe
-  if IsOn(gpKeyTrack) then T := 'folgt der Taste' else T := 'bleibt fest (Tasten ändern die Tonhöhe nicht)';
-  if Abs(Plain(gpPitch)) > 0.01 then T := T + ', verschoben um ' + PV(gpPitch);
-  if Plain(gpPitchRand) > 0.01 then T := T + ', je Grain zufällig +/- ' + PV(gpPitchRand);
-  if St(gpScale) > 0 then T := T + Format(', rastet auf %s-%s ein', [PV(gpScaleRoot), PV(gpScale)]);
-  if St(gpScPitchMode) > 0 then T := T + ', Auto-Pitch: folgt der Tonhöhe am Sidechain (' + PV(gpScPitchMode) + ')';
-  Add('2. Tonhöhe', T + '.');
+  if IsOn(gpKeyTrack) then T := Tr('folgt der Taste') else T := Tr('bleibt fest (Tasten ändern die Tonhöhe nicht)');
+  if Abs(Plain(gpPitch)) > 0.01 then T := T + Tr(', verschoben um ') + PV(gpPitch);
+  if Plain(gpPitchRand) > 0.01 then T := T + Tr(', je Grain zufällig +/- ') + PV(gpPitchRand);
+  if St(gpScale) > 0 then T := T + Format(Tr(', rastet auf %s-%s ein'), [PV(gpScaleRoot), PV(gpScale)]);
+  if St(gpScPitchMode) > 0 then T := T + Tr(', Auto-Pitch: folgt der Tonhöhe am Sidechain (') + PV(gpScPitchMode) + ')';
+  Add(Tr('2. Tonhöhe'), T + '.');
 
   // 3) Grains
-  T := Format('%s Grains pro Sekunde, je %s lang (Fenster %s), aus dem Bereich %s bis %s des Samples',
+  T := Format(Tr('%s Grains pro Sekunde, je %s lang (Fenster %s), aus dem Bereich %s bis %s des Samples'),
     [PV(gpDensity), PV(gpGrainSize), PV(gpWindow), PV(gpSelStart), PV(gpSelEnd)]);
   if IsOn(gpFreeze) then
-    T := T + '; FREEZE: die Abspielposition steht still'
+    T := T + Tr('; FREEZE: die Abspielposition steht still')
   else
-    T := T + '; Abspielgeschwindigkeit ' + PV(gpScan);
-  if Plain(gpSpray) > 0.5 then T := T + ', Positions-Streuung ' + PV(gpSpray);
-  if Plain(gpReverse) > 0.5 then T := T + ', ' + PV(gpReverse) + ' rückwärts';
-  T := T + ', Stereobreite ' + PV(gpSpread) + '.';
-  Add('3. Grains', T);
+    T := T + Tr('; Abspielgeschwindigkeit ') + PV(gpScan);
+  if Plain(gpSpray) > 0.5 then T := T + Tr(', Positions-Streuung ') + PV(gpSpray);
+  if Plain(gpReverse) > 0.5 then T := T + ', ' + PV(gpReverse) + Tr(' rückwärts');
+  T := T + Tr(', Stereobreite ') + PV(gpSpread) + '.';
+  Add(Tr('3. Grains'), T);
 
   // 4) Huellkurve
-  Add('4. Lautstärke', Format('Anschwellen %s, Abfall %s auf %s, nach dem Loslassen Ausklang %s. Lautstärke %s.',
+  Add(Tr('4. Lautstärke'), Format(Tr('Anschwellen %s, Abfall %s auf %s, nach dem Loslassen Ausklang %s. Lautstärke %s.'),
     [PV(gpAttack), PV(gpDecay), PV(gpSustain), PV(gpRelease), PV(gpVolume)]));
 
   // 5) Modulation
@@ -359,75 +360,75 @@ begin
   end;
   for K := 0 to LFO_COUNT - 1 do
     if UsedSrc[LFO_SRC[K]] then
-      Add(Format('5. LFO %d', [K + 1]), LfoText(K) + '. Bewegt: ' + Targets(LFO_SRC[K]) + '.');
+      Add(Format(Tr('5. LFO %d'), [K + 1]), LfoText(K) + Tr('. Bewegt: ') + Targets(LFO_SRC[K]) + '.');
   if UsedSrc[msGate] or (St(gpLfo1Trig) = LFO_TRIG_GATE) or (St(gpLfo2Trig) = LFO_TRIG_GATE) then
   begin
-    T := Format('öffnet, wenn "%s" über %s steigt (schließt knapp darunter wieder)', [PV(gpGateSrc), PV(gpGateThresh)]);
-    if UsedSrc[msGate] then T := T + '. Schaltet: ' + Targets(msGate);
-    Add('5. Schwellen-Tor', T + '.');
+    T := Format(Tr('öffnet, wenn "%s" über %s steigt (schließt knapp darunter wieder)'), [PV(gpGateSrc), PV(gpGateThresh)]);
+    if UsedSrc[msGate] then T := T + Tr('. Schaltet: ') + Targets(msGate);
+    Add(Tr('5. Schwellen-Tor'), T + '.');
   end;
   for M := msSidechain to High(TModSource) do
     if UsedSrc[M] and (M <> msGate) and (LfoOfSource(Ord(M)) < 0) then
-      Add('5. ' + MOD_SOURCE_NAMES[M], 'steuert ' + Targets(M) + '.');
+      Add('5. ' + MOD_SOURCE_NAMES[M], Tr('steuert ') + Targets(M) + '.');
   if UsedSrc[msSidechain] or (St(gpLfo1Trig) in [LFO_TRIG_SC_LEVEL, LFO_TRIG_SC_PITCH]) or
      (St(gpLfo2Trig) in [LFO_TRIG_SC_LEVEL, LFO_TRIG_SC_PITCH]) then
-    Add('   Sidechain', Format('Eingang verstärkt um %s, reagiert in %s, fällt in %s ab.',
+    Add(Tr('   Sidechain'), Format(Tr('Eingang verstärkt um %s, reagiert in %s, fällt in %s ab.'),
       [PV(gpScGain), PV(gpScAttack), PV(gpScRelease)]));
   if E.MorphValid and (St(gpMorphLfoShape) > 0) then
   begin
-    if IsOn(gpMorphLfoSync) then T := 'im Takt (' + LFO_DIV_NAMES[LfoDivisionIndex(N(gpMorphLfoRate))] + ')'
+    if IsOn(gpMorphLfoSync) then T := Tr('im Takt (') + LFO_DIV_NAMES[LfoDivisionIndex(N(gpMorphLfoRate))] + ')'
     else T := PV(gpMorphLfoRate);
-    Add('   Morph', Format('Morph-LFO (%s, %s) pendelt um %s mit Tiefe %s zwischen Klang A (0 %%) und B (100 %%).%s',
+    Add(Tr('   Morph'), Format(Tr('Morph-LFO (%s, %s) pendelt um %s mit Tiefe %s zwischen Klang A (0 %%) und B (100 %%).%s'),
       [PV(gpMorphLfoShape), T, PV(gpMorph), PV(gpMorphLfoDepth), BInfo]));
   end
   else if E.MorphValid and (Plain(gpMorph) > 0.5) then
-    Add('   Morph', 'blendet ' + PV(gpMorph) + ' zum gemerkten Klang B.' + BInfo)
+    Add(Tr('   Morph'), Tr('blendet ') + PV(gpMorph) + Tr(' zum gemerkten Klang B.') + BInfo)
   else if E.MorphValid and UsedSrc[msOff] then
-    Add('   Morph', 'Ziel B ist gemerkt.');
+    Add(Tr('   Morph'), Tr('Ziel B ist gemerkt.'));
 
   // 6) Effektkette
-  Chain := 'Grains';
+  Chain := Tr('Grains');
   if Active(gpFltOn, Nt) and (Plain(gpFltContour) > 0.5) then
   begin
-    T := Format('%s bei %s, Resonanz %s, Wirkung %s', [PV(gpFltType), PV(gpFltCutoff), PV(gpFltReso), PV(gpFltContour)]);
+    T := Format(Tr('%s bei %s, Resonanz %s, Wirkung %s'), [PV(gpFltType), PV(gpFltCutoff), PV(gpFltReso), PV(gpFltContour)]);
     if Abs(Plain(gpFltEnvAmt)) > 0.5 then
-      T := T + Format('; eigene Hüllkurve (%s / %s / %s / %s) verschiebt den Cutoff um %s',
+      T := T + Format(Tr('; eigene Hüllkurve (%s / %s / %s / %s) verschiebt den Cutoff um %s'),
         [PV(gpFltAttack), PV(gpFltDecay), PV(gpFltSustain), PV(gpFltRelease), PV(gpFltEnvAmt)]);
-    Add('6. Filter', T + '.' + Nt);
-    Chain := Chain + ' -> Filter';
+    Add(Tr('6. Filter'), T + '.' + Nt);
+    Chain := Chain + Tr(' -> Filter');
   end;
   if Active(gpEchoOn, Nt) then
   begin
     if IsOn(gpEchoSync) then
-      T := 'Wiederholung im Takt alle ' + LFO_DIV_NAMES[EchoDivisionIndex(N(gpEchoTime))]
+      T := Tr('Wiederholung im Takt alle ') + LFO_DIV_NAMES[EchoDivisionIndex(N(gpEchoTime))]
     else
-      T := 'Wiederholung alle ' + PV(gpEchoTime);
-    T := Format('%s, Rückkopplung %s, Dämpfung %s, Mix %s', [T, PV(gpEchoFeedback), PV(gpEchoDamp), PV(gpEchoMix)]);
-    if IsOn(gpEchoPingPong) then T := T + ', springt links/rechts';
+      T := Tr('Wiederholung alle ') + PV(gpEchoTime);
+    T := Format(Tr('%s, Rückkopplung %s, Dämpfung %s, Mix %s'), [T, PV(gpEchoFeedback), PV(gpEchoDamp), PV(gpEchoMix)]);
+    if IsOn(gpEchoPingPong) then T := T + Tr(', springt links/rechts');
     if Abs(Plain(gpEchoPitch)) > 0.05 then
-      T := T + '; ECHO-TREPPE: jede Wiederholung um ' + PV(gpEchoPitch) + ' versetzt';
-    Add('7. Echo', T + '.' + Nt);
-    Chain := Chain + ' -> Echo';
+      T := T + Tr('; ECHO-TREPPE: jede Wiederholung um ') + PV(gpEchoPitch) + Tr(' versetzt');
+    Add(Tr('7. Echo'), T + '.' + Nt);
+    Chain := Chain + Tr(' -> Echo');
   end;
   if Active(gpRevOn, Nt) then
   begin
-    T := Format('Raumgröße %s, Nachhall %s, Höhendämpfung %s, Vorverzögerung %s, Mix %s',
+    T := Format(Tr('Raumgröße %s, Nachhall %s, Höhendämpfung %s, Vorverzögerung %s, Mix %s'),
       [PV(gpRevSize), PV(gpRevDecay), PV(gpRevDamp), PV(gpRevPreDelay), PV(gpRevMix)]);
-    if IsOn(gpFreeze) then T := T + '; FREEZE: der Raum hält den Klang fast unbegrenzt';
-    Add('8. Hall', T + '.' + Nt);
-    Chain := Chain + ' -> Hall';
+    if IsOn(gpFreeze) then T := T + Tr('; FREEZE: der Raum hält den Klang fast unbegrenzt');
+    Add(Tr('8. Hall'), T + '.' + Nt);
+    Chain := Chain + Tr(' -> Hall');
   end;
   if Plain(gpDrive) > 0.5 then
   begin
-    Add('9. Sättigung', 'warme Übersteuerung ' + PV(gpDrive) + '.');
-    Chain := Chain + ' -> Sättigung';
+    Add(Tr('9. Sättigung'), Tr('warme Übersteuerung ') + PV(gpDrive) + '.');
+    Chain := Chain + Tr(' -> Sättigung');
   end;
   if IsOn(gpLimiter) then
-    Chain := Chain + ' -> Limiter -> weicher Clipper -> Ausgang'
+    Chain := Chain + Tr(' -> Limiter -> weicher Clipper -> Ausgang')
   else
-    Chain := Chain + ' -> weicher Clipper -> Ausgang';
-  Add('Signalweg', Chain + '.');
-  Add('Programm', 'GranularSynth ' + APP_VERSION + ' - Copyright (C) 2026 Matthias Haberecht - freie Software unter der GNU GPL Version 3 oder neuer, ohne Gewaehrleistung (LICENSE.txt im Plugin-Ordner)');
+    Chain := Chain + Tr(' -> weicher Clipper -> Ausgang');
+  Add(Tr('Signalweg'), Chain + '.');
+  Add(Tr('Programm'), Tr('GranularSynth ') + APP_VERSION + Tr(' - Copyright (C) 2026 Matthias Haberecht - freie Software unter der GNU GPL Version 3 oder neuer, ohne Gewaehrleistung (LICENSE.txt im Plugin-Ordner)'));
   Result := Rows;
 end;
 
@@ -440,7 +441,7 @@ var
 begin
   inherited CreateNew(AOwner);
   FEngine := AEngine;
-  Caption := 'Info - was passiert bei einem Tastendruck';
+  Caption := Tr('Info - was passiert bei einem Tastendruck');
   BorderStyle := bsSizeToolWin;
   FormStyle := fsStayOnTop;
   Position := poScreenCenter;
@@ -456,14 +457,14 @@ begin
   L.Align := alBottom;
   L.AlignWithMargins := True;
   L.Margins.SetBounds(8, 4, 8, 2);
-  L.Caption := 'Trigger-Protokoll (live): Noten, Pitchbend/Modrad/Aftertouch, Ereignisse, Einmal-LFOs';
+  L.Caption := Tr('Trigger-Protokoll (live): Noten, Pitchbend/Modrad/Aftertouch, Ereignisse, Einmal-LFOs');
   FMoodLbl := TLabel.Create(Self);
   FMoodLbl.Parent := Self;
   FMoodLbl.Align := alBottom;
   FMoodLbl.AlignWithMargins := True;
   FMoodLbl.Margins.SetBounds(8, 4, 8, 0);
   FMoodLbl.Font.Color := COL_TEXT;
-  FMoodLbl.Caption := 'Stimmung: -';
+  FMoodLbl.Caption := Tr('Stimmung: -');
   L.Font.Color := COL_AREA;
   L.Font.Style := [fsBold];
   FLog := TMemo.Create(Self);
@@ -525,7 +526,7 @@ begin
     Exit;   // geschlossen: nichts tun
   PollLog;
   with FEngine.GetMood do
-    FMoodLbl.Caption := Format('Stimmung der Musik: %s   (Valenz %s, Energie %.2f, zärtlich %.2f)',
+    FMoodLbl.Caption := Format(Tr('Stimmung der Musik: %s   (Valenz %s, Energie %.2f, zärtlich %.2f)'),
       [Name, FormatFloat('+0.00;-0.00;0.00', Valence), Arousal, Tender]);
   Refresh;
 end;
@@ -550,7 +551,7 @@ const
   function NoteStr(N: Integer): string;
   begin
     N := EnsureRange(N, 0, 127);
-    Result := Format('%s%d (MIDI %d)', [NOTE_NAMES[N mod 12], N div 12 - 1, N]);
+    Result := Format(Tr('%s%d (MIDI %d)'), [NOTE_NAMES[N mod 12], N div 12 - 1, N]);
   end;
 
 var
@@ -565,42 +566,42 @@ begin
   try
     for I := 0 to High(Items) do
     begin
-      S := Format('%9s s   ', [FormatFloat('0.00', Items[I].Time)]);
+      S := Format(Tr('%9s s   '), [FormatFloat('0.00', Items[I].Time)]);
       case Items[I].Kind of
         tlNoteOn:
           begin
-            S := S + Format('Note an   %-14s Velocity %3d (%3.0f %%)  Stimme %d', [NoteStr(Items[I].Arg),
+            S := S + Format(Tr('Note an   %-14s Velocity %3d (%3.0f %%)  Stimme %d'), [NoteStr(Items[I].Arg),
               Round(Items[I].Val * 127), Items[I].Val * 100, Items[I].Lfo + 1]);
             if Abs(Items[I].Val2) > 0.01 then
-              S := S + '  Glide von ' + FormatFloat('+0.0;-0.0', Items[I].Val2) + ' Halbtönen';
+              S := S + Tr('  Glide von ') + FormatFloat('+0.0;-0.0', Items[I].Val2) + Tr(' Halbtönen');
           end;
         tlNoteOff:
-          S := S + Format('Note aus  %s', [NoteStr(Items[I].Arg)]);
+          S := S + Format(Tr('Note aus  %s'), [NoteStr(Items[I].Arg)]);
         tlBend:
-          S := S + Format('Pitchbend %5.0f %%  (%s Halbtöne)  MIDI %d', [Items[I].Val * 100,
+          S := S + Format(Tr('Pitchbend %5.0f %%  (%s Halbtöne)  MIDI %d'), [Items[I].Val * 100,
             FormatFloat('+0.00;-0.00;0.00', Items[I].Val2), EnsureRange(Round(8192 + Items[I].Val * 8192), 0, 16383)]);
         tlControl:
-          S := S + Format('Modrad    %5.0f %%  (CC 1 = %d)', [Items[I].Val * 100, Round(Items[I].Val * 127)]);
+          S := S + Format(Tr('Modrad    %5.0f %%  (CC 1 = %d)'), [Items[I].Val * 100, Round(Items[I].Val * 127)]);
         tlPressure:
-          S := S + Format('Aftertouch %4.0f %%  (%d)', [Items[I].Val * 100, Round(Items[I].Val * 127)]);
+          S := S + Format(Tr('Aftertouch %4.0f %%  (%d)'), [Items[I].Val * 100, Round(Items[I].Val * 127)]);
         tlScTrig:
           begin
-            S := S + Format('Ereignis: Sidechain-Trigger  Pegel %.0f %% (Schwelle %.0f %%)',
+            S := S + Format(Tr('Ereignis: Sidechain-Trigger  Pegel %.0f %% (Schwelle %.0f %%)'),
               [Items[I].Val * 100, Items[I].Val2 * 100]);
           end;
         tlOutTrig:
-          S := S + Format('Ereignis: Ausgang > Schwelle  Pegel %.0f %% (Schwelle %.0f %%)',
+          S := S + Format(Tr('Ereignis: Ausgang > Schwelle  Pegel %.0f %% (Schwelle %.0f %%)'),
             [Items[I].Val * 100, Items[I].Val2 * 100]);
         tlScPitch:
-          S := S + Format('Ereignis: SC-Ton > Schwelle  erkannt %s, Schwelle %s',
+          S := S + Format(Tr('Ereignis: SC-Ton > Schwelle  erkannt %s, Schwelle %s'),
             [NoteStr(Round(Items[I].Val)), NoteStr(Round(Items[I].Val2))]);
         tlLfoStart:
-          S := S + Format('  -> Einmal-LFO %d startet (%s)', [Items[I].Lfo + 1,
+          S := S + Format(Tr('  -> Einmal-LFO %d startet (%s)'), [Items[I].Lfo + 1,
             LFO_TRIG_NAMES[EnsureRange(Items[I].Arg, 0, High(LFO_TRIG_NAMES))]]);
         tlLfoEnd:
-          S := S + Format('  -> LFO %d Einmal-Durchlauf beendet', [Items[I].Lfo + 1]);
+          S := S + Format(Tr('  -> LFO %d Einmal-Durchlauf beendet'), [Items[I].Lfo + 1]);
       else
-        S := S + 'Ereignis: ' + KIND_TEXT[Items[I].Kind];
+        S := S + Tr('Ereignis: ') + KIND_TEXT[Items[I].Kind];
       end;
       FLog.Lines.Add(S);
       Inc(FLogLines);
@@ -629,8 +630,8 @@ begin
     Exit;   // nichts geaendert -> nichts zeichnen
   FLast := Key;
   FGrid.RowCount := Length(Rows) + 1;
-  FGrid.Cells[0, 0] := 'Schritt';
-  FGrid.Cells[1, 0] := 'Was passiert';
+  FGrid.Cells[0, 0] := Tr('Schritt');
+  FGrid.Cells[1, 0] := Tr('Was passiert');
   for I := 0 to High(Rows) do
   begin
     FGrid.Cells[0, I + 1] := Rows[I].Area;

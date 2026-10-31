@@ -369,6 +369,21 @@ begin
     Result := Num + ' ' + Tag + ' - ' + Rest;
 end;
 
+const
+  { aussortierte Presets (01.11.2026): Code bleibt als Vorlage stehen, die Nummern werden nicht wieder vergeben }
+  DELETED_PRESETS: array[0..18] of Integer = (2, 3, 23, 35, 40, 46, 48, 55, 65, 66, 95, 101, 107, 109, 112, 113, 117, 133, 158);
+
+function IsDeletedPreset(const AName: string): Boolean;
+var
+  N, I: Integer;
+begin
+  N := StrToIntDef(Copy(AName, 1, Pos(' ', AName) - 1), -1);
+  for I := 0 to High(DELETED_PRESETS) do
+    if DELETED_PRESETS[I] = N then
+      Exit(True);
+  Result := False;
+end;
+
 procedure TPresetBuilder.Save(const AName: string);
 var
   Check: TGranularEngine;
@@ -377,6 +392,13 @@ var
   BufL, BufR: TArray<Single>;
   Peak: Single;
 begin
+  // vom Nutzer aussortiert: wird nicht mehr erzeugt, die Nummer bleibt frei (nie neu vergeben)
+  if IsDeletedPreset(AName) then
+  begin
+    if FileExists(FDir + TaggedName(AName) + '.gspreset') then
+      DeleteFile(FDir + TaggedName(AName) + '.gspreset');
+    Exit;
+  end;
   Name := TaggedName(AName);
   // Doppel-Presets: zwei vollstaendig getrennte Klaenge (eigene Tonhoehe, Effekte, LFOs je Instrument)
   if Pos('(Doppel)', Name) > 0 then

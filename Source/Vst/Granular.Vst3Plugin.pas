@@ -32,10 +32,15 @@ function ExitDll: Boolean; stdcall;
 implementation
 
 uses
-  Winapi.Windows, System.SysUtils, System.Classes, System.Math, System.Types,
+  Granular.Lang,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, System.Math, System.Types,
   Vcl.Controls, Vcl.Forms,
   Granular.Vst3, Granular.Params, Granular.Sample, Granular.Engine, Granular.State, Granular.Editor,
   Granular.AudioDecode;
+
+const
+  WM_GRANULAR_RELANG = WM_USER + 711;   // Editor nach Sprachwechsel neu aufbauen
+
 
 const
   CID_SYNTH: TGUID = '{8F3A2C61-4B7D-4E19-A6C2-1D5E9B07F3A1}';
@@ -85,6 +90,7 @@ type
     FViewIntf: Pointer;            // IPlugView* der Ansicht (fuer das DAW-Kontextmenue)
     FForm: TForm;
     FEditor: TGranularEditor;
+    FOldFormProc: TWndMethod;         // Fensterprozedur des Editor-Formulars (Sprachwechsel)
     FInBuf: array[0..3] of TArray<Single>;
     FDryBuf: array[0..LIM_LOOK * 2 - 1] of Single;
     FDryPos: Integer;
@@ -100,6 +106,9 @@ type
     destructor Destroy; override;
     procedure OpenEditor(ParentWnd: HWND);
     procedure CloseEditor;
+    procedure CreateEditorPanel;
+    procedure EditorLanguageChange(Sender: TObject);
+    procedure FormWndProc(var Msg: TMessage);
     // IPluginBase
     function initialize(context: Pointer): TResult; stdcall;
     function terminate: TResult; stdcall;
@@ -301,7 +310,7 @@ begin
     if dir = kOutput then
     begin
       bus.busType := kMain;
-      Nm := 'Ausgang';
+      Nm := Tr('Ausgang');
     end
     else if index = 0 then
     begin
@@ -309,19 +318,19 @@ begin
       if FIsFx then
       begin
         bus.busType := kMain;
-        Nm := 'Eingang (E1/E2)';
+        Nm := Tr('Eingang (E1/E2)');
       end
       else
       begin
         bus.busType := kAux;
-        Nm := 'Sidechain (E1/E2)';
+        Nm := Tr('Sidechain (E1/E2)');
       end;
     end
     else
     begin
       bus.busType := kAux;
       bus.flags := 0;
-      Nm := 'Sidechain 2 (E3/E4)';
+      Nm := Tr('Sidechain 2 (E3/E4)');
     end;
   end;
   StrToString128(Nm, @bus.name[0]);
@@ -676,10 +685,10 @@ begin
     Ctrl := paramIndex - PARAM_COUNT;
     info.id := MIDI_BASE + Ctrl;
     case Ctrl of
-      kAfterTouch: Nm := 'MIDI Aftertouch';
-      kPitchBend: Nm := 'MIDI Pitchbend';
+      kAfterTouch: Nm := Tr('MIDI Aftertouch');
+      kPitchBend: Nm := Tr('MIDI Pitchbend');
     else
-      Nm := Format('MIDI CC %d', [Ctrl]);
+      Nm := Format(Tr('MIDI CC %d'), [Ctrl]);
     end;
     StrToString128(Nm, @info.title[0]);
     StrToString128(Nm, @info.shortTitle[0]);
@@ -807,13 +816,46 @@ begin
   FForm.KeyPreview := True;
   FForm.OnKeyDown := FormKeyDown;
   FForm.OnKeyUp := FormKeyUp;
+  FOldFormProc := FForm.WindowProc;
+  FForm.WindowProc := FormWndProc;
+  CreateEditorPanel;
+  FForm.Visible := True;
+end;
+
+{ Editor im Formular anlegen (beim Oeffnen und nach einem Sprachwechsel) }
+procedure TGranularVst3.CreateEditorPanel;
+begin
+  LangInit(FBaseDir);
   FEditor := TGranularEditor.Create(FForm, FForm, FEngine);
   FEditor.BaseDir := FBaseDir;
   FEditor.OnParamEdit := EditorParamEdit;
   FEditor.OnHostMenu := EditorHostMenu;
+  FEditor.OnLanguageChange := EditorLanguageChange;
   if FIsFx then FEditor.FormatName := 'VST3 FX' else FEditor.FormatName := 'VST3';
   FEditor.SyncSampleFromEngine;
-  FForm.Visible := True;
+end;
+
+procedure TGranularVst3.EditorLanguageChange(Sender: TObject);
+begin
+  if FForm <> nil then
+    PostMessage(FForm.Handle, WM_GRANULAR_RELANG, 0, 0);
+end;
+
+{ Sprachwechsel: Editor neu aufbauen, gleicher Reiter (als Nachricht: alter Editor nicht mehr aktiv) }
+procedure TGranularVst3.FormWndProc(var Msg: TMessage);
+var
+  Page: Integer;
+begin
+  if (Msg.Msg = WM_GRANULAR_RELANG) and (FEditor <> nil) then
+  begin
+    Page := FEditor.PageIndex;
+    FEditor.ReleaseAllKeys;
+    FreeAndNil(FEditor);
+    CreateEditorPanel;
+    FEditor.ShowPage(Page);
+    Exit;
+  end;
+  FOldFormProc(Msg);
 end;
 
 procedure TGranularVst3.CloseEditor;
@@ -883,7 +925,7 @@ begin
   Item.flags := kIsSeparator;
   M.addItem(Item, nil);
   FillChar(Item, SizeOf(Item), 0);
-  StrToString128('GranularSynth: Modulieren, MIDI-Learn, Standardwert ...', @Item.name[0]);
+  StrToString128(Tr('GranularSynth: Modulieren, MIDI-Learn, Standardwert ...'), @Item.name[0]);
   Item.tag := TAG_OWN_MENU;
   M.addItem(Item, Target);
   Pt := FForm.ScreenToClient(ScreenPos);

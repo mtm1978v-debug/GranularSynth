@@ -20,8 +20,10 @@ function RunBenchmark: string;
 implementation
 
 uses
+  Granular.Lang,
   Winapi.Windows, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
-  GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Vst3, Granular.VstHost;
+  GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Vst3, Granular.VstHost,
+  Vcl.Forms, Granular.Editor, Granular.InfoView;
 
 const
   SR = 44100;
@@ -1744,6 +1746,78 @@ begin
   end;
 end;
 
+{ Uebersetzung: Oberflaeche einmal aufbauen und alle Reglernamen, Stufen und das Info-Fenster durch Tr
+  schicken. Jeder Text, der in einer Sprachdatei (Sprachen\*.txt) fehlt, wird gemeldet und nach
+  bin\<Plattform>\lang_fehlend_<Kuerzel>.txt geschrieben. Ohne Sprachdatei (Kuerzel 'alle') entsteht
+  die vollstaendige Liste aller Texte. Neue Funktionen ohne Uebersetzung fallen so sofort auf. }
+function LangRun(const Code, FileName: string): Integer;
+var
+  E: TGranularEngine;
+  Frm: TForm;
+  I, K: Integer;
+  Miss: TArray<string>;
+  L: TStringList;
+  Rows: TArray<TInfoRow>;
+begin
+  LangCollect(True);
+  LangLoadFile(Code, FileName);
+  E := TGranularEngine.Create;
+  Frm := TForm.CreateNew(nil);
+  try
+    E.SetSampleRate(SR);
+    TGranularEditor.Create(Frm, Frm, E);
+    for I := 0 to PARAM_COUNT - 1 do
+    begin
+      Tr(GetParamInfo(I).Name);
+      if GetParamInfo(I).Curve = pcStepped then
+        for K := 0 to GetParamInfo(I).Steps - 1 do
+          Tr(StepName(I, K));
+    end;
+    Rows := BuildInfo(E);       // uebersetzt seine Textteile selbst (Tr je Baustein)
+  finally
+    Frm.Free;
+    E.Free;
+  end;
+  Miss := LangMissing;
+  L := TStringList.Create;
+  try
+    for I := 0 to High(Miss) do
+      L.Add(StringReplace(StringReplace(Miss[I], #13#10, '\n', [rfReplaceAll]), #10, '\n', [rfReplaceAll]));
+    L.SaveToFile(ExtractFilePath(ParamStr(0)) + 'lang_fehlend_' + Code + '.txt', TEncoding.UTF8);
+  finally
+    L.Free;
+  end;
+  LangCollect(False);
+  LangLoadFile('de', '');
+  Result := Length(Miss);
+end;
+
+function CheckLanguage: string;
+var
+  Dir: string;
+  SR: TSearchRec;
+  N: Integer;
+  Bad: Boolean;
+begin
+  Dir := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\' + LANG_DIR + '\');
+  N := LangRun('alle', '');
+  Result := Format('Uebersetzung: %d Texte der Oberflaeche', [N]);
+  Bad := False;
+  if FindFirst(Dir + '*.txt', faAnyFile, SR) = 0 then
+  try
+    repeat
+      if SR.Name[1] = '_' then
+        Continue;                     // Arbeitslisten (_fehlend_*, _alle_texte), keine Sprache
+      N := LangRun(ChangeFileExt(SR.Name, ''), Dir + SR.Name);
+      Result := Result + Format(', %s: %d fehlen', [ChangeFileExt(SR.Name, ''), N]);
+      Bad := Bad or (N > 0);
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+  Result := Result + IfThen(Bad, ' (Liste: lang_fehlend_<Sprache>.txt) -> FEHLER', ' -> OK');
+end;
+
 function CheckLfo58: string;
 var
   E: TGranularEngine;
@@ -2567,7 +2641,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;
 

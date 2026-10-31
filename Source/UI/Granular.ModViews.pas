@@ -16,6 +16,7 @@ unit Granular.ModViews;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, System.Classes, System.SysUtils, System.Math, Vcl.Controls, Vcl.Graphics,
   GR32, GR32_Image,
   Granular.Params, Granular.Engine, Granular.Keyboard, Granular.GfxAsm, Granular.Prof;
@@ -468,7 +469,7 @@ begin
       B.Font.Name := 'Tahoma';
       B.Font.Size := 7;
       B.Font.Color := COL_TEXT;
-      B.Textout(6, 4, 'Morph-LFO aus');
+      B.Textout(6, 4, Tr('Morph-LFO aus'));
       inherited;
       Exit;
     end;
@@ -600,12 +601,12 @@ begin
   if FEngine.SidechainActive then
   begin
     if FEngine.PitchTracker.Valid then
-      PitchText := Format('Tonhöhe: %s  (%.0f Hz)', [NoteName(Round(FEngine.PitchTracker.Note)), FEngine.PitchTracker.Hz])
+      PitchText := Format(Tr('Tonhöhe: %s  (%.0f Hz)'), [NoteName(Round(FEngine.PitchTracker.Note)), FEngine.PitchTracker.Hz])
     else
-      PitchText := 'Tonhöhe: -';
+      PitchText := Tr('Tonhöhe: -');
   end
   else
-    PitchText := '(kein Sidechain-Eingang aktiv - Quelle unten in der Host-Leiste wählen)';
+    PitchText := Tr('(kein Sidechain-Eingang aktiv - Quelle unten in der Host-Leiste wählen)');
 
   // statische Ebene: Hintergrund, Mittellinie, Beschriftungen, Messgeraete-Rahmen.
   // Der Tonhoehentext aendert sich laufend -> nur alle 200 ms in die Ebene uebernehmen
@@ -626,9 +627,9 @@ begin
     FStatic.Font.Name := 'Tahoma';
     FStatic.Font.Size := 7;
     FStatic.Font.Color := COL_TEXT;
-    FStatic.Textout(4, 2, 'Ausgang');
+    FStatic.Textout(4, 2, Tr('Ausgang'));
     FStatic.Font.Color := $40A0FF;
-    FStatic.Textout(56, 2, 'Sidechain');
+    FStatic.Textout(56, 2, Tr('Sidechain'));
     FStatic.Font.Color := COL_TEXT;
     FStatic.Textout(120, 2, PitchText);
     for I := 0 to 1 do
@@ -859,7 +860,7 @@ begin
     B.Font.Name := 'Tahoma';
     B.Font.Size := 7;
     B.Font.Color := COL_TEXT;
-    B.Textout(4, (H - 12) div 2, Format('Ausgang %.0f %%', [L * 100]));
+    B.Textout(4, (H - 12) div 2, Format(Tr('Ausgang %.0f %%'), [L * 100]));
   end
   else
   begin
@@ -869,9 +870,9 @@ begin
   B.Font.Size := 7;
   B.Font.Color := COL_TEXT;
   if FEngine.SidechainActive then
-    B.Textout(4, (H - 12) div 2, Format('Sidechain %.0f %%', [L * 100]))
+    B.Textout(4, (H - 12) div 2, Format(Tr('Sidechain %.0f %%'), [L * 100]))
   else
-    B.Textout(4, (H - 12) div 2, 'kein Sidechain-Signal');
+    B.Textout(4, (H - 12) div 2, Tr('kein Sidechain-Signal'));
   end;
   finally
     Buffer.EndUpdate;

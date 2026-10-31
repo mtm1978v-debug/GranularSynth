@@ -1,0 +1,98 @@
+﻿GranularSynth - Learning path (presets L01 to L37)
+==================================================
+Each preset demonstrates one principle. Load it, play it, and check in the "Modulation" tab
+which matrix rows are in use. The red line under a control shows live how far the matrix is
+currently shifting it (the effective value).
+Formula for each row: effective value = base value + (Source x Factor + Offset) x Amount
+
+Part 1 - Matrix basics
+  L01  LFO -> Position. Hold a long note: the sound slowly wanders through the choir sample.
+       Change the Amount in row 1 = how far it wanders.
+  L02  LFO 1 creates vibrato, LFO 2 changes the rate of LFO 1. The vibrato breathes.
+       An LFO can control any parameter - even another LFO.
+  L03  Velocity -> Cutoff and Grain size. Play soft and loud: loud gets brighter and
+       punchier. Negative Amount = opposite direction.
+  L04  Note pitch -> Grain size and echo time. Low notes: large grains, long echo.
+       Offset -50 % centres the source around the middle of the keyboard.
+  L05  Mod wheel -> filter + macros "Movement" and "Space". Slowly raise the mod wheel:
+       one control for the whole expression.
+  L06  Aftertouch spreads out the choir, pitch bend bends only the echo.
+
+Part 2 - Envelopes and triggers
+  L07  Filter envelope -> Scatter: on the attack the grains explode and then contract.
+       Envelopes can also be used for targets other than the filter.
+  L08  Grain envelope -> Echo mix with negative Amount: while the note sounds it stays
+       dry - on release the echo blooms.
+  L09  LFO trigger "Note on": the saw restarts with every note -> every note gets the
+       same filter sweep. Switch to "free" and compare.
+  L10  LFO trigger "Note off": the release drops in pitch.
+  L11  Arpeggiator: hold a chord - the notes play one after another over 2 octaves.
+       In the step pattern (Extras tab) steps switched off = rests. Click the cells!
+  L12  Factor x1/2 + Offset +50 % turn an LFO (-1..+1) into a unipolar source (0..1):
+       reverse amount and width only swing upwards.
+
+Part 3 - Sidechain
+  Choosing the sidechain source: in GranularHost use "Sidechain" at the bottom (e.g. microphone),
+  in FL Studio route a mixer channel to the plugin input. The monitor shows the sidechain
+  signal in orange, IN the level, SC the envelope follower.
+  L13  Ducking: signal on the sidechain makes the pad quieter - the classic pumping.
+       Put a kick on the sidechain.
+  L14  Auto-wah: the loudness of your voice opens the band-pass. Say "wah wah".
+  L15  Echo pitch via mod wheel: down = normal echoes, up = each repeat up to one octave
+       higher. Move it slowly while playing - the staircase gets steeper.
+  L16  The level scrubs through the vowels a-e-i-o-u: quiet = a, loud = u.
+  L17  Dub echo: feedback only while signal is coming in - echoes on call.
+  L18  SC pitch -> Pitch via the matrix (Factor x2.65, Offset -125 %): the choir sings
+       back the notes you sing into the microphone. Hold a key!
+       Without a voice the choir sounds normal; with a voice it gets louder and follows it.
+  L19  The same with "Auto-Pitch" in semitones, one octave higher, with vibrato.
+
+Finale
+  L20  Everything together: wandering position, LFO cascade, filter envelope, rising
+       pitch echo, velocity, mod wheel (echo amount) and sidechain (pitch scatter).
+       Hold long notes, move the mod wheel, speak into the microphone.
+
+New features
+  L21  Sidechain trigger (level): a loud shout into the microphone starts a One-shot LFO
+       that plays a melody via the pitch matrix. Hold a key, then shout.
+  L22  Sidechain trigger (tone): a sung note makes its major triad sound one note after
+       another (Auto-Pitch in semitones + free LFO on Pitch).
+  L23  Both conditions: only a loud AND high note opens the filter once.
+       Sing quiet and high or loud and low: nothing happens.
+  L24  Glide (portamento): every note glides 0.28 s from the previous one, the
+       sine oscillator glides along. Change the glide time in the Synth tab.
+  L25  Oscillator FM with its own FM envelope: the attack sounds metallic, the timbre
+       quickly softens while the note keeps sounding - a bell.
+  L26  Filter per note: each note has its own filter with its own filter envelope.
+       Strike the chord notes one after another (1 s apart) and hold them: each note
+       slowly opens on its own, the ones already sounding stay where they are.
+
+Part 4 - Start, Stop and time ("LFO 1-4 / Trigger" and "Timing / Events" tabs)
+  In the name: "FM" = oscillators sound too, "Grains" = grains sound too.
+  An LFO with a start event runs until its Stop halts it (then no modulation).
+  L27  Stop "Note off": vibrato per note, on release the tail is calm.
+       Set Stop to "never": the vibrato keeps running in the tail.
+  L28  Stop "after time" 1/2: the wobble on the FM amount runs for only a half note.
+       Change the tempo - the length follows the beat.
+  L29  Delay + Stop: the tremolo kicks in after 1/4 (Timing / Events) and stops
+       after 1/1 - the run time counts from the delayed start.
+  L30  Stop after 120 ms: a fast pitch drop on the attack only. Change the ms value.
+  L31  Three oscillators, each with its own envelope (Osc 1-3 tabs): the sine swells
+       slowly, FM plucks briefly, filtered noise breathes.
+  L32  Osc 2 envelope as matrix source: Osc 2 is muted, its short envelope makes the
+       FM attack of Osc 1 bright. Change the decay of Osc 2.
+  L33  Start "Note off" + Stop after 1/1: on release the grains sparkle for exactly
+       one bar, then it fades out calmly.
+  L34  LFO chain via the Partner selection (field below "One-shot"): hold a note for 3 bars.
+       Bar 1: LFO 1 opens the filter. Bar 2: LFO 2 (Partner LFO 1) makes the FM amount
+       swell and fade. Bar 3: LFO 3 (Partner LFO 2) sweeps across the stereo panorama.
+       All three are set to "One-shot" - only the end of a One-shot triggers the Partner.
+       LFO 2 and 3 have Stop "Note off": that way they wait until their start.
+
+Part 5: free macros (Modulation tab, to the right of the matrix)
+  L35  Macro 1 with S-curve: hold a note and slowly raise Macro 1 - filter, grains,
+       width and reverb open up together. The targets are listed below the macro.
+  L36  Macro 2, Curve "Slow rise": at first little happens, at the top the choir falls apart
+       (scatter, reverse, pitch randomness, echo). Density has a negative Amount.
+  L37  Two macros for the DAW: Macro 1 = wobble faster and brighter, Macro 3 = echo.
+       In FL: right-click the macro control > Automate in DAW.

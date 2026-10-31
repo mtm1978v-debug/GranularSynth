@@ -57,6 +57,43 @@ Diese Regeln schützen DAW-Projekte und Presets der Nutzer. Verstöße fallen so
 5. **Zufallszahlen:** LFOs und Grains teilen sich einen Zufallsgenerator. Ein zusätzlicher `Rand`-Aufruf verändert den Klang **aller** Presets, und die Regression schlägt fehl. Neue Zufallsquellen nur dort einbauen, wo sie den bestehenden Ablauf nicht berühren.
 6. **Chunk-/Preset-Format (`Granular.State.pas`):** neue Daten nur als **optionale Abschnitte am Ende** mit eigener Kennung (4 Zeichen). Ältere Versionen müssen neue Dateien weiter laden können, neue Versionen alte Dateien.
 
+## Sprachen der Oberfläche (Deutsch, Englisch, weitere)
+
+Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüssel** der Übersetzung, ähnlich wie bei gettext.
+
+- **Laufzeit:** `Source/UI/Granular.Lang.pas`.
+  - `Tr('Deutscher Text')` liefert die Übersetzung.
+  - `TranslateComponents` übersetzt nach dem Aufbau alle Beschriftungen, Hinweise und Menüs.
+  - Listen übersetzt `AddParam` über `Tr(StepName(...))`.
+- **Sprachdateien:** `Sprachen/<Kürzel>.txt`.
+  - Format: erste Zeile `#Name=English`, danach je Zeile `Deutsch<TAB>Übersetzung`, ein Zeilenumbruch im Text steht als `\n`.
+  - **Eine neue Sprache ist nur eine neue Datei.** Sie erscheint automatisch in der Auswahl „Sprache / Language“ im Reiter Extras.
+- **Gemerkte Wahl:** `Sprache.txt` im Plugin-Ordner. Fehlt sie, gilt Deutsch auf deutschem Windows, sonst Englisch.
+- **Umschalten:** Der Editor meldet `OnLanguageChange`. Die Plugin-Hülle baut den Editor per Fensternachricht neu auf.
+
+**Neue Texte (Pflicht):**
+1. Jeder sichtbare Text, der zur Laufzeit gesetzt wird, läuft durch `Tr(...)`, zum Beispiel Caption, Hint, Items.Add, MessageDlg und den ersten Parameter von `Format`. Das gilt für ganze Sätze: also `Tr('Teil 1 ' + 'Teil 2')`, nicht `Tr('Teil 1 ') + Tr('Teil 2')`.
+2. Ein Text, der beim Aufbau direkt an einem Steuerelement steht, wird automatisch übersetzt.
+3. Nie durch `Tr` laufen dürfen Dateinamen, Ordnernamen (`Presets`, `Beispieltoene`, `Eigene Toene`), Ini-Schlüssel, VST-Klassennamen und Parameternamen, die in Presets gespeichert werden.
+
+**Automatische Prüfung:**
+- Der Prüfstand meldet „Uebersetzung: … en: N fehlen -> FEHLER“ und schreibt die Liste nach `bin\<Plattform>\lang_fehlend_<Kürzel>.txt`.
+- `python Tools/lang_check.py` prüft zusätzlich alle `Tr`-Literale im Quelltext, die Tooltips und die Reglertabelle der Hilfe. Fehlende Texte stehen danach in `Sprachen/_fehlend_<Kürzel>.txt`. Sie werden übersetzt und in `Sprachen/<Kürzel>.txt` eingetragen.
+- `deploy.bat` bricht ab, solange etwas fehlt.
+
+**Übersetzte Dokumente:**
+
+| Deutsch | Übersetzung |
+|---|---|
+| `Hilfe/Hilfe.rtf` | `Hilfe/Hilfe_<kürzel>.rtf` |
+| `LIESMICH.txt` | `README_<KÜRZEL>.txt` |
+| `Eigene Toene/LIESMICH.txt` | `Eigene Toene/README_<KÜRZEL>.txt` |
+| `Presets/LERNPFAD.txt` | `Presets/LEARNING_PATH_<KÜRZEL>.txt` |
+
+- `lang_check.py` merkt sich in `Sprachen/_stand_<kürzel>.txt` einen Fingerabdruck der deutschen Vorlage. Ändert sich die Vorlage, meldet es die Übersetzung als **veraltet**.
+- Nach dem Nachziehen der Übersetzung `python Tools/lang_check.py --stand` ausführen.
+- Kapitel 11 der fremdsprachigen Hilfe (Reglertabelle) erzeugt `Tools/Hilfe_Reglertabelle.py` automatisch über das Wörterbuch.
+
 ## Regeln für Echtzeit und Leistung
 
 - **Audio-Thread** (`Process`, `Render…`, `Update…`): keine Speicheranforderungen, keine String-Operationen, keine wartenden Sperren, keine Ausnahmen.
@@ -83,7 +120,8 @@ Diese Regeln schützen DAW-Projekte und Presets der Nutzer. Verstöße fallen so
   7. Hilfe-Zeile in `Tools/Hilfe_Reglertabelle.py`
   8. danach `python Tools/Hilfe_Reglertabelle.py` und `python Tools/make_hints.py` ausführen
   9. Prüfstand-Check
-  10. Eintrag in `CHANGELOG.md`
+  10. Übersetzungen ergänzen: `python Tools/lang_check.py`, dann die fehlenden Texte in `Sprachen/*.txt` eintragen
+  11. Eintrag in `CHANGELOG.md`
 - **Changelog:** Jede für Nutzer sichtbare Änderung kommt in `CHANGELOG.md` unter die kommende Version: *Neu*, *Geändert*, *Behoben*, *Entfernt* oder *Hinweis* (Folgen für Presets und Projekte).
 - **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE` und `GRANULAR_MATPAGE`.
 

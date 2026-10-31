@@ -19,6 +19,7 @@ unit Granular.WaveView;
 interface
 
 uses
+  Granular.Lang,
   System.Classes, System.Types, System.SysUtils, System.Math, System.StrUtils,
   Vcl.Controls, Vcl.Graphics,
   GR32, GR32_Image,
@@ -102,7 +103,7 @@ begin
   FSelStart := 0;
   FPreStart := -1;
   FSelEnd := 1;
-  FInfo := 'Keine Sounddatei geladen - "WAV laden..." benutzen';
+  FInfo := Tr('Keine Sounddatei geladen - "WAV laden..." benutzen');
 end;
 
 destructor TWaveView.Destroy;
@@ -151,9 +152,9 @@ begin
         FMax[Ch, B] := Hi;
       end;
     end;
-    FInfo := Format('%s  |  %d Hz  |  %s  |  %.2f s',
+    FInfo := Format(Tr('%s  |  %d Hz  |  %s  |  %.2f s'),
       [ExtractFileName(Data.FileName), Round(Data.SampleRate),
-       IfThen(FStereo, 'Stereo', 'Mono'), Data.Frames / Data.SampleRate]);
+       IfThen(FStereo, Tr('Stereo'), Tr('Mono')), Data.Frames / Data.SampleRate]);
   end;
   InvalidateStatic;
 end;
@@ -384,7 +385,7 @@ begin
   B.Textout(14, H - 16, FInfo);
   N := FSelEnd - FSelStart;
   if FHasData then
-    B.Textout(W - 220, H - 16, Format('Auswahl %.1f%% - %.1f%% (%.1f%%)',
+    B.Textout(W - 220, H - 16, Format(Tr('Auswahl %.1f%% - %.1f%% (%.1f%%)'),
       [FSelStart * 100, FSelEnd * 100, N * 100]));
 end;
 

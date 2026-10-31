@@ -1,0 +1,1573 @@
+#Name=English
+# Deutsch<TAB>English - Schluessel = deutscher Text der Oberflaeche; neue Texte meldet Tools/lang_check.py
+" gemeldet - in FL Studio jetzt: Tools > Last tweaked > Create automation clip	" reported - in FL Studio now: Tools > Last tweaked > Create automation clip
+" löschen und das Plugin mit Standardwerten neu laden?	" and reload the plugin with default values?
+": jetzt einen Regler am Controller bewegen (Esc bricht ab)	": now move a control on your controller (Esc cancels)
+"Stil: frei","Pad / Fläche","Pluck / Zupf","Textur / Wolke","Rhythmisch","Bass"	"Style: free","Pad","Pluck","Texture / Cloud","Rhythmic","Bass"
+%.0f BPM	%.0f BPM
+%.1f s geladen	%.1f s loaded
+%4.0f dB	%4.0f dB
+%9s s	%9s s
+%d MIDI-Dateien gespeichert in %s	%d MIDI files saved to %s
+%s  |  %d Hz  |  %s  |  %.2f s	%s  |  %d Hz  |  %s  |  %.2f s
+%s Grains pro Sekunde, je %s lang (Fenster %s), aus dem Bereich %s bis %s des Samples	%s grains per second, each %s long (window %s), from the range %s to %s of the sample
+%s bei %s, Resonanz %s, Wirkung %s	%s at %s, resonance %s, amount %s
+%s%d (MIDI %d)	%s%d (MIDI %d)
+%s, Rückkopplung %s, Dämpfung %s, Mix %s	%s, feedback %s, damping %s, mix %s
+%s, im Takt: ein Durchlauf = %s	%s, tempo-synced: one cycle = %s
+(%d benutzt)	(%d used)
+(Effekt)	(Effect)
+(Spur %s; andere Zeile: Rechtsklick > Zeile > Für Alt + Mausrad wählen)	(Track %s; other row: right-click > Row > Select for Alt + mouse wheel)
+(frei)	(free)
+(kein Plugin)	(no plugin)
+(kein Sidechain-Eingang aktiv - Quelle unten in der Host-Leiste wählen)	(no sidechain input active - choose a source in the host bar below)
+(leer)	(empty)
+): so viele Grains wie die Morph-Stellung kommen daraus.	): that many grains, set by the morph position, come from it.
++1 Okt.	+1 Oct.
++1 Oktave	+1 octave
++2 Okt.	+2 Oct.
++2 Oktaven	+2 octaves
++3 Okt.	+3 Oct.
++4 Okt.	+4 Oct.
+, Auto-Pitch: folgt der Tonhöhe am Sidechain (	, Auto-Pitch: follows the pitch of the sidechain (
+, Offset	, offset
+, Positions-Streuung	, position spread
+, Stereobreite	, stereo width
+, je Grain zufällig +/-	, random per grain +/-
+, läuft nur EINMAL und bleibt dann am Ende stehen	, runs only ONCE and then stops at the end
+, rastet auf %s-%s ein	, snaps to %s-%s
+, springt links/rechts	, jumps left/right
+, verschoben um	, shifted by
+, wiederholt sich	, repeats
+-  Klick: Wert eingeben	-  Click: enter value
+- %d Presets: %s -	- %d presets: %s -
+- %d Treffer für "%s" -	- %d matches for "%s" -
+- Copyright (C) 2026 Matthias Haberecht - freie Software unter der GNU GPL Version 3 oder neuer, ohne Gewaehrleistung (LICENSE.txt im Plugin-Ordner)	- Copyright (C) 2026 Matthias Haberecht - free software under the GNU GPL version 3 or later, without warranty (LICENSE.txt in the plugin folder)
+- PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave	- PC keyboard: A W S E D F T G Z H U J K O L P plays, + / - changes the octave
+- Preset wählen -	- Select preset -
+-1 Okt.	-1 Oct.
+-1 Oktave	-1 octave
+-2 Okt.	-2 Oct.
+-2 Oktaven	-2 octaves
+-3 Okt.	-3 Oct.
+-3 Oktaven	-3 octaves
+-4 Okt.	-4 Oct.
+-> Echo	-> Echo
+-> Einmal-LFO %d startet (%s)	-> One-shot LFO %d starts (%s)
+-> Filter	-> Filter
+-> Hall	-> Reverb
+-> LFO %d Einmal-Durchlauf beendet	-> LFO %d one-shot cycle finished
+-> Limiter -> weicher Clipper -> Ausgang	-> Limiter -> soft clipper -> Output
+-> Sättigung	-> Saturation
+-> weicher Clipper -> Ausgang	-> soft clipper -> Output
+. Bewegt	. Moves
+. Schaltet	. Switches
+1 Oktave	1 octave
+1. Taste	1st key
+1/16 Triole	1/16 triplet
+1/16T	1/16T
+1/2T	1/2T
+1/4T	1/4T
+1/8 Triole	1/8 triplet
+1/8T	1/8T
+11. Alle Regler im Überblick	11. All controls at a glance
+120 BPM	120 BPM
+16 Schritte zum Anklicken, Notenwert, Schritte, Tiefe, Glättung - zerhackt den Klang im Songtempo.	16 clickable steps, note value, steps, depth, smoothing - chops the sound in song tempo.
+2 Oktaven	2 octaves
+2 Stimmen	2 voices
+2 bis 7 verstimmte Stimmen je Note, im Stereobild verteilt (fette Pads und Leads).	2 to 7 detuned voices per note, spread across the stereo field (fat pads and leads).
+2. Tonhöhe	2. Pitch
+3 Oktaven	3 octaves
+3 Stimmen	3 voices
+3. Grains	3. Grains
+32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; "Modulieren mit" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede für sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'.	32 rows on four pages (buttons top right, in brackets: rows used; "Modulate with" in the right-click menu always takes the topmost free row). Each row: Source -> Target with Amount, Factor and Offset. The glowing display at the front pulses with the source. Note sources (Velocity, Note, Random per note, grain, filter and Osc1-3 envelope - each on its own -, LFOs with retrigger on note on/off) act per note: every voice has its own LFOs and its own values for grain controls, pitch, volume, oscillator, filter, all envelope times, Scan, filter contours and the LFO rates - a new note does not change the ones already sounding. Targets that exist only once (Echo, Reverb, EQ, Saturation, Width, master pan, Morph, Arp, Gate) follow the most recently played note; the row then shows 'global: last note'.
+32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; \n"Modulieren mit" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede \nZeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige \nvorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, \nGrain-, Filter- und Osz1-3-Hüllkurve - jede für sich -, LFOs mit Neustart bei \nNote an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen \nWerte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle \nHuellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note \nverändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, \nSättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt \nangeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'.	32 rows on four pages (buttons top right, in brackets: rows used; \n"Modulate with" in the right-click menu always takes the topmost free row). Each \nrow: Source -> Target with Amount, Factor and Offset. The glowing display \nat the front pulses with the source. Note sources (Velocity, Note, Random per note, \ngrain, filter and Osc1-3 envelope - each on its own -, LFOs with retrigger on \nnote on/off) act per note: every voice has its own LFOs and its own \nvalues for grain controls, pitch, volume, oscillator, filter, all \nenvelope times, Scan, filter contours and the LFO rates - a new note \ndoes not change the ones already sounding. Targets that exist only once (Echo, Reverb, EQ, \nSaturation, Width, master pan, Morph, Arp, Gate) follow the most recently \nplayed note; the row then shows 'global: last note'.
+4 Oktaven	4 octaves
+4 Stimmen	4 voices
+4. Lautstärke	4. Volume
+5 Stimmen	5 voices
+5. LFO %d	5. LFO %d
+5. Schwellen-Tor	5. Threshold gate
+6 Stimmen	6 voices
+6. Filter	6. Filter
+7 Stimmen	7 voices
+7. Echo	7. Echo
+8. Hall	8. Reverb
+9. Sättigung	9. Saturation
+; Abspielgeschwindigkeit	; playback speed
+; ECHO-TREPPE: jede Wiederholung um	; ECHO STAIRCASE: each repeat by
+; FREEZE: der Raum hält den Klang fast unbegrenzt	; FREEZE: the room holds the sound almost indefinitely
+; FREEZE: die Abspielposition steht still	; FREEZE: the playback position stands still
+; eigene Hüllkurve (%s / %s / %s / %s) verschiebt den Cutoff um %s	; own envelope (%s / %s / %s / %s) shifts the cutoff by %s
+A	A
+A <-> B tauschen	Swap A <-> B
+A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample). Morph wird gespiegelt, der Klang bleibt gleich - die Regler zeigen jetzt den anderen Klang. Nochmal klicken = zurück.	A and B swap places (controls, matrix, LFO shapes, Arp patterns, EQ, sample). Morph is mirrored, the sound stays the same - the controls now show the other sound. Click again = back.
+A/B	A/B
+A/B: A	A/B: A
+A/B: B	A/B: B
+A: %s %d %%  B: %s %d %%	A: %s %d %%  B: %s %d %%
+ADSR des Oszillators, mit Grafik.	Oscillator ADSR, with graph.
+Abtastrate	Sample rate
+Aftertouch	Aftertouch
+Aftertouch %4.0f %%  (%d)	Aftertouch %4.0f %%  (%d)
+Akkord (alle)	Chord (all)
+Aktive Rechenblöcke	Active processing blocks
+Aktuelle Einstellung als Preset speichern; eigene Töne werden nach „Eigene Töne“ kopiert. Dateityp „mit eingebetteten Samples“: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach „Eigene Töne“ ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste.	Save the current settings as a preset; your own sounds are copied to "Eigene Toene" (own sounds). File type "with embedded samples": all samples used (main sample, Sound B, zones) are stored in the preset file - one file to share. On another computer, missing samples are unpacked to "Eigene Toene" on loading. The choice is remembered; older versions also load such presets (without unpacking). After saving, the new name appears in the preset list.
+Aktuelle Einstellung als Preset speichern; eigene Töne werden nach „Eigene \nTöne“ kopiert. Dateityp „mit eingebetteten Samples“: alle benutzten Samples \n(Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum \nWeitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach \n„Eigene Töne“ ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche \nPresets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der \nPresetliste.	Save the current settings as a preset; your own sounds are copied to "Eigene \nToene". File type "with embedded samples": all samples used \n(main sample, Sound B, zones) are stored in the preset file - one file to \nshare. On another computer, missing samples are unpacked to \n"Eigene Toene" on loading. The choice is remembered; older versions also load such \npresets (without unpacking). After saving, the new name appears in the \npreset list.
+Aktuellen Klang oder ein anderes Preset als Ziel B festlegen.	Set the current sound or another preset as Target B.
+Aktuelles Preset als Favorit markieren / Markierung entfernen	Mark current preset as favorite / remove mark
+Alle	All
+Alle Lautstärken an einem Ort: Grains, Osz 1-3, Echo, Hall, die Effekte Gate (Tiefe), Crusher, Chorus und Phaser (Mix; ihre Anzeige zeigt, wie stark der Effekt den Klang verändert), Morph, Panorama, Summe (Grains + Oszillatoren), Master. Es sind dieselben Regler wie in den anderen Reitern - wer hier schiebt, sieht es dort und umgekehrt.	All volumes in one place: Grains, Osc 1-3, Echo, Reverb, the effects Gate (depth), Crusher, Chorus and Phaser (mix; their meter shows how strongly the effect changes the sound), Morph, Pan, Sum (grains + oscillators), Master. These are the same controls as in the other tabs - move them here and you see it there, and vice versa.
+Alle Modulationen dieses Reglers entfernen	Remove all modulations of this control
+Alle Noten aus	All notes off
+Alle Presets	All presets
+Alle Stücke anzeigen, nicht nur die zum Preset passenden	Show all pieces, not just those matching the preset
+Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.	All pitches snap to the notes of the scale - never a wrong note.
+Alle acht LFOs können dasselbe und sind in der Matrix "LFO 1" bis "LFO 8" (Umschalter unten). "frei" = läuft für alle Noten; "Note an/aus" = eigener LFO je Note. Feld unter "Einmal" = Partner: dessen Einmal-Ende ist "Ende Partner-LFO" (Ketten 1 -> 2 -> 3 möglich). "Stopp" hält den LFO an, bis er wieder startet; "nach Zeit" = nach der Zeit darunter. Klick auf eine Anzeige: freie Form bearbeiten.	All eight LFOs work the same and appear in the matrix as "LFO 1" to "LFO 8" (switch below). "free" = runs for all notes; "Note on/off" = own LFO per note. Field below "One-shot" = partner: its one-shot end is "End partner LFO" (chains 1 -> 2 -> 3 possible). "Stop" halts the LFO until it starts again; "after time" = after the time below. Click on a display: edit the free shape.
+Alt + Mausrad	Alt + mouse wheel
+Alt + Mausrad: dieser Regler ist nicht moduliert (Rechtsklick > Modulieren mit)	Alt + mouse wheel: this control is not modulated (right-click > Modulate with)
+An	On
+An (Standard): A und B sind zwei vollstaendig getrennte Klänge - jeder mit eigenen Stimmen, Arpeggiator, LFOs, Matrix, Filtern und Effekten; Morph regelt nur, wie laut A und B sind. Aus: ein einziger Klang, dessen Reglerwerte stufenlos von A nach B wandern (Schalter springen bei 50 %). Aeltere Presets mit Ziel B laden mit 'aus'.	On (default): A and B are two completely separate sounds - each with its own voices, arpeggiator, LFOs, matrix, filters and effects; Morph only sets how loud A and B are. Off: a single sound whose control values move smoothly from A to B (switches jump at 50 %). Older presets with Target B load with 'off'.
+An = die Tonhöhe folgt der Taste; aus = jede Taste spielt dieselbe Tonhöhe (Flächen, Geräusche).	On = pitch follows the key; off = every key plays the same pitch (pads, noises).
+An: Beim Export/Rendern der DAW (nicht in Echtzeit) rechnet GranularSynth immer mit HQ und voller Stimmen- und Grainzahl - live darf es sparsam sein, die Datei klingt trotzdem bestmöglich.	On: when the DAW exports/renders (not in real time), GranularSynth always uses HQ and full voice and grain count - live it may save CPU, the file still sounds as good as possible.
+Anim %d B/s	Anim %d B/s
+Anim %d B/s (Hintergrund)	Anim %d B/s (background)
+Anim 51 B/s	Anim 51 B/s
+Anlauf	Lead-in
+Anlauf / Anlauf-Start	Pre-roll / Pre-roll start
+Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft \neinmal in die Auswahl hinein.	Pre-roll / Pre-roll start: the note begins before the selection at the pre-roll start and runs \nonce into the selection.
+Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.	Pre-roll / Pre-roll start: the note begins before the selection at the pre-roll start and runs once into the selection.
+Anlauf an	Pre-roll on
+Anlauf-Start	Pre-roll start
+Anschwellen %s, Abfall %s auf %s, nach dem Loslassen Ausklang %s. Lautstärke %s.	Attack %s, decay %s to %s, release after key-up %s. Volume %s.
+Anteil der Grains, die rückwärts abgespielt werden.	Share of grains played in reverse.
+Anzeige +/-12	Display +/-12
+Anzeige +/-24	Display +/-24
+Arp	Arp
+Arp Latch	Arp Latch
+Arp Länge	Arp Length
+Arp Notenwert	Arp Note value
+Arp Oktaven	Arp Octaves
+Arp Richtung	Arp Direction
+Arp Schritte	Arp Steps
+Arp Swing	Arp Swing
+Arp an	Arp on
+Arpeggiator	Arpeggiator
+Arpeggiator: Gehaltene Tasten nacheinander: Richtung, Oktaven, Notenwert, Länge, Swing, Schritte und Schrittmuster (Klick = Schritt an/aus).	Arpeggiator: Plays held keys one after another: direction, octaves, note value, length, swing, steps and step pattern (click = step on/off).
+Arpeggiator: Gehaltene Tasten nacheinander: Richtung, Oktaven, Notenwert, \nLänge, Swing, Schritte und Schrittmuster (Klick = Schritt an/aus).	Arpeggiator: Plays held keys one after another: direction, octaves, note value, \nlength, swing, steps and step pattern (click = step on/off).
+Arpeggiator: die gehaltenen Tasten laufen "%s" über %s in %s-Schritten (Länge %s, Swing %s). Muster %s (x = spielt, . = Pause).%s	Arpeggiator: the held keys run "%s" over %s in %s steps (length %s, swing %s). Pattern %s (x = plays, . = rest).%s
+Attack	Attack
+Attack / Decay / Sustain / Release	Attack / Decay / Sustain / Release
+Attack / Decay / Sustain / Release: Wie jede Note einschwillt, auf den Haltepegel abfällt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note.	Attack / Decay / Sustain / Release: How each note fades in, falls to the sustain level, is held and fades out after release. The graph shows the curve, the red dot the note currently playing.
+Attack / Decay / Sustain / Release: Wie jede Note einschwillt, auf den \nHaltepegel abfällt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik \nzeigt die Kurve, der rote Punkt die gerade gespielte Note.	Attack / Decay / Sustain / Release: How each note fades in, falls to the \nsustain level, is held and fades out after release. The graph \nshows the curve, the red dot the note currently playing.
+Audio laden...	Load audio...
+Auf Gate legen	Assign to Gate
+Auf Pitch legen	Assign to Pitch
+Aufnahme	Recording
+Aufnahme (Resampling)	Recording (resampling)
+Aufnahme läuft ...	Recording ...
+Aufnahme läuft: %.1f s (max. 60 s)	Recording: %.1f s (max. 60 s)
+Aufnahme starten	Start recording
+Aus	Off
+Aus (chromatisch frei)	Off (chromatic, free)
+Aus (ms)	Off (ms)
+Aus (nur Regler)	Off (controls only)
+Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. "nie" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei "frei"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält "Note aus" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Events). "nach Zeit": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T ...; ein Notenwert gilt vor den ms).	Off trigger: the event (Note on, Note off, End partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) halts the LFO - no modulation until its start event starts it again. "never" = keeps running. Only works with a start event (not with "free"); with Stop the LFO also waits for its first start initially. For per-note LFOs, "Note off" halts only the released note. Delay as for the start (Timing / Events tab). "after time": the LFO halts after a fixed run time from its start - in ms or as a note value (2/1, 1/1, 1/2, 1/4, 1/4T ...; a note value takes precedence over ms).
+Ausgang	Output
+Ausgang %.0f %%	Output %.0f %%
+Ausgang > Schwelle	Output > Threshold
+Ausgang > Schwelle: Trigger auf den eigenen Ausgangspegel: überschreitet er die Schwelle, startet ein LFO mit diesem Neustart. Ein so gestarteter LFO löst sich nicht selbst erneut aus, solange er läuft (keine Rückkopplung).	Output > Threshold: Trigger on the plugin's own output level: when it exceeds the threshold, an LFO with this retrigger starts. An LFO started this way does not retrigger itself while it is running (no feedback).
+Ausgang > Schwelle: Trigger auf den eigenen Ausgangspegel: überschreitet er die \nSchwelle, startet ein LFO mit diesem Neustart. Ein so gestarteter LFO löst sich \nnicht selbst erneut aus, solange er läuft (keine Rückkopplung).	Output > Threshold: Trigger on the plugin's own output level: when it exceeds the \nthreshold, an LFO with this retrigger starts. An LFO started this way does not \nretrigger itself while it is running (no feedback).
+Ausgangs-Schwelle	Output threshold
+Auswahl %.1f%% - %.1f%% (%.1f%%)	Selection %.1f%% - %.1f%% (%.1f%%)
+Auswahl Ende	Selection end
+Auswahl Start	Selection start
+Auswahl Start / Ende	Selection start / end
+Auswahl Start / Ende: Welcher Teil des Samples benutzt wird (auch in der Wellenansicht ziehbar).	Selection start / end: Which part of the sample is used (can also be dragged in the waveform view).
+Auswahl Start / Ende: Welcher Teil des Samples benutzt wird (auch in der \nWellenansicht ziehbar).	Selection start / end: Which part of the sample is used (can also be dragged in the \nwaveform view).
+Auto-Pitch	Auto-Pitch
+Auto-Pitch: Die Tonhöhe kommt vom Sidechain (gesungener Ton) statt von der Taste - stufenlos oder in Halbtönen.	Auto-Pitch: The pitch comes from the sidechain (sung note) instead of the key - continuous or in semitones.
+Auto-Pitch: Die Tonhöhe kommt vom Sidechain (gesungener Ton) statt von der \nTaste - stufenlos oder in Halbtönen.	Auto-Pitch: The pitch comes from the sidechain (sung note) instead of the \nkey - continuous or in semitones.
+Auto-Stimmung	Auto-tune
+Auto-Stimmung: Erkennt beim Laden den Grundton eines Samples (z.B. „C3 +31 Cent“) und stimmt es so, dass die Taste C4 wirklich ein C spielt. Wirkt nur bei einem klaren Einzelton (Flöte, Klavier-Ton, Cello ...), nicht bei Akkorden, Sprache oder Geräuschen; braucht Key Tracking. Kommt die Tonhöhe per Auto-Pitch vom Sidechain, hat diese Vorrang.	Auto-tune: Detects the root pitch of a sample on loading (e.g. "C3 +31 cent") and tunes it so that key C4 really plays a C. Only works with a clear single tone (flute, piano note, cello ...), not with chords, speech or noises; requires key tracking. If the pitch comes via Auto-Pitch from the sidechain, that takes precedence.
+Auto-Stimmung: Erkennt beim Laden den Grundton eines Samples (z.B. „C3 +31 \nCent“) und stimmt es so, dass die Taste C4 wirklich ein C spielt. Wirkt nur bei \neinem klaren Einzelton (Flöte, Klavier-Ton, Cello ...), nicht bei Akkorden, \nSprache oder Geräuschen; braucht Key Tracking. Kommt die Tonhöhe per Auto-Pitch \nvom Sidechain, hat diese Vorrang.	Auto-tune: Detects the root pitch of a sample on loading (e.g. "C3 +31 \ncent") and tunes it so that key C4 really plays a C. Only works with \na clear single tone (flute, piano note, cello ...), not with chords, \nspeech or noises; requires key tracking. If the pitch comes via Auto-Pitch \nfrom the sidechain, that takes precedence.
+Automation in der DAW (als "zuletzt geändert" melden)	Automation in the DAW (report as "last tweaked")
+Autoplay Start	Autoplay Start
+Autoplay Stop	Autoplay Stop
+Autoplay, Haken „alle“	Autoplay, "all" checkbox
+B	B
+Band A	Band A
+Band A / B	Band A / B
+Band A / B: Zwei frei setzbare Bänder (Frequenz und Pegel), auch per Matrix \nsteuerbar.	Band A / B: Two freely placeable bands (frequency and level), also controllable \nvia the matrix.
+Band A / B: Zwei frei setzbare Bänder (Frequenz und Pegel), auch per Matrix steuerbar.	Band A / B: Two freely placeable bands (frequency and level), also controllable via the matrix.
+Band B	Band B
+Bandpass	Band-pass
+Bass	Bass
+Bass-Schnitt	Low cut
+Bass-Schnitt / Höhen-Schnitt	Low cut / High cut
+Bass-Schnitt / Höhen-Schnitt: Filtern nur den Hallanteil (der trockene Klang \nbleibt): Bass-Schnitt gegen Dröhnen, Höhen-Schnitt für einen dunklen Raum.	Low cut / High cut: Filter only the reverb signal (the dry sound \nremains): low cut against boominess, high cut for a dark room.
+Bass-Schnitt / Höhen-Schnitt: Filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dröhnen, Höhen-Schnitt für einen dunklen Raum.	Low cut / High cut: Filter only the reverb signal (the dry sound remains): low cut against boominess, high cut for a dark room.
+Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.	Edit swap: A and B swap places (controls, matrix, LFO shapes, Arp patterns, EQ, sample), Morph is mirrored - the sound stays the same, the controls now show Sound B. Click again = back.
+Bedienung in einfachen Worten (Kapitel)	Operation in plain words (chapter)
+Beendet sofort alle klingenden Noten (Notbremse).	Immediately stops all sounding notes (panic).
+Begrenzt gleichzeitige Stimmen und Grains (weniger CPU-Spitzen, z. B. auf langsamen Rechnern oder mit vielen Instanzen in FL Studio). Bleibt beim Presetwechsel erhalten.	Limits simultaneous voices and grains (fewer CPU spikes, e.g. on slow computers or with many instances in FL Studio). Kept when changing presets.
+Beim Export der DAW immer HQ und volle Stimmenzahl.	Always HQ and full voice count on DAW export.
+Beliebige Audiodatei (WAV, MP3, FLAC ...) als Rohmaterial der Grains laden.	Load any audio file (WAV, MP3, FLAC ...) as raw material for the grains.
+Bend	Bend
+Bend / Mod	Bend / Mod
+Bend-Bereich	Bend range
+Bend-Bereich: Wie weit Pitchbend die Tonhöhe biegt (Halbtöne).	Bend range: How far pitch bend bends the pitch (semitones).
+Bessere Interpolation der Grains (etwas mehr Rechenlast).	Better grain interpolation (slightly more CPU).
+Beton	Emphasis
+Bewegung	Motion
+Bitcrusher	Bitcrusher
+Bitcrusher Bits	Bitcrusher Bits
+Bitcrusher Mix	Bitcrusher Mix
+Bitcrusher Rate	Bitcrusher Rate
+Bitcrusher an	Bitcrusher on
+Bitcrusher: Bits / Abtastrate / Mix	Bitcrusher: Bits / Sample rate / Mix
+Bitcrusher: Bits / Abtastrate / Mix: Lo-Fi: weniger Auflösung und Abtastrate.	Bitcrusher: Bits / Sample rate / Mix: Lo-fi: lower resolution and sample rate.
+Bits	Bits
+Blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik).	Crossfades between Sound A and Target B; the morph LFO moves it automatically (can also be drawn freely, click on the graph).
+Blues	Blues
+Breite	Width
+Breite und Position der Summe im Stereobild.	Width and position of the sum in the stereo field.
+Bänder A/B, Bässe, Höhen: Matrix-Ziele (z.B. Sidechain 2 duckt Band A).	Bands A/B, Lows, Highs: matrix targets (e.g. Sidechain 2 ducks band A).
+Bässe	Lows
+C	C
+CLIP / MIDI	CLIP / MIDI
+Chorus	Chorus
+Chorus / Flanger	Chorus / Flanger
+Chorus Mix	Chorus Mix
+Chorus Rückkopplung	Chorus Feedback
+Chorus Tempo	Chorus Rate
+Chorus Tiefe	Chorus Depth
+Chorus an	Chorus on
+Chorus ein/aus	Chorus on/off
+Chorus: Tempo / Tiefe / Rückkopplung / Mix	Chorus: Rate / Depth / Feedback / Mix
+Chorus: Tempo / Tiefe / Rückkopplung / Mix: Verschobene Kopien: breit und \nschwebend; viel Rückkopplung = Flanger.	Chorus: Rate / Depth / Feedback / Mix: Shifted copies: wide and \nfloating; lots of feedback = flanger.
+Chorus: Tempo / Tiefe / Rückkopplung / Mix: Verschobene Kopien: breit und schwebend; viel Rückkopplung = Flanger.	Chorus: Rate / Depth / Feedback / Mix: Shifted copies: wide and floating; lots of feedback = flanger.
+Cis	C#
+Crusher	Crusher
+Crusher ein/aus	Crusher on/off
+Cutoff	Cutoff
+Cutoff / Resonanz	Cutoff / Resonance
+Cutoff / Resonanz: Eckfrequenz und Betonung an der Eckfrequenz.	Cutoff / Resonance: Corner frequency and emphasis at the corner frequency.
+D	D
+DAW-Rückfragen %.2f %%, Thread-Wechsel %d/s	DAW callbacks %.2f %%, thread switches %d/s
+Das Hauptsample (Reiter Grain) spielt unterhalb der ersten Zone. Jede Zone gilt ab ihrer Starttaste bis zur nächsten Zone - z.B. tiefe Töne vom Cello, hohe von der Geige. Alle Grain-Regler wirken auf alle Zonen.	The main sample (Grain tab) plays below the first zone. Each zone applies from its start key up to the next zone - e.g. low notes from the cello, high ones from the violin. All grain controls act on all zones.
+Das Sample des Presets wurde nicht gefunden	The preset's sample was not found
+Das Tempo kommt immer vom Host.	The tempo always comes from the host.
+Datei konnte nicht geladen werden	File could not be loaded
+Decay	Decay
+Demo-Klang (eingebaut)	Demo sound (built-in)
+Der Hintergrund zeigt den Ausgang: blau/weiß nach Pegel, blauer wo der EQ absenkt, röter wo er anhebt.	The background shows the output: blue/white by level, bluer where the EQ cuts, redder where it boosts.
+Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).	The LFO runs only one cycle and then stops (melodies, effect entries).
+Dichte	Density
+Dichte: Wie viele Grains pro Sekunde entstehen.	Density: How many grains are created per second.
+Die Tonhöhe kommt vom Sidechain (gesungener Ton) statt von der Taste - stufenlos oder in Halbtönen.	The pitch comes from the sidechain (sung note) instead of the key - continuous or in semitones.
+Diese Matrix-Zeile leeren (Quelle aus, Ziel aus, Menge 0) - Strg+Z nimmt es zurück	Clear this matrix row (Source off, Target off, Amount 0) - Ctrl+Z undoes it
+Diese Modulation entfernen	Remove this modulation
+Dieses Fenster.	This window.
+Dieses Ziel gibt es nur einmal für den ganzen Klang. Eine Noten-Quelle (Velocity, Noten-LFO ...) wirkt hier global und folgt der zuletzt angeschlagenen Note.	This target exists only once for the whole sound. A note source (Velocity, note LFO ...) acts globally here and follows the most recently played note.
+Dis	D#
+Dorisch	Dorian
+Drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte Sägezähne + Sub-Sinus).	Three identically built oscillators, each plays every note - can be switched on individually and layered (e.g. two detuned saws + sub sine).
+Dreieck	Triangle
+Dur	Major
+Dämpfung	Damping
+E	E
+EQ Band A Freq	EQ Band A Freq
+EQ Band A Pegel	EQ Band A Level
+EQ Band B Freq	EQ Band B Freq
+EQ Band B Pegel	EQ Band B Level
+EQ Bässe	EQ Lows
+EQ Höhen	EQ Highs
+EQ an	EQ on
+EQ an, Bässe, Höhen	EQ on, Bass, Treble
+EQ an, Bässe, Höhen: Klangregelung am Ende der Kette.	EQ on, Lows, Highs: tone control at the end of the chain.
+EQ ist aus ("EQ an" anhaken)	EQ is off (check "EQ on")
+Echo	Echo
+Echo (Ping-Pong)	Echo (ping-pong)
+Echo Mix	Echo Mix
+Echo Pitch	Echo Pitch
+Echo Pitch: Jede Wiederholung wird um diese Halbtöne verschoben - steigende \noder fallende Treppen.	Echo Pitch: Each repeat is shifted by these semitones - rising \nor falling staircases.
+Echo Pitch: Jede Wiederholung wird um diese Halbtöne verschoben - steigende oder fallende Treppen.	Echo Pitch: Each repeat is shifted by these semitones - rising or falling staircases.
+Echo Sync	Echo Sync
+Echo Zeit	Echo Time
+Echo an	Echo on
+Echo ein/aus	Echo on/off
+Echo: Zeit / Sync / Rückkopplung / Dämpfung / Mix	Echo: Time / Sync / Feedback / Damping / Mix
+Echo: Zeit / Sync / Rückkopplung / Dämpfung / Mix: Verzögerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.	Echo: Time / Sync / Feedback / Damping / Mix: delay, number of repeats, brightness and level of the echoes.
+Echo: Zeit / Sync / Rückkopplung / Dämpfung / Mix: Verzögerung, Anzahl der \nWiederholungen, Helligkeit und Anteil der Echos.	Echo: Time / Sync / Feedback / Damping / Mix: delay, number of \nrepeats, brightness and level of the echoes.
+Echos springen zwischen links und rechts.	Echoes bounce between left and right.
+Eckfrequenz und Betonung an der Eckfrequenz.	Cutoff frequency and emphasis at the cutoff.
+Effekte	Effects
+Eigene ADSR, die mit jeder Note das Filter öffnet und schließt.	Dedicated ADSR that opens and closes the filter with every note.
+Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.	Dedicated envelope for the FM amount (not the volume): bright on the attack, then soft.
+Eigener Ausgangspegel; weiße Marke = Schwelle für den Trigger "Ausgang > Schwelle"	Own output level; white mark = threshold for the "Output > Threshold" trigger
+Eigener Filter	Custom filter
+Eigener Filter (nur Oszillator %d)	Own filter (Oscillator %d only)
+Eigener Filter (nur Oszillator 1)	Own filter (Oscillator 1 only)
+Eigener Filter (nur Oszillator 2)	Own filter (Oscillator 2 only)
+Eigener Filter (nur Oszillator 3)	Own filter (Oscillator 3 only)
+Eigener Filter: Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).	Own filter: filter for this oscillator only, bypassing Filter 1/2 (e.g. noise hats via high-pass).
+Eigener Filter: Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. \nRausch-Hats per Hochpass).	Own filter: filter for this oscillator only, bypassing Filter 1/2 (e.g. \nnoise hats via high-pass).
+Eingang (E1/E2)	Input (I1/I2)
+Eingang 1/2	Input 1/2
+Eingang 3/4	Input 3/4
+Eingang verstärkt um %s, reagiert in %s, fällt in %s ab.	Input boosted by %s, responds in %s, decays in %s.
+Eingeschaltet läuft der Oszillator nur durch diesen Filter, an Filter 1/2 vorbei - z.B. Rausch-Hats per Hochpass, während die Fläche tief gefiltert bleibt. Echo, Hall und EQ wirken weiter.	When enabled, the oscillator runs only through this filter, bypassing Filter 1/2 - e.g. noise hats via high-pass while the pad stays low-pass filtered. Echo, Reverb and EQ still apply.
+Eingänge (DAW)	Inputs (DAW)
+Eingänge (DAW): Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar Sidechain 1 bzw. 2 speist. Sidechain 2 liefert der Matrix seinen Pegel (Quelle "Sidechain 2") und seine Tonhöhe (Quelle "SC2-Tonhöhe", wird nur gerechnet, wenn eine Zeile sie nutzt).	Inputs (DAW): level of host inputs I1-I4 and selection of which pair feeds Sidechain 1 or 2. Sidechain 2 provides its level to the matrix (Source "Sidechain 2") and its pitch (Source "SC2 pitch", only computed when a row uses it).
+Eingänge (DAW): Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar \nSidechain 1 bzw. 2 speist. Sidechain 2 liefert der Matrix seinen Pegel (Quelle \n"Sidechain 2") und seine Tonhöhe (Quelle "SC2-Tonhöhe", wird nur gerechnet, \nwenn eine Zeile sie nutzt).	Inputs (DAW): level of host inputs I1-I4 and selection of which pair feeds \nSidechain 1 or 2. Sidechain 2 provides its level to the matrix (Source \n"Sidechain 2") and its pitch (Source "SC2 pitch", only computed \nwhen a row uses it).
+Einmal	One-shot
+Einmal: Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).	One-shot: the LFO runs a single cycle and then stops (melodies, effect entries).
+Einmal: Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, \nEffekt-Einsatz).	One-shot: the LFO runs a single cycle and then stops (melodies, \neffect entries).
+Ende Partner-LFO (Einmal)	End of partner LFO (One-shot)
+Equalizer	Equalizer
+Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)	Equalizer (draw the curve with the mouse, right button = 0 dB)
+Ereignis	Event
+Ereignis-Verzögerung (LFO-Neustart)	Event delay (LFO retrigger)
+Ereignis: Ausgang > Schwelle  Pegel %.0f %% (Schwelle %.0f %%)	Event: Output > Threshold  Level %.0f %% (Threshold %.0f %%)
+Ereignis: SC-Ton > Schwelle  erkannt %s, Schwelle %s	Event: SC pitch > Threshold  detected %s, Threshold %s
+Ereignis: Sidechain-Trigger  Pegel %.0f %% (Schwelle %.0f %%)	Event: Sidechain trigger  Level %.0f %% (Threshold %.0f %%)
+Erkennt beim Laden den Grundton eines Samples (z.B. „C3 +31 Cent“) und stimmt es so, dass die Taste C4 wirklich ein C spielt. Wirkt nur bei einem klaren Einzelton (Flöte, Klavier-Ton, Cello ...), nicht bei Akkorden, Sprache oder Geräuschen; braucht Key Tracking. Kommt die Tonhöhe per Auto-Pitch vom Sidechain, hat diese Vorrang.	Detects the root pitch of a sample on loading (e.g. "C3 +31 cents") and tunes it so that the C4 key really plays a C. Works only with a clear single tone (flute, piano note, cello ...), not with chords, speech or noise; requires Key Tracking. If the pitch comes from the sidechain via Auto-Pitch, that takes precedence.
+Erst ein Ziel B merken oder laden - dann lassen sich A und B tauschen.	First store or load a Target B - then A and B can be swapped.
+Extras	Extras
+F	F
+F-Attack	F-Attack
+F-Decay	F-Decay
+F-Release	F-Release
+F-Sustain	F-Sustain
+FEHLER	ERROR
+FM (2 Sinus)	FM (2 sines)
+FM Attack	FM Attack
+FM Decay	FM Decay
+FM Release	FM Release
+FM Release (Osz2	FM Release (Osc2
+FM Sustain	FM Sustain
+FM-Hüllk. eigen	Own FM env.
+FM-Klangfarbe	FM tone
+FM-Klangfarbe: Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell \nim Anschlag, dann weich.	FM tone: dedicated envelope for the FM amount (not the volume): bright \non the attack, then soft.
+FM-Klangfarbe: Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.	FM tone: dedicated envelope for the FM amount (not the volume): bright on the attack, then soft.
+FM-Menge	FM Amount
+FM-Verhältnis	FM Ratio
+FM-Verhältnis / FM-Menge	FM ratio / FM amount
+FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.	FM Ratio / FM Amount: only with wave FM: modulator frequency and strength - bells, e-piano, bass.
+FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke -\n Glocken, E-Piano, Bass.	FM Ratio / FM Amount: only with wave FM: modulator frequency and strength -\n bells, e-piano, bass.
+FX (Chorus, Phaser, Bitcrusher, Gate)	FX (Chorus, Phaser, Bitcrusher, Gate)
+Fader	Fader
+Faktor	Factor
+Farbe Attack	Tone Attack
+Farbe Decay	Tone Decay
+Farbe Release	Tone Release
+Farbe Sustain	Tone Sustain
+Feedback	Feedback
+Feinstimmung	Fine tune
+Fenster	Window
+Fenster: Form, mit der jedes Grain ein- und ausgeblendet wird (weich bis \nknackig).	Window: shape used to fade each grain in and out (soft to \nsnappy).
+Fenster: Form, mit der jedes Grain ein- und ausgeblendet wird (weich bis knackig).	Window: shape used to fade each grain in and out (soft to snappy).
+Filter	Filter
+Filter / Echo / Hall	Filter / Echo / Reverb
+Filter 2	Filter 2
+Filter 2 / EQ	Filter 2 / EQ
+Filter 2 an	Filter 2 on
+Filter 2: Zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder \nparallel (gemischt).	Filter 2: second filter with the same controls; in series (one after the other) or \nparallel (mixed).
+Filter 2: Zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).	Filter 2: second filter with the same controls; in series (one after the other) or parallel (mixed).
+Filter an	Filter on
+Filter an, Typ	Filter on, Type
+Filter an, Typ: Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, \nsteil), Kamm (metallisch, Cutoff = Tonhöhe), Formant (Vokale A-E-I-O-U über den \nCutoff).	Filter on, type: Low-pass, Band-pass, High-pass, Ladder 24 dB (warm drive, \nsteep), Comb (metallic, cutoff = pitch), Formant (vowels A-E-I-O-U across the \ncutoff).
+Filter an, Typ: Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, steil), Kamm (metallisch, Cutoff = Tonhöhe), Formant (Vokale A-E-I-O-U über den Cutoff).	Filter on, type: Low-pass, Band-pass, High-pass, Ladder 24 dB (warm drive, steep), Comb (metallic, cutoff = pitch), Formant (vowels A-E-I-O-U across the cutoff).
+Filter je Note	Filter per note
+Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).	Filter for this oscillator only, bypassing Filter 1/2 (e.g. noise hats via high-pass).
+Filter-Hüllk.	Filter Env.
+Filter-Hüllkurve (startet mit jeder Note)	Filter envelope (starts with every note)
+Filter-Verschaltung	Filter routing
+Filter2 Cutoff	Filter2 Cutoff
+Filter2 Hüllk.	Filter2 Env.
+Filter2 Kontur	Filter2 Contour
+Filter2 Resonanz	Filter2 Resonance
+Filter2 Typ	Filter2 Type
+Filter2 an	Filter2 on
+Filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dröhnen, Höhen-Schnitt für einen dunklen Raum.	Filter only the reverb signal (the dry sound stays): low cut against boominess, high cut for a dark room.
+Filtertyp	Filter type
+Fis	F#
+Flanger (Düsenjet). Links und rechts laufen versetzt - schön auf Pads und E-Piano.	Flanger (jet). Left and right run offset - great on pads and e-piano.
+Flächen / Pads	Pads
+Form	Shape
+Form = Frei	Shape = Free
+Form, mit der jedes Grain ein- und ausgeblendet wird (weich bis knackig).	Shape used to fade each grain in and out (soft to snappy).
+Formant (Vokal)	Formant (vowel)
+Freeze	Freeze
+Freeze: Leseposition steht still, der Klang friert ein.	Freeze: the read position stands still, the sound freezes.
+Frei	Free
+Frei zeichnen ...	Free draw ...
+Frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), Sidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor öffnet, Ruhe, Ausgang > Schwelle.	Free, Note on, Note off, on + off, End of partner LFO (One-shot), Sidechain trigger, SC pitch > Threshold, Threshold gate opens, Silence, Output > Threshold.
+Freie Makros	Free macros
+Frequenzband	Frequency band
+Fängt Spitzen am Ausgang ab, damit nichts verzerrt.	Catches peaks at the output so nothing distorts.
+Für Alt + Mausrad wählen	Select for Alt + mouse wheel
+G	G
+GRANULAR - Hilfe  (FM	GRANULAR - Help  (FM
+Ganzton	Whole tone
+Gate	Gate
+Gate an	Gate on
+Gate ein/aus	Gate on/off
+Gauß	Gauss
+Gehaltene Tasten nacheinander: Richtung, Oktaven, Notenwert, Länge, Swing, Schritte und Schrittmuster (Klick = Schritt an/aus).	Held keys one after another: direction, octaves, note value, length, swing, steps and step pattern (click = step on/off).
+Gehaltene Tasten werden nacheinander gespielt, im Tempo des Hosts; auch eine einzelne Taste läuft über die Oktaven. Schritte im Muster ausschalten = Pause an dieser Stelle (wie beim microKorg). Akkord = alle Tasten gleichzeitig im Rhythmus des Musters. Tonleiter (rechts) gilt auch für den Arp.	Held keys are played one after another, in host tempo; even a single key runs across the octaves. Switching steps off in the pattern = rest at that position (as on the microKORG). Chord = all keys at once in the pattern's rhythm. Scale (right) also applies to the Arp.
+Gemessen wird nur, solange dieser Reiter offen ist. FL Studio: Optionen > Audio > "Multithreaded generator processing" verteilt Instanzen auf mehrere Kerne. Weniger Last: Mischpult > Leistung.	Measured only while this tab is open. FL Studio: Options > Audio > "Multithreaded generator processing" spreads instances across several cores. Less load: Mixer > Performance.
+Gesamtlautstärke; bleibt beim Presetwechsel erhalten.	Master volume; kept when changing presets.
+Geschätzte Gesamtlast und gemessene Rechenzeit im Host (Aufrufe/s, Anteil am Puffer, Spitzenwert).	Estimated total load and measured processing time in the host (calls/s, share of buffer, peak).
+Gespeicherte Einstellungen dieses Plugins löschen und neu laden	Delete this plugin's saved settings and reload
+Gespeicherte Einstellungen von "	Saved settings of "
+Gesperrt (wird nicht verändert)	Locked (not changed)
+Getauscht: du bearbeitest B	Swapped: you are editing B
+Gewähltes Stück als MIDI-Datei speichern (bei "Zufall": alle passenden Stücke in einen Ordner)	Save selected piece as MIDI file (with "Random": all matching pieces into a folder)
+Gis	G#
+Glide	Glide
+Glide (Portamento): Aus / Immer / Nur legato	Glide (portamento): Off / Always / Legato only
+Glide / Zeit	Glide / Time
+Glide / Zeit: Portamento: Töne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens.	Glide / Time: portamento: notes glide into each other (Off / Always / Legato only), Time = glide duration.
+Glide von	Glide from
+Glide-Zeit	Glide time
+Glide-Zeit: Dauer des Gleitens von Ton zu Ton	Glide time: duration of the glide from note to note
+Glocken / Zupfen	Bells / Plucks
+Glätten	Smooth
+Glättung	Smoothing
+Grain	Grain
+Grain-Hüllk.	Grain env.
+Grain-Oktave	Grain octave
+Grain-Panorama	Grain pan
+Grain-Panorama: Schiebt die Grains nach links oder rechts (die Streuung bleibt \num die neue Mitte); der Oszillator hat sein eigenes Panorama.	Grain pan: moves the grains left or right (the spread stays \naround the new center); the oscillator has its own pan.
+Grain-Panorama: Schiebt die Grains nach links oder rechts (die Streuung bleibt um die neue Mitte); der Oszillator hat sein eigenes Panorama.	Grain pan: moves the grains left or right (the spread stays around the new center); the oscillator has its own pan.
+Grain-Pegel	Grain level
+Graingröße	Grain size
+Graingröße: Länge eines Grains: kurz = körnig, lang = glatt.	Grain size: length of a grain: short = grainy, long = smooth.
+Grains	Grains
+Grains an	Grains on
+Grains an / Pegel	Grains on / Level
+Grains an / Pegel: Grains aus = nur die Oszillatoren klingen (klassischer Synthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-Bereich regelt die Summe aus Grains und Oszillatoren).	Grains on / Level: grains off = only the oscillators sound (classic synthesizer); Level = volume of the grains only (the volume in the Sound section controls the sum of grains and oscillators).
+Grains an / Pegel: Grains aus = nur die Oszillatoren klingen (klassischer \nSynthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-\nBereich regelt die Summe aus Grains und Oszillatoren).	Grains on / Level: grains off = only the oscillators sound (classic \nsynthesizer); Level = volume of the grains only (the volume in the Sound \nsection controls the sum of grains and oscillators).
+Grains aus (nur Oszillator)	Grains off (oscillator only)
+Grains aus = nur die Oszillatoren klingen (klassischer Synthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-Bereich regelt die Summe aus Grains und Oszillatoren).	Grains off = only the oscillators sound (classic synthesizer); Level = volume of the grains only (the volume in the Sound section controls the sum of grains and oscillators).
+Grains ein/aus	Grains on/off
+Grains, Oszillatoren, Echo, Hall und die vier Effekte ein/aus.	Grains, oscillators, Echo, Reverb and the four effects on/off.
+Grains/Osz 1-3 = Pegel der Quellen, Echo/Hall = Mischanteil, Gate/Crusher/Chorus/Phaser = Reiter Effekte (Gate: Tiefe, sonst Mix; die Anzeige zeigt, wie stark der Effekt den Klang verändert), Summe = Lautstärke, Master = Ausgang (bleibt beim Presetwechsel). Haken darunter: an/aus.	Grains/Osc 1-3 = source levels, Echo/Reverb = mix amount, Gate/Crusher/Chorus/Phaser = Effects tab (Gate: depth, otherwise mix; the meter shows how strongly the effect changes the sound), Sum = volume, Master = output (kept when changing presets). Checkboxes below: on/off.
+Granular-Preset (*.gspreset)|*.gspreset|	Granular preset (*.gspreset)|*.gspreset|
+Granular-Preset (*.gspreset)|*.gspreset|Granular-Preset mit eingebetteten Samples (*.gspreset)|*.gspreset	Granular preset (*.gspreset)|*.gspreset|Granular preset with embedded samples (*.gspreset)|*.gspreset
+GranularSynth	GranularSynth
+GranularSynth: Modulieren, MIDI-Learn, Standardwert ...	GranularSynth: Modulate, MIDI Learn, default value ...
+Grundlast (Stimmen, Hüllkurven, LFOs)	Base load (voices, envelopes, LFOs)
+Grundton	Root
+Grundtonhöhe in Halbtönen.	Base pitch in semitones.
+Größe	Size
+Größe = Raumgröße, Zeit = Nachhallzeit, Dämpfung = wie schnell die Höhen verklingen, Raum = Wandmaterial. Bass-/Höhen-Schnitt filtern nur den Hall (der trockene Klang bleibt): Bass-Schnitt hoch = kein Dröhnen.	Size = room size, Time = decay time, Damping = how fast the highs fade, Room = wall material. Low/high cut filter only the reverb (the dry sound stays): high low cut = no boominess.
+H	H
+HABI M	HABI M
+HQ	HQ
+HQ-Interpolation	HQ interpolation
+HQ-Modus	HQ mode
+HQ-Modus: Bessere Interpolation der Grains (etwas mehr Rechenlast).	HQ mode: better grain interpolation (slightly more CPU load).
+Haken unter den Fadern	Checkboxes below the faders
+Haken unter den Fadern: Grains, Oszillatoren, Echo, Hall und die vier Effekte \nein/aus.	Checkboxes below the faders: grains, oscillators, Echo, Reverb and the four effects \non/off.
+Haken unter den Fadern: Grains, Oszillatoren, Echo, Hall und die vier Effekte ein/aus.	Checkboxes below the faders: grains, oscillators, Echo, Reverb and the four effects on/off.
+Halbtöne	Semitones
+Halbtönen	semitones
+Hall	Reverb
+Hall Bass-Schnitt	Reverb Low Cut
+Hall Breite	Reverb Width
+Hall Dämpfung	Reverb Damping
+Hall Größe	Reverb Size
+Hall Höhen-Schnitt	Reverb High Cut
+Hall Mix	Reverb Mix
+Hall Predelay	Reverb Predelay
+Hall Raum	Reverb Room
+Hall Zeit	Reverb Time
+Hall an	Reverb on
+Hall ein/aus	Reverb on/off
+Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix	Reverb: Room, Size, Decay, Damping, Pre-delay, Width, Mix
+Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix: Raumklang \nvon kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).	Reverb: Room, Size, Decay, Damping, Predelay, Width, Mix: ambience \nfrom a small room to a cathedral; Room = wall material (wood, concrete ...).
+Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix: Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).	Reverb: Room, Size, Decay, Damping, Predelay, Width, Mix: ambience from a small room to a cathedral; Room = wall material (wood, concrete ...).
+Hann	Hann
+Hard Sync: 0 = saubere Welle, höher = immer mehr Obertöne, schneidend (nicht bei Rauschen).	Hard Sync: 0 = clean wave, higher = more and more harmonics, cutting (not with noise).
+Harmonie	Harmony
+Harmonisch Moll	Harmonic minor
+Heller	Brighter
+Helligkeit	Brightness
+Hilfe	Help
+Hilfedatei nicht gefunden	Help file not found
+Hin und her	Ping-pong
+Hoch	Up
+Hoch + Runter	Up + Down
+Hochpass	High-pass
+Holz	Wood
+Höchste Qualität	Highest quality
+Höhen	Highs
+Höhen-Schnitt	High cut
+Hüllk.-Länge	Env. length
+Hüllkurve	Envelope
+Hüllkurve (Menge) + Filter-Hüllkurve	Envelope (Amount) + Filter envelope
+Hüllkurve (Menge) + Filter-Hüllkurve: Eigene ADSR, die mit jeder Note das Filter öffnet und schließt.	Envelope (Amount) + filter envelope: dedicated ADSR that opens and closes the filter with every note.
+Hüllkurve (Menge) + Filter-Hüllkurve: Eigene ADSR, die mit jeder Note das \nFilter öffnet und schließt.	Envelope (Amount) + filter envelope: dedicated ADSR that opens and closes the \nfilter with every note.
+Immer	Always
+In Reihe (1 -> 2)	In series (1 -> 2)
+In Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter bekommen das Signal, ihre Ausgänge werden gemischt (z.B. zwei Bandpässe = Vokal-Formanten). Filter 2 folgt derselben Filter-Hüllkurve mit eigener Menge.	In series: Filter 1 -> Filter 2 (e.g. high-pass + low-pass = bandwidth). Parallel: both filters get the signal, their outputs are mixed (e.g. two band-passes = vowel formants). Filter 2 follows the same filter envelope with its own amount.
+Info	Info
+Info - was passiert bei einem Tastendruck	Info - what happens on a key press
+Init	Init
+Instrumente	Instruments
+Jede Taste startet eine eigene Stimme (mehrstimmig).	Each key starts its own voice (polyphonic).
+Jede Wiederholung wird um diese Halbtöne verschoben - steigende oder fallende Treppen.	Each repeat is shifted by these semitones - rising or falling staircases.
+Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).	Every event that retriggers an LFO (Note on, Note off, End of partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) can act with a delay: freely in ms or in sync (2/1 to 1/32, dotted and triplet; the note value wins). Note on with per-note LFOs: until then the LFO of that note rests - e.g. violin with vibrato only after a half note (preset 159).
+Jedes Ereignis, das einen LFO startet oder stoppt (Reiter LFO 1-8 / Trigger), kann hier verzögert wirken: frei in Millisekunden oder im Takt (Notenwert; dann gilt der Notenwert). 0 ms und "Aus" = sofort.	Every event that starts or stops an LFO (tab LFO 1-8 / Trigger) can be delayed here: freely in milliseconds or in sync (note value; then the note value applies). 0 ms and "Off" = immediately.
+Jedes Ereignis, das einen LFO startet oder stoppt (Reiter LFO 1-8 / Trigger), kann hier verzögert wirken: frei in Millisekunden oder im Takt (Notenwert; dann gilt der Notenwert). 0 ms und "Aus" = sofort.\n\nNote an bei LFOs je Note: bis die Verzögerung um ist, ruht der LFO dieser Note (keine Modulation) - der Ton beginnt glatt, danach setzt der Effekt ein. Beispiel Geige: LFO 1 Neustart "Note an", nicht Einmal, Sinus 5,5 Hz -> Pitch; hier "Note an" auf 1/2 = das Vibrato beginnt nach einer halben Note, für jede Note einzeln.\n\nNote aus: der LFO läuft bis zum verzögerten Neustart weiter. Alle anderen Ereignisse: der LFO startet nach der Wartezeit neu; ein neues Ereignis in der Wartezeit beginnt sie von vorn. Als Stopp-Ereignis hält es den LFO nach derselben Wartezeit an.	Every event that starts or stops an LFO (tab LFO 1-8 / Trigger) can be delayed here: freely in milliseconds or in sync (note value; then the note value applies). 0 ms and "Off" = immediately.\n\nNote on with per-note LFOs: until the delay has elapsed, the LFO of that note rests (no modulation) - the note starts clean, then the effect kicks in. Violin example: LFO 1 Retrigger "Note on", not One-shot, Sine 5.5 Hz -> Pitch; here "Note on" at 1/2 = the vibrato starts after a half note, for each note individually.\n\nNote off: the LFO keeps running until the delayed retrigger. All other events: the LFO restarts after the wait time; a new event during the wait time starts it over. As a stop event, it halts the LFO after the same wait time.
+Jedes Grain leicht verstimmt - Chor-/Schwebeeffekt.	Each grain slightly detuned - chorus/beating effect.
+Jetzigen Klang als Ziel B merken	Store current sound as Target B
+Kamm	Comb
+Kategorie / Stern	Category / Star
+Kategorie der Presetliste (ergibt sich aus dem Namen); ★ Favoriten = mit dem Stern markierte	Preset list category (derived from the name); ★ Favorites = those marked with the star
+Kein Plugin geladen. "VST laden..." wählen (z.B. GranularSynth.dll).	No plugin loaded. Choose "Load VST..." (e.g. GranularSynth.dll).
+Keine Sounddatei geladen - "WAV laden..." benutzen	No sound file loaded - use "Load WAV..."
+Keine gültige Preset-Datei	Not a valid preset file
+Key Tracking	Key Tracking
+Key Tracking: An = die Tonhöhe folgt der Taste; aus = jede Taste spielt \ndieselbe Tonhöhe (Flächen, Geräusche).	Key Tracking: On = pitch follows the key; off = every key plays \nthe same pitch (pads, noises).
+Key Tracking: An = die Tonhöhe folgt der Taste; aus = jede Taste spielt dieselbe Tonhöhe (Flächen, Geräusche).	Key Tracking: On = pitch follows the key; off = every key plays the same pitch (pads, noises).
+Klang	Sound
+Klang A	Sound A
+Klang B	Sound B
+Klang B (aus)	Sound B (off)
+Klang B spielt sein eigenes Sample (	Sound B plays its own sample (
+Klangfarbe und Halten	Tone and hold
+Klangregelung am Ende der Kette.	Tone control at the end of the chain.
+Klartext, was beim Tastendruck passiert, dazu das Trigger-Protokoll (Noten, Räder, Ereignisse, Einmal-LFOs) live.	Plain-language view of what happens on a key press, plus the live trigger log (notes, wheels, events, one-shot LFOs).
+Klartext-Übersicht: was passiert bei einem Tastendruck (live)	Plain-language overview: what happens on a key press (live)
+Klaviatur	Keyboard
+Klick schaltet einen Schritt auf/zu (zu = um "Tiefe" leiser). Der laufende Schritt leuchtet.	Click opens/closes a step (closed = quieter by "Depth"). The current step lights up.
+Klick: Wert eingeben	Click: enter value
+Klick: freie Form bearbeiten (Stufen / Halbtöne / zeichnen)	Click: edit free shape (steps / semitones / draw)
+Kontur	Contour
+Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Filter-Hüllkurve verschiebt den Cutoff um bis zu +-6 Oktaven. Echo-Zeit mit Sync = Notenwert zum Tempo. Echo Pitch transponiert jede Wiederholung um den eingestellten Wert (+5 = jede Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.	Contour = how strongly the filter acts (dry <-> filtered). The filter envelope shifts the cutoff by up to +-6 octaves. Echo time with Sync = note value to tempo. Echo Pitch transposes each repeat by the set value (+5 = each repeat a fourth higher). All controls are also targets of the modulation matrix.
+Kontur: Wie steil das Filter wirkt (sanft bis scharf).	Contour: how steep the filter acts (gentle to sharp).
+Kopfleiste	Header bar
+Kopfleiste: Presetliste nach Kategorie eingrenzen; Stern = aktuelles Preset als Favorit markieren.	Header: narrow the preset list by category; star = mark current preset as favorite.
+Kurve	Curve
+LFO %d	LFO %d
+LFO %d  -  Form "Frei"	LFO %d  -  Shape "Free"
+LFO %d - freie Form	LFO %d - free shape
+LFO 1	LFO 1
+LFO 1 bis 8: Rate, Form, Sync	LFO 1 to 8: Rate, Shape, Sync
+LFO 1 bis 8: Rate, Form, Sync: Langsame Schwingung (Sinus, Dreieck, Säge, Rechteck, Zufall, Frei); Sync = im Takt des Hosts. Klick auf die Grafik öffnet die freie Form. Umschalter unten rechts: LFO 1-4 / LFO 5-8 (in Klammern: benutzte LFOs 5-8; unbenutzte kosten keine Rechenzeit).	LFO 1 to 8: Rate, Shape, Sync: slow oscillation (Sine, Triangle, Saw, Square, Random, Free); Sync = in host tempo. Clicking the graphic opens the free shape. Toggle at bottom right: LFO 1-4 / LFO 5-8 (in brackets: used LFOs 5-8; unused ones cost no CPU).
+LFO 1 bis 8: Rate, Form, Sync: Langsame Schwingung (Sinus, Dreieck, Säge, \nRechteck, Zufall, Frei); Sync = im Takt des Hosts. Klick auf die Grafik öffnet \ndie freie Form. Umschalter unten rechts: LFO 1-4 / LFO 5-8 (in Klammern: \nbenutzte LFOs 5-8; unbenutzte kosten keine Rechenzeit).	LFO 1 to 8: Rate, Shape, Sync: slow oscillation (Sine, Triangle, Saw, \nSquare, Random, Free); Sync = in host tempo. Clicking the graphic opens \nthe free shape. Toggle at bottom right: LFO 1-4 / LFO 5-8 (in brackets: \nused LFOs 5-8; unused ones cost no CPU).
+LFO 1-4	LFO 1-4
+LFO 1-4 bzw. 5-8 zeigen (in Klammern: benutzte LFOs 5-8)	Show LFO 1-4 or 5-8 (in brackets: used LFOs 5-8)
+LFO 1-8 / Trigger	LFO 1-8 / Trigger
+LFO 2	LFO 2
+LFO 3	LFO 3
+LFO 4	LFO 4
+LFO 5	LFO 5
+LFO 5-8	LFO 5-8
+LFO 6	LFO 6
+LFO 7	LFO 7
+LFO 8	LFO 8
+LFO1 Einmal	LFO1 One-shot
+LFO1 Form	LFO1 Shape
+LFO1 Partner	LFO1 Partner
+LFO1 Rate	LFO1 Rate
+LFO1 Stopp	LFO1 Stop
+LFO1 Stoppzeit	LFO1 Stop time
+LFO1 Stoppzeit Takt	LFO1 Stop time sync
+LFO1 Sync	LFO1 Sync
+LFO1 Trigger	LFO1 Trigger
+LFO1..LFO8 Einmal	LFO1..LFO8 One-shot
+LFO1..LFO8 Partner	LFO1..LFO8 Partner
+LFO1..LFO8 Rate	LFO1..LFO8 Rate
+LFO1..LFO8 Stopp	LFO1..LFO8 Stop
+LFO1..LFO8 Trigger	LFO1..LFO8 Trigger
+LFO2 Einmal	LFO2 One-shot
+LFO2 Form	LFO2 Shape
+LFO2 Partner	LFO2 Partner
+LFO2 Rate	LFO2 Rate
+LFO2 Stopp	LFO2 Stop
+LFO2 Stoppzeit	LFO2 Stop time
+LFO2 Stoppzeit Takt	LFO2 Stop time sync
+LFO2 Sync	LFO2 Sync
+LFO2 Trigger	LFO2 Trigger
+LFO3 Einmal	LFO3 One-shot
+LFO3 Form	LFO3 Shape
+LFO3 Partner	LFO3 Partner
+LFO3 Rate	LFO3 Rate
+LFO3 Stopp	LFO3 Stop
+LFO3 Stoppzeit	LFO3 Stop time
+LFO3 Stoppzeit Takt	LFO3 Stop time sync
+LFO3 Sync	LFO3 Sync
+LFO3 Trigger	LFO3 Trigger
+LFO4 Einmal	LFO4 One-shot
+LFO4 Form	LFO4 Shape
+LFO4 Partner	LFO4 Partner
+LFO4 Rate	LFO4 Rate
+LFO4 Stopp	LFO4 Stop
+LFO4 Stoppzeit	LFO4 Stop time
+LFO4 Stoppzeit Takt	LFO4 Stop time sync
+LFO4 Sync	LFO4 Sync
+LFO4 Trigger	LFO4 Trigger
+LFO5 Einmal	LFO5 One-shot
+LFO5 Form	LFO5 Shape
+LFO5 Partner	LFO5 Partner
+LFO5 Rate	LFO5 Rate
+LFO5 Stopp	LFO5 Stop
+LFO5 Stoppzeit	LFO5 Stop time
+LFO5 Stoppzeit Takt	LFO5 Stop time sync
+LFO5 Sync	LFO5 Sync
+LFO5 Trigger	LFO5 Trigger
+LFO6 Einmal	LFO6 One-shot
+LFO6 Form	LFO6 Shape
+LFO6 Partner	LFO6 Partner
+LFO6 Rate	LFO6 Rate
+LFO6 Stopp	LFO6 Stop
+LFO6 Stoppzeit	LFO6 Stop time
+LFO6 Stoppzeit Takt	LFO6 Stop time sync
+LFO6 Sync	LFO6 Sync
+LFO6 Trigger	LFO6 Trigger
+LFO7 Einmal	LFO7 One-shot
+LFO7 Form	LFO7 Shape
+LFO7 Partner	LFO7 Partner
+LFO7 Rate	LFO7 Rate
+LFO7 Stopp	LFO7 Stop
+LFO7 Stoppzeit	LFO7 Stop time
+LFO7 Stoppzeit Takt	LFO7 Stop time sync
+LFO7 Sync	LFO7 Sync
+LFO7 Trigger	LFO7 Trigger
+LFO8 Einmal	LFO8 One-shot
+LFO8 Form	LFO8 Shape
+LFO8 Partner	LFO8 Partner
+LFO8 Rate	LFO8 Rate
+LFO8 Stopp	LFO8 Stop
+LFO8 Stoppzeit	LFO8 Stop time
+LFO8 Stoppzeit Takt	LFO8 Stop time sync
+LFO8 Sync	LFO8 Sync
+LFO8 Trigger	LFO8 Trigger
+Ladder 24 dB	Ladder 24 dB
+Laden...	Load...
+Langsam ansteigend	Slow rise
+Langsame Schwingung (Sinus, Dreieck, Säge, Rechteck, Zufall, Frei); Sync = im Takt des Hosts. Klick auf die Grafik öffnet die freie Form. Umschalter unten rechts: LFO 1-4 / LFO 5-8 (in Klammern: benutzte LFOs 5-8; unbenutzte kosten keine Rechenzeit).	Slow oscillation (Sine, Triangle, Saw, Square, Random, Free); Sync = in host tempo. Clicking the graphic opens the free shape. Toggle at bottom right: LFO 1-4 / LFO 5-8 (in brackets: used LFOs 5-8; unused ones cost no CPU).
+Lastliste	Load list
+Latch	Latch
+Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".	Latch: Like on the microKORG: released keys keep playing in the Arp until new keys are struck - the new chord replaces the old one. While keys are held, more are added. To stop: Latch off or "All notes off".
+Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue \nTasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten \ngedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".	Latch: Like on the microKORG: released keys keep playing in the Arp until new \nkeys are struck - the new chord replaces the old one. While keys are \nheld, more are added. To stop: Latch off or "All notes off".
+Latch: losgelassene Tasten spielen weiter, bis neue Tasten angeschlagen werden	Latch: released keys keep playing until new keys are struck
+Laufzeit des Plugins (je Sekunde): Aufrufe der DAW, Samples je Aufruf, eigene Rechenzeit in % der Echtzeit (Durchschnitt / längster Aufruf im Verhältnis zur Pufferdauer), Zeit in Rückfragen an die DAW, Thread-Wechsel zwischen den Aufrufen.	Plugin runtime (per second): calls from the DAW, samples per call, own CPU time in % of real time (average / longest call relative to buffer duration), time spent in callbacks to the DAW, thread switches between calls.
+Laufzeit: %d Aufrufe/s, %.0f Samples, Rechenzeit %.1f %% (max. %.0f %% eines Puffers)	Runtime: %d calls/s, %.0f samples, CPU %.1f %% (max. %.0f %% of a buffer)
+Laufzeit: keine Aufrufe der DAW (Plugin pausiert)	Runtime: no calls from the DAW (plugin paused)
+Lautstärke	Volume
+Lautstärke des Presets.	Volume of the preset.
+Lautstärke-Hüllkurve	Volume envelope
+Lautstärke-Hüllkurve (Oszillator %d)	Volume envelope (Oscillator %d)
+Lautstärke-Hüllkurve (Oszillator 1)	Volume envelope (Oscillator 1)
+Lautstärke-Hüllkurve (Oszillator 2)	Volume envelope (Oscillator 2)
+Lautstärke-Hüllkurve (Oszillator 3)	Volume envelope (Oscillator 3)
+Lautstärke-Hüllkurve: ADSR des Oszillators, mit Grafik.	Volume envelope: the oscillator's ADSR, with graph.
+Lautstärke: Lautstärke des Presets.	Volume: Volume of the preset.
+Lead	Lead
+Leeren	Clear
+Leistung	Performance
+Leistung: Leistungsstufe: begrenzt Stimmen und Grains, wenn der Rechner knapp wird (wird mit Presets nicht geladen).	Performance: Performance level: limits voices and grains when the computer runs short (not loaded with presets).
+Leistungsstufe: begrenzt Stimmen und Grains, wenn der Rechner knapp wird (wird mit Presets nicht geladen).	Performance level: limits voices and grains when the computer runs short (not loaded with presets).
+Lernen	Learn
+Leseposition steht still, der Klang friert ein.	Read position stands still, the sound freezes.
+Letzten Schritt zurücknehmen (Strg+Z)	Undo last step (Ctrl+Z)
+Leuchten	Lights
+Leuchten bei Übersteuerung bzw. bei jedem empfangenen MIDI-Ereignis.	Lights up on clipping or on every received MIDI event.
+Leuchtet bei jedem MIDI-Ereignis (Noten, Pitchbend, Modrad, Aftertouch, Pedal)	Lights up on every MIDI event (notes, pitch bend, mod wheel, aftertouch, pedal)
+Leuchtet, wenn der weiche Clipper eingreift (Ausgang zu laut) - Lautstärke etwas zurücknehmen	Lights up when the soft clipper engages (output too loud) - lower the volume a little
+Limiter	Limiter
+Limiter: Fängt Spitzen am Ausgang ab, damit nichts verzerrt.	Limiter: Catches peaks at the output so nothing distorts.
+Linear	Linear
+Lo-Fi: weniger Auflösung und Abtastrate.	Lo-Fi: lower resolution and sample rate.
+Loudness	Loudness
+Länge	Length
+Länge eines Grains: kurz = körnig, lang = glatt.	Length of a grain: short = grainy, long = smooth.
+MIDI	MIDI
+MIDI ...	MIDI ...
+MIDI Aftertouch	MIDI Aftertouch
+MIDI CC %d	MIDI CC %d
+MIDI Pitchbend	MIDI Pitchbend
+MIDI-Learn	MIDI Learn
+MIDI-Learn "	MIDI Learn "
+MIDI-Learn (jetzt CC %d) - neu lernen	MIDI Learn (now CC %d) - relearn
+MIDI-Learn abbrechen	Cancel MIDI Learn
+MIDI-Learn abgebrochen	MIDI Learn cancelled
+MIDI-Learn: CC %d steuert jetzt "%s"	MIDI Learn: CC %d now controls "%s"
+MIDI-Learn: Regler am Controller bewegen	MIDI Learn: move a control on your controller
+MIDI-Zuordnung CC %d entfernen	Remove MIDI assignment CC %d
+MIDI-Zuordnung CC %d entfernt	MIDI assignment CC %d removed
+Makro 1	Macro 1
+Makro 1 Kurve	Macro 1 Curve
+Makro 1..4	Macro 1..4
+Makro 1..4 Kurve	Macro 1..4 Curve
+Makro 2	Macro 2
+Makro 2 Kurve	Macro 2 Curve
+Makro 3	Macro 3
+Makro 3 Kurve	Macro 3 Curve
+Makro 4	Macro 4
+Makro 4 Kurve	Macro 4 Curve
+Makros	Macros
+Makros  (50 % = Preset unverändert)	Macros  (50 % = preset unchanged)
+Makros auf 50 %	Macros to 50 %
+Makros: Textur, Bewegung, Helligkeit, Raum, Streuung, Hüllkurven-Länge: jeder Regler verändert mehrere Einstellungen auf einmal. 50 % = Preset unverändert; „Makros auf 50 %“ setzt alle zurück.	Macros: Texture, Motion, Brightness, Space, Spread, Envelope length: each control changes several settings at once. 50 % = preset unchanged; "Macros to 50 %" resets them all.
+Makros: Textur, Bewegung, Helligkeit, Raum, Streuung, Hüllkurven-Länge: jeder \nRegler verändert mehrere Einstellungen auf einmal. 50 % = Preset unverändert; \n„Makros auf 50 %“ setzt alle zurück.	Macros: Texture, Motion, Brightness, Space, Spread, Envelope length: each \ncontrol changes several settings at once. 50 % = preset unchanged; \n"Macros to 50 %" resets them all.
+Master	Master
+Master: Gesamtlautstärke; bleibt beim Presetwechsel erhalten.	Master: Overall volume; kept when changing presets.
+Matrix-Zeilen dieser Seite zeigen (in Klammern: benutzte Zeilen)	Show the matrix rows of this page (in brackets: rows in use)
+Matrix-Zeilen sind belegt.	matrix rows are in use.
+Mehrere leicht verschobene Kopien: breiter, schwebender Klang. Rückkopplung hoch und Tiefe klein = Flanger (Düsenjet). Links und rechts laufen versetzt - schön auf Pads und E-Piano.	Several slightly shifted copies: wider, shimmering sound. High feedback and low depth = flanger (jet). Left and right run offset - great on pads and e-piano.
+Menge	Amount
+Mikrofon als Sidechain	Microphone as sidechain
+Mischpult	Mixer
+Mischpult  (dieselben Regler wie in den Reitern - ändern sich hier und dort gemeinsam)	Mixer  (same controls as in the tabs - they change together here and there)
+Mit der Maus zeichnen, rechte Taste = 0 dB; Linear, Wärmer, Heller ... sind fertige Kurven.	Draw with the mouse, right button = 0 dB; Linear, Warmer, Brighter ... are ready-made curves.
+Mix	Mix
+Mod	Mod
+Mod1 Faktor	Mod1 Factor
+Mod1 Menge	Mod1 Amount
+Mod1 Offset	Mod1 Offset
+Mod1 Quelle	Mod1 Source
+Mod1 Ziel	Mod1 Target
+Mod1..Mod32 Quelle	Mod1..Mod32 Source
+Mod10 Faktor	Mod10 Factor
+Mod10 Menge	Mod10 Amount
+Mod10 Offset	Mod10 Offset
+Mod10 Quelle	Mod10 Source
+Mod10 Ziel	Mod10 Target
+Mod11 Faktor	Mod11 Factor
+Mod11 Menge	Mod11 Amount
+Mod11 Offset	Mod11 Offset
+Mod11 Quelle	Mod11 Source
+Mod11 Ziel	Mod11 Target
+Mod12 Faktor	Mod12 Factor
+Mod12 Menge	Mod12 Amount
+Mod12 Offset	Mod12 Offset
+Mod12 Quelle	Mod12 Source
+Mod12 Ziel	Mod12 Target
+Mod13 Faktor	Mod13 Factor
+Mod13 Menge	Mod13 Amount
+Mod13 Offset	Mod13 Offset
+Mod13 Quelle	Mod13 Source
+Mod13 Ziel	Mod13 Target
+Mod14 Faktor	Mod14 Factor
+Mod14 Menge	Mod14 Amount
+Mod14 Offset	Mod14 Offset
+Mod14 Quelle	Mod14 Source
+Mod14 Ziel	Mod14 Target
+Mod15 Faktor	Mod15 Factor
+Mod15 Menge	Mod15 Amount
+Mod15 Offset	Mod15 Offset
+Mod15 Quelle	Mod15 Source
+Mod15 Ziel	Mod15 Target
+Mod16 Faktor	Mod16 Factor
+Mod16 Menge	Mod16 Amount
+Mod16 Offset	Mod16 Offset
+Mod16 Quelle	Mod16 Source
+Mod16 Ziel	Mod16 Target
+Mod17 Faktor	Mod17 Factor
+Mod17 Menge	Mod17 Amount
+Mod17 Offset	Mod17 Offset
+Mod17 Quelle	Mod17 Source
+Mod17 Ziel	Mod17 Target
+Mod18 Faktor	Mod18 Factor
+Mod18 Menge	Mod18 Amount
+Mod18 Offset	Mod18 Offset
+Mod18 Quelle	Mod18 Source
+Mod18 Ziel	Mod18 Target
+Mod19 Faktor	Mod19 Factor
+Mod19 Menge	Mod19 Amount
+Mod19 Offset	Mod19 Offset
+Mod19 Quelle	Mod19 Source
+Mod19 Ziel	Mod19 Target
+Mod2 Faktor	Mod2 Factor
+Mod2 Menge	Mod2 Amount
+Mod2 Offset	Mod2 Offset
+Mod2 Quelle	Mod2 Source
+Mod2 Ziel	Mod2 Target
+Mod20 Faktor	Mod20 Factor
+Mod20 Menge	Mod20 Amount
+Mod20 Offset	Mod20 Offset
+Mod20 Quelle	Mod20 Source
+Mod20 Ziel	Mod20 Target
+Mod21 Faktor	Mod21 Factor
+Mod21 Menge	Mod21 Amount
+Mod21 Offset	Mod21 Offset
+Mod21 Quelle	Mod21 Source
+Mod21 Ziel	Mod21 Target
+Mod22 Faktor	Mod22 Factor
+Mod22 Menge	Mod22 Amount
+Mod22 Offset	Mod22 Offset
+Mod22 Quelle	Mod22 Source
+Mod22 Ziel	Mod22 Target
+Mod23 Faktor	Mod23 Factor
+Mod23 Menge	Mod23 Amount
+Mod23 Offset	Mod23 Offset
+Mod23 Quelle	Mod23 Source
+Mod23 Ziel	Mod23 Target
+Mod24 Faktor	Mod24 Factor
+Mod24 Menge	Mod24 Amount
+Mod24 Offset	Mod24 Offset
+Mod24 Quelle	Mod24 Source
+Mod24 Ziel	Mod24 Target
+Mod25 Faktor	Mod25 Factor
+Mod25 Menge	Mod25 Amount
+Mod25 Offset	Mod25 Offset
+Mod25 Quelle	Mod25 Source
+Mod25 Ziel	Mod25 Target
+Mod26 Faktor	Mod26 Factor
+Mod26 Menge	Mod26 Amount
+Mod26 Offset	Mod26 Offset
+Mod26 Quelle	Mod26 Source
+Mod26 Ziel	Mod26 Target
+Mod27 Faktor	Mod27 Factor
+Mod27 Menge	Mod27 Amount
+Mod27 Offset	Mod27 Offset
+Mod27 Quelle	Mod27 Source
+Mod27 Ziel	Mod27 Target
+Mod28 Faktor	Mod28 Factor
+Mod28 Menge	Mod28 Amount
+Mod28 Offset	Mod28 Offset
+Mod28 Quelle	Mod28 Source
+Mod28 Ziel	Mod28 Target
+Mod29 Faktor	Mod29 Factor
+Mod29 Menge	Mod29 Amount
+Mod29 Offset	Mod29 Offset
+Mod29 Quelle	Mod29 Source
+Mod29 Ziel	Mod29 Target
+Mod3 Faktor	Mod3 Factor
+Mod3 Menge	Mod3 Amount
+Mod3 Offset	Mod3 Offset
+Mod3 Quelle	Mod3 Source
+Mod3 Ziel	Mod3 Target
+Mod30 Faktor	Mod30 Factor
+Mod30 Menge	Mod30 Amount
+Mod30 Offset	Mod30 Offset
+Mod30 Quelle	Mod30 Source
+Mod30 Ziel	Mod30 Target
+Mod31 Faktor	Mod31 Factor
+Mod31 Menge	Mod31 Amount
+Mod31 Offset	Mod31 Offset
+Mod31 Quelle	Mod31 Source
+Mod31 Ziel	Mod31 Target
+Mod32 Faktor	Mod32 Factor
+Mod32 Menge	Mod32 Amount
+Mod32 Offset	Mod32 Offset
+Mod32 Quelle	Mod32 Source
+Mod32 Ziel	Mod32 Target
+Mod4 Faktor	Mod4 Factor
+Mod4 Menge	Mod4 Amount
+Mod4 Offset	Mod4 Offset
+Mod4 Quelle	Mod4 Source
+Mod4 Ziel	Mod4 Target
+Mod5 Faktor	Mod5 Factor
+Mod5 Menge	Mod5 Amount
+Mod5 Offset	Mod5 Offset
+Mod5 Quelle	Mod5 Source
+Mod5 Ziel	Mod5 Target
+Mod6 Faktor	Mod6 Factor
+Mod6 Menge	Mod6 Amount
+Mod6 Offset	Mod6 Offset
+Mod6 Quelle	Mod6 Source
+Mod6 Ziel	Mod6 Target
+Mod7 Faktor	Mod7 Factor
+Mod7 Menge	Mod7 Amount
+Mod7 Offset	Mod7 Offset
+Mod7 Quelle	Mod7 Source
+Mod7 Ziel	Mod7 Target
+Mod8 Faktor	Mod8 Factor
+Mod8 Menge	Mod8 Amount
+Mod8 Offset	Mod8 Offset
+Mod8 Quelle	Mod8 Source
+Mod8 Ziel	Mod8 Target
+Mod9 Faktor	Mod9 Factor
+Mod9 Menge	Mod9 Amount
+Mod9 Offset	Mod9 Offset
+Mod9 Quelle	Mod9 Source
+Mod9 Ziel	Mod9 Target
+Modrad	Mod wheel
+Modrad    %5.0f %%  (CC 1 = %d)	Mod wheel    %5.0f %%  (CC 1 = %d)
+Modrad (MIDI CC 1): bleibt stehen	Mod wheel (MIDI CC 1): stays put
+Modrad: bleibt stehen	Mod wheel: stays put
+Modulation	Modulation
+Modulation entfernen	Remove modulation
+Modulation in Matrix-Zeile %d	Modulation in matrix row %d
+Modulation je Note (Matrix)	Modulation per note (matrix)
+Modulationsmatrix	Modulation matrix
+Modulationsmenge	Modulation amount
+Modulieren mit	Modulate with
+Moll	Minor
+Mono	Mono
+Morph	Morph
+Morph (A -> B)	Morph (A -> B)
+Morph / Doppel	Morph / Dual
+Morph A/B	Morph A/B
+Morph, Morph-LFO	Morph, Morph LFO
+Morph, Morph-LFO: Blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das \nautomatisch (auch frei gezeichnet, Klick auf die Grafik).	Morph, Morph LFO: Blends between Sound A and Target B; the Morph LFO moves this \nautomatically (also freely drawn, click on the graph).
+Morph, Morph-LFO: Blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik).	Morph, Morph LFO: Blends between Sound A and Target B; the Morph LFO moves this automatically (also freely drawn, click on the graph).
+Morph-Art	Morph mode
+Morph-LFO	Morph LFO
+Morph-LFO  -  Form "Frei" (Ausschlag = Morph A <-> B)	Morph LFO  -  shape "Free" (deflection = Morph A <-> B)
+Morph-LFO (%s, %s) pendelt um %s mit Tiefe %s zwischen Klang A (0 %%) und B (100 %%).%s	Morph LFO (%s, %s) swings around %s with depth %s between Sound A (0 %%) and B (100 %%).%s
+Morph-LFO (Klick: freie Form zeichnen)	Morph LFO (click: draw free shape)
+Morph-LFO - freie Form	Morph LFO - free shape
+Morph-LFO Form	Morph LFO Shape
+Morph-LFO Rate	Morph LFO Rate
+Morph-LFO Sync	Morph LFO Sync
+Morph-LFO Tiefe	Morph LFO Depth
+Morph-LFO aus	Morph LFO off
+Muster	Pattern
+Nadel: Rechenzeit des Plugins (Anteil eines Kerns, Mittel je Sekunde). Bernsteinmarke: längster Aufruf im Verhältnis zur Pufferdauer.	Needle: plugin CPU time (share of one core, average per second). Amber mark: longest call relative to buffer duration.
+Natur / FX	Nature / FX
+Neben der Klaviatur: Tonhöhe biegen (federt in 0,1 s zurück) und Modrad (bleibt stehen).	Next to the keyboard: bend pitch (springs back in 0.1 s) and mod wheel (stays put).
+Neustart	Retrigger
+Neustart: Frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), Sidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor öffnet, Ruhe, Ausgang > Schwelle.	Retrigger: Free, Note on, Note off, on + off, End of partner LFO (One-shot), Sidechain trigger, SC pitch > Threshold, Threshold gate opens, Silence, Output > Threshold.
+Neustart: Frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), \nSidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor öffnet, Ruhe, Ausgang > \nSchwelle.	Retrigger: Free, Note on, Note off, on + off, End of partner LFO (One-shot), \nSidechain trigger, SC pitch > Threshold, Threshold gate opens, Silence, Output > \nThreshold.
+Neutral	Neutral
+Nichts aufgenommen (kommt Signal am Sidechain-Eingang an?)	Nothing recorded (is a signal arriving at the sidechain input?)
+Nimmt den Sidechain-Eingang auf (bis 60 s) und lädt ihn als Hauptsample (WAV in Eigene Toene).	Records the sidechain input (up to 60 s) and loads it as the main sample (WAV in Eigene Toene).
+Nimmt den Sidechain-Eingang auf (in der DAW: Eingang des Plugins, im Host: Mikrofon/Eingang) und lädt das Ergebnis als neues Hauptsample - so lässt sich eine Spur, die Stimme oder der eigene Klang live granulieren. Die Aufnahme wird als WAV in "Eigene Toene" gespeichert und ist damit Teil des Presets.	Records the sidechain input (in the DAW: the plugin's input, in the host: microphone/input) and loads the result as a new main sample - so you can granulate a track, your voice or your own sound live. The recording is saved as WAV in "Eigene Toene" (own sounds) and thus becomes part of the preset.
+Noch kein Ziel B	No Target B yet
+Note an	Note on
+Note an   %-14s Velocity %3d (%3.0f %%)  Stimme %d	Note on   %-14s Velocity %3d (%3.0f %%)  Voice %d
+Note an bei LFOs je Note: bis die Verzögerung um ist, ruht der LFO dieser Note (keine Modulation) - der Ton beginnt glatt, danach setzt der Effekt ein. Beispiel Geige: LFO 1 Neustart "Note an", nicht Einmal, Sinus 5,5 Hz -> Pitch; hier "Note an" auf 1/2 = das Vibrato beginnt nach einer halben Note, für jede Note einzeln.	Note on with per-note LFOs: until the delay has elapsed, this note's LFO rests (no modulation) - the tone starts smoothly, then the effect kicks in. Violin example: LFO 1 Retrigger "Note on", not One-shot, Sine 5.5 Hz -> Pitch; here "Note on" at 1/2 = the vibrato starts after a half note, individually for each note.
+Note aus	Note off
+Note aus  %s	Note off  %s
+Note aus: der LFO läuft bis zum verzögerten Neustart weiter. Alle anderen Ereignisse: der LFO startet nach der Wartezeit neu; ein neues Ereignis in der Wartezeit beginnt sie von vorn. Als Stopp-Ereignis hält es den LFO nach derselben Wartezeit an.	Note off: the LFO keeps running until the delayed retrigger. All other events: the LFO restarts after the wait time; a new event during the wait time starts it over. As a stop event it halts the LFO after the same wait time.
+Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.	Note starts before the selection at the pre-roll start and runs once into the selection.
+Notenhöhe	Note pitch
+Notenwert	Note value
+Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.	Only with wave FM: modulator frequency and amount - bells, e-piano, bass.
+Nur im Plugin (DAW): hier im Test-Host gibt es keine Automationsspuren	Plugin only (DAW): this test host has no automation lanes
+Nur im Test-Host: spielt Stücke ab; die Liste zeigt die zum Preset passenden, mit „alle“ jedes Stück (z.B. eine Fläche mit flotter Musik).	Test host only: plays songs; the list shows those matching the preset, with "all" every song (e.g. a pad with upbeat music).
+Nur legato	Legato only
+OK: %d Hz, %d Kanäle, %.2f s, Spitze %.3f, Dauer %.0f ms	OK: %d Hz, %d channels, %.2f s, peak %.3f, length %.0f ms
+Offset	Offset
+Okt %s  |  %s Stimmen  |  %s Grains  |  %s	Oct %s  |  %s voices  |  %s grains  |  %s
+Okt +	Oct +
+Okt -	Oct -
+Okt - / Okt +	Oct - / Oct +
+Oktave	Octave
+Oktave / Feinstimmung / Pegel / Panorama	Octave / Fine tune / Level / Pan
+Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.	Octave / Fine / Level / Pan: pitch range, fine tuning in cents, volume (up to 200 %) and position.
+Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, \nLautstärke (bis 200 %) und Position.	Octave / Fine / Level / Pan: pitch range, fine tuning in cents, \nvolume (up to 200 %) and position.
+Oktave, klingende Stimmen, aktive Grains und das aktive Sample (bei Morph: A und B mit ihrem Anteil).	Octave, sounding voices, active grains and the active sample (with Morph: A and B with their share).
+Oktave: Verschiebt die Grains um ganze Oktaven (-4 bis +4), zusätzlich zu Pitch.	Octave: Shifts the grains by whole octaves (-4 to +4), in addition to Pitch.
+Oktaven	Octaves
+Ordner für die MIDI-Dateien wählen	Choose folder for the MIDI files
+Osz %d	Osc %d
+Osz 1	Osc 1
+Osz 1 ein/aus	Osc 1 on/off
+Osz 2	Osc 2
+Osz 2 ein/aus	Osc 2 on/off
+Osz 3	Osc 3
+Osz 3 ein/aus	Osc 3 on/off
+Osz Attack	Osc Attack
+Osz Decay	Osc Decay
+Osz FM-Menge	Osc FM Amount
+Osz FM-Menge (Osz2	Osc FM amount (Osc2
+Osz FM-Verh.	Osc FM Ratio
+Osz Fein	Osc Fine
+Osz Oktave	Osc Octave
+Osz Panorama	Osc Pan
+Osz Panorama (Osz2	Osc Pan (Osc2
+Osz Release	Osc Release
+Osz Release (Osz2	Osc Release (Osc2
+Osz Sustain	Osc Sustain
+Osz Sync	Osc Sync
+Osz Sync (Osz2	Osc Sync (Osc2
+Osz Unison	Osc Unison
+Osz Unison Breite	Osc Unison Width
+Osz Unison Breite (Osz2	Osc Unison width (Osc2
+Osz Unison Verstimmung	Osc Unison Detune
+Osz Welle	Osc Wave
+Osz Welle (Osz2	Osc Wave (Osc2
+Osz an	Osc On
+Osz an / Osz2 an / Osz3 an	Osc on / Osc2 on / Osc3 on
+Osz-Filter Cutoff	Osc Filter Cutoff
+Osz-Filter Hüllk.	Osc Filter Env.
+Osz-Filter Hüllk. (Osz2-Filter	Osc filter Env. (Osc2 filter
+Osz-Filter Kontur	Osc Filter Contour
+Osz-Filter Resonanz	Osc Filter Resonance
+Osz-Filter Typ	Osc Filter Type
+Osz-Filter an	Osc Filter On
+Osz-Pegel	Osc Level
+Osz1-Hüllk.	Osc1 Env.
+Osz2 Attack	Osc2 Attack
+Osz2 Decay	Osc2 Decay
+Osz2 FM Attack	Osc2 FM Attack
+Osz2 FM Decay	Osc2 FM Decay
+Osz2 FM Release	Osc2 FM Release
+Osz2 FM Sustain	Osc2 FM Sustain
+Osz2 FM-Hüllk. eigen	Osc2 own FM Env.
+Osz2 FM-Menge	Osc2 FM Amount
+Osz2 FM-Verh.	Osc2 FM Ratio
+Osz2 Fein	Osc2 Fine
+Osz2 Oktave	Osc2 Octave
+Osz2 Panorama	Osc2 Pan
+Osz2 Release	Osc2 Release
+Osz2 Sustain	Osc2 Sustain
+Osz2 Sync	Osc2 Sync
+Osz2 Unison	Osc2 Unison
+Osz2 Unison Breite	Osc2 Unison Width
+Osz2 Unison Verstimmung	Osc2 Unison Detune
+Osz2 Welle	Osc2 Wave
+Osz2 an	Osc2 On
+Osz2-Filter Cutoff	Osc2 Filter Cutoff
+Osz2-Filter Hüllk.	Osc2 Filter Env.
+Osz2-Filter Kontur	Osc2 Filter Contour
+Osz2-Filter Resonanz	Osc2 Filter Resonance
+Osz2-Filter Typ	Osc2 Filter Type
+Osz2-Filter an	Osc2 Filter On
+Osz2-Hüllk.	Osc2 Env.
+Osz2-Pegel	Osc2 Level
+Osz3 Attack	Osc3 Attack
+Osz3 Decay	Osc3 Decay
+Osz3 FM Attack	Osc3 FM Attack
+Osz3 FM Decay	Osc3 FM Decay
+Osz3 FM Release	Osc3 FM Release
+Osz3 FM Sustain	Osc3 FM Sustain
+Osz3 FM-Hüllk. eigen	Osc3 own FM Env.
+Osz3 FM-Menge	Osc3 FM Amount
+Osz3 FM-Verh.	Osc3 FM Ratio
+Osz3 Fein	Osc3 Fine
+Osz3 Oktave	Osc3 Octave
+Osz3 Panorama	Osc3 Pan
+Osz3 Release	Osc3 Release
+Osz3 Sustain	Osc3 Sustain
+Osz3 Sync	Osc3 Sync
+Osz3 Unison	Osc3 Unison
+Osz3 Unison Breite	Osc3 Unison Width
+Osz3 Unison Verstimmung	Osc3 Unison Detune
+Osz3 Welle	Osc3 Wave
+Osz3 an	Osc3 On
+Osz3 entsprechend)	Osc3 likewise)
+Osz3-Filter Cutoff	Osc3 Filter Cutoff
+Osz3-Filter Hüllk.	Osc3 Filter Env.
+Osz3-Filter Kontur	Osc3 Filter Contour
+Osz3-Filter Resonanz	Osc3 Filter Resonance
+Osz3-Filter Typ	Osc3 Filter Type
+Osz3-Filter an	Osc3 Filter On
+Osz3-Filter entsprechend)	Osc3 filter likewise)
+Osz3-Hüllk.	Osc3 Env.
+Osz3-Pegel	Osc3 Level
+Oszillator %d (zusätzlich zu den Grains, je Note)	Oscillator %d (in addition to the grains, per note)
+Oszillator 1	Oscillator 1
+Oszillator 1 (zusätzlich zu den Grains, je Note)	Oscillator 1 (in addition to the grains, per note)
+Oszillator 2	Oscillator 2
+Oszillator 2 (zusätzlich zu den Grains, je Note)	Oscillator 2 (in addition to the grains, per note)
+Oszillator 3	Oscillator 3
+Oszillator 3 (zusätzlich zu den Grains, je Note)	Oscillator 3 (in addition to the grains, per note)
+Oszillator an	Oscillator on
+PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave	PC keyboard: A W S E D F T G Z H U J K O L P plays, + / - changes the octave
+Panorama	Pan
+Parallel (1 + 2)	Parallel (1 + 2)
+Parallel statt Reihe	Parallel instead of serial
+Partner	Partner
+Partner: Welcher LFO mit seinem Einmal-Ende das Ereignis "Ende Partner-LFO (Einmal)" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf "Einmal" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt.	Partner: Which LFO triggers the event "End of partner LFO (One-shot)" with its one-shot end - for start and stop. Default: 1 and 2 or 3 and 4 mutually; any chains possible (e.g. 1 -> 2 -> 3 -> 4). The partner must be set to "One-shot". Only active if start or stop uses this event.
+Partner: dessen Einmal-Ende ist das Ereignis "Ende Partner-LFO"	Partner: its one-shot end is the event "End of partner LFO"
+Pegel	Level
+Pegel  E1 %s   E2 %s   E3 %s   E4 %s	Level  E1 %s   E2 %s   E3 %s   E4 %s
+Pegel (grün, ab -6 dB gelb, ab 0 dB rot)	Level (green, from -6 dB yellow, from 0 dB red)
+Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar Sidechain 1 bzw. 2 speist. Sidechain 2 liefert der Matrix seinen Pegel (Quelle "Sidechain 2") und seine Tonhöhe (Quelle "SC2-Tonhöhe", wird nur gerechnet, wenn eine Zeile sie nutzt).	Level of host inputs E1-E4 and selection of which pair feeds Sidechain 1 or 2. Sidechain 2 supplies its level (Source "Sidechain 2") and its pitch (Source "SC2 pitch", only computed when a row uses it) to the matrix.
+Pegel der vier Plugin-Eingänge. Alles "-" = die DAW schickt kein Audio: in FL Studio die Eingänge des Plugins im Wrapper (Processing) bzw. Mixer zuordnen, siehe Hilfe.	Level of the four plugin inputs. All "-" = the DAW sends no audio: in FL Studio assign the plugin inputs in the wrapper (Processing) or Mixer, see help.
+Pentatonik Dur	Pentatonic major
+Pentatonik Moll	Pentatonic minor
+Phaser	Phaser
+Phaser Mix	Phaser Mix
+Phaser Rückkopplung	Phaser Feedback
+Phaser Tempo	Phaser Rate
+Phaser Tiefe	Phaser Depth
+Phaser an	Phaser On
+Phaser ein/aus	Phaser on/off
+Phaser: Tempo / Tiefe / Rückkopplung / Mix	Phaser: Rate / Depth / Feedback / Mix
+Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im Spektrum.	Phaser: Rate / Depth / Feedback / Mix: Six allpasses, moving notches in the spectrum.
+Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im \nSpektrum.	Phaser: Rate / Depth / Feedback / Mix: Six allpasses, moving notches in the \nspectrum.
+Ping-Pong	Ping-Pong
+Ping-Pong: Echos springen zwischen links und rechts.	Ping-Pong: echoes bounce between left and right.
+Pitch	Pitch
+Pitch Zufall	Pitch Random
+Pitch Zufall: Jedes Grain leicht verstimmt - Chor-/Schwebeeffekt.	Pitch Random: Each grain slightly detuned - chorus/shimmer effect.
+Pitch: Grundtonhöhe in Halbtönen.	Pitch: Base pitch in semitones.
+Pitchbend	Pitchbend
+Pitchbend %5.0f %%  (%s Halbtöne)  MIDI %d	Pitchbend %5.0f %%  (%s semitones)  MIDI %d
+Pitchbend: ziehen, beim Loslassen federt es zurück	Pitchbend: drag, springs back on release
+Plugin konnte nicht geladen werden	Plugin could not be loaded
+Portamento: Töne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens.	Portamento: notes glide into each other (Off / Always / Legato only), Time = glide duration.
+Position	Position
+Position: Wo in der Auswahl die Grains gelesen werden.	Position: Where in the selection the grains are read.
+Predelay	Predelay
+Preset als Ziel B laden ...	Load preset as Target B ...
+Preset aus der Liste laden bzw. blättern.	Load or browse presets from the list.
+Preset konnte nicht gespeichert werden	Preset could not be saved
+Preset wählen, < >	Select preset, < >
+Presetliste filtern: nur Namen, die diesen Text enthalten (z.B. FM, Arp, Natur, Stimme). Esc = Filter löschen, Enter = Liste aufklappen	Filter preset list: only names containing this text (e.g. FM, Arp, Nature, Voice). Esc = clear filter, Enter = open list
+Programm	Program
+Prozentangabe je Block: Anteil an einem voll belegten Klang (Messwerte des Prüfstands).	Percentage per block: share of a fully loaded sound (benchmark measurements).
+Präsenz	Presence
+Quelle	Source
+Rate	Rate
+Raum	Room
+Raumgröße %s, Nachhall %s, Höhendämpfung %s, Vorverzögerung %s, Mix %s	Room size %s, decay %s, high damping %s, predelay %s, mix %s
+Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).	Room sound from small room to cathedral; Room = wall material (wood, concrete ...).
+Rechenblock	Processing block
+Rechenlast und aktive Rechenblöcke: Reiter "Leistung".	CPU load and active processing blocks: "Performance" tab.
+Rechenzeit (Anteil eines Kerns)	CPU time (share of one core)
+Rechenzeit (gemessen)	CPU time (measured)
+Rechteck	Square
+Rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle "Makro n"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal für die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37.	Right of the matrix: four controls Macro 1-4, each moves any number of targets. Assign a target: right-click a control > Modulate with > Macro n (or a matrix row with Source "Macro n"); Amount, Factor and Offset per target. Curve per macro: Linear, Slow rise, Fast rise, S-curve. Each macro's targets are listed below it. Ideal for DAW automation: one lane moves many controls. Learning presets L35-L37.
+Reduktion %.1f dB	Reduction %.1f dB
+Regler / Knopf	Control / Button
+Reiter Effekte	Effects tab
+Reiter Extras	Extras tab
+Reiter Filter / Echo / Hall	Filter / Echo / Reverb tab
+Reiter Filter 2 / EQ	Filter 2 / EQ tab
+Reiter Grain - Anlauf / Schleife	Grain - Pre-roll / Loop tab
+Reiter Grain - Hüllkurve	Grain - Envelope tab
+Reiter Grain - Klang	Grain - Sound tab
+Reiter Grain - Sample / Grains	Grain - Sample / Grains tab
+Reiter LFO 1-8 / Trigger	LFO 1-8 / Trigger tab
+Reiter Leistung	Performance tab
+Reiter Mischpult	Mixer tab
+Reiter Modulation	Modulation tab
+Reiter Osz 1 / Osz 2 / Osz 3	Osc 1 / Osc 2 / Osc 3 tab
+Reiter Samples	Samples tab
+Reiter Schnell	Quick tab
+Reiter Timing / Events	Timing / Events tab
+Release	Release
+Rendern in Höchstqualität	Render in highest quality
+Rendern in Höchstqualität: Beim Export der DAW immer HQ und volle Stimmenzahl.	Render in highest quality: Always HQ and full voice count when exporting from the DAW.
+Resonanz	Resonance
+Richtung	Direction
+Richtung beim Variieren: würfelt nur in Bereichen, die zu diesem Stil passen	Direction for Vary: randomizes only within ranges that suit this style
+Ruhe (unter Schwelle)	Silence (below threshold)
+Ruhe-Dauer	Silence
+Runter	Down
+Runter + Hoch	Down + Up
+Rückgängig	Undo
+Rückkopplung	Feedback
+Rückwärts	Reverse
+Rückwärts: Anteil der Grains, die rückwärts abgespielt werden.	Reverse: Share of grains played backwards.
+S-Kurve	S-curve
+SC Attack	SC Attack
+SC Release	SC Release
+SC Verstärk.	SC Gain
+SC-Schwelle	SC Threshold
+SC-Ton > Schwelle	SC pitch > Threshold
+SC-Ton-Schwelle	SC pitch threshold
+SC-Tonhöhe	SC pitch
+SC-Trig Pegel	SC trig level
+SC-Trig Ton	SC trig pitch
+SC1 Eingang	SC1 Input
+SC2 Eingang	SC2 Input
+SC2-Tonhöhe	SC2 pitch
+Sample	Sample
+Sample / Grains	Sample / Grains
+Sample&Hold	Sample&Hold
+Samples	Samples
+Sandstein	Sandstone
+Scan	Scan
+Scan kehrt am Ende der Auswahl um statt an den Anfang zu springen.	Scan reverses at the end of the selection instead of jumping to the start.
+Scan: Wie schnell die Leseposition durch die Auswahl wandert (0 = steht, 1 = Originaltempo).	Scan: How fast the read position moves through the selection (0 = still, 1 = original tempo).
+Scan: Wie schnell die Leseposition durch die Auswahl wandert (0 = steht, 1 = \nOriginaltempo).	Scan: How fast the read position moves through the selection (0 = still, 1 = \noriginal tempo).
+Schallschutz	Soundproofing
+Schiebt die Grains nach links oder rechts (die Streuung bleibt um die neue Mitte); der Oszillator hat sein eigenes Panorama.	Shifts the grains left or right (the spread stays around the new center); the oscillator has its own pan.
+Schleife	Loop
+Schleife hin und her	Ping-pong loop
+Schleife hin und her: Scan kehrt am Ende der Auswahl um statt an den Anfang zu \nspringen.	Ping-pong loop: Scan reverses at the end of the selection instead of jumping to the \nstart.
+Schleife hin und her: Scan kehrt am Ende der Auswahl um statt an den Anfang zu springen.	Ping-pong loop: Scan reverses at the end of the selection instead of jumping back to the start.
+Schnell	Quick
+Schnell ansteigend	Fast rise
+Schritt	Step
+Schritte	Steps
+Schrittmuster (Klick = Schritt an/aus)	Step pattern (click = step on/off)
+Schwelle	Threshold
+Schwellen-Tor	Threshold gate
+Schwellen-Tor = 1, sobald die Quelle über der Schwelle liegt: als Matrix-Quelle schaltet es Ein/Aus-Regler, als LFO-Trigger startet es einen LFO. Trigger "Ruhe": startet den LFO, wenn die Quelle die Ruhe-Dauer lang unter der Schwelle blieb (Pause, Stille).	Threshold gate = 1 as soon as the source is above the threshold: as a matrix source it switches on/off controls, as an LFO trigger it starts an LFO. Trigger "Silence": starts the LFO when the source has stayed below the threshold for the silence duration (pause, quiet).
+Schwellen-Tor öffnet	Threshold gate opens
+Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer	Threshold gate: Source, Threshold, Silence duration
+Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer: Wird 1, sobald eine beliebige Quelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.	Threshold gate: Source, Threshold, Silence duration: Becomes 1 as soon as any source exceeds the threshold (switch/trigger); Silence = event after this long a quiet period.
+Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer: Wird 1, sobald eine beliebige \nQuelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so \nlanger Stille.	Threshold gate: Source, Threshold, Silence duration: Becomes 1 as soon as any \nsource exceeds the threshold (switch/trigger); Silence = event after this \nlong a quiet period.
+Sechs Allpässe erzeugen wandernde Kerben im Spektrum: der typische Wusch der 70er. Langsames Tempo auf Flächen, schneller auf Rhodes und Gitarren-Sounds. Rückkopplung macht die Kerben schärfer.	Six allpass stages create moving notches in the spectrum: the classic 70s whoosh. Slow rate on pads, faster on Rhodes and guitar sounds. Feedback makes the notches sharper.
+Sechs Allpässe, wandernde Kerben im Spektrum.	Six allpass stages, moving notches in the spectrum.
+Sehr sparsam (8 Stimmen)	Very light (8 voices)
+Senkt Auflösung (Bits) und Abtastrate: Lo-Fi, Retro-Konsole, Dreck. 8 Bit / 11 kHz = Heimcomputer, 4 Bit = kaputt. Mix unter 100 % mischt das Original dazu.	Reduces resolution (bits) and sample rate: lo-fi, retro console, grit. 8 bit / 11 kHz = home computer, 4 bit = broken. Mix below 100 % blends in the original.
+Sidechain	Sidechain
+Sidechain %.0f %%	Sidechain %.0f %%
+Sidechain (E1/E2)	Sidechain (E1/E2)
+Sidechain 1	Sidechain 1
+Sidechain 2	Sidechain 2
+Sidechain 2 (E3/E4)	Sidechain 2 (E3/E4)
+Sidechain-Trigger	Sidechain trigger
+Sidechain-Trigger: Pegel / Ton	Sidechain trigger: Level / Pitch
+Sidechain-Trigger: Pegel / Ton: Wann der Trigger auslöst: Pegel über der Schwelle und/oder Ton über der Note; beide angehakt = beides nötig.	Sidechain trigger: Level / Pitch: When the trigger fires: level above the threshold and/or pitch above the note; both checked = both required.
+Sidechain-Trigger: Pegel / Ton: Wann der Trigger auslöst: Pegel über der \nSchwelle und/oder Ton über der Note; beide angehakt = beides nötig.	Sidechain trigger: Level / Pitch: When the trigger fires: level above the \nthreshold and/or pitch above the note; both checked = both required.
+Sidechain-Trigger: alle Haken müssen erfüllt sein. Ausgang > Schwelle: eigener Pegel, kein Selbst-Neustart, solange der LFO läuft.	Sidechain trigger: all checked conditions must be met. Output > Threshold: own level, no self-retrigger while the LFO is running.
+Signalweg	Signal path
+Sinus	Sine
+Sinus, Dreieck, Säge, Rechteck, FM (zwei Sinus), Rauschen.	Sine, triangle, saw, square, FM (two sines), noise.
+Spalte	Column
+Sparsam (16 Stimmen)	Light (16 voices)
+Speichern...	Save...
+Spektrum	Spectrum
+Spektrum (Ausgang)	Spectrum (output)
+Spielt jede Note mit: z.B. Bass (Sinus, Oktave -1/-2), Glocke (FM 3,5 / 40 %), Kick (FM + kurzer Decay) oder Hats (Rauschen + Hochpass). Drei Oszillatoren lassen sich schichten (z.B. zwei leicht verstimmte Sägezähne + Sub-Sinus). Alle Regler sind Matrix-Ziele, auch je Note.	Plays along with every note: e.g. bass (sine, octave -1/-2), bell (FM 3.5 / 40 %), kick (FM + short decay) or hats (noise + high-pass). Three oscillators can be layered (e.g. two slightly detuned saws + sub sine). All controls are matrix targets, also per note.
+Sprache / Language	Sprache / Language
+Spray	Spray
+Spray: Zufällige Streuung der Leseposition - macht den Klang lebendiger.	Spray: Random scatter of the read position - makes the sound more alive.
+Standard	Default
+Standardwert	Default value
+Statuszeile	Status bar
+Stellt den zuletzt mit Rückgängig zurückgenommenen Schritt wieder her (Strg+Y).	Restores the step last reverted with Undo (Ctrl+Y).
+Stereo	Stereo
+Stereobreite	Stereo width
+Stereobreite / Panorama	Stereo width / Pan
+Stereobreite / Panorama: Breite und Position der Summe im Stereobild.	Stereo width / Pan: width and position of the master in the stereo field.
+Stereobreite: Wie weit die Grains im Stereobild verteilt werden.	Stereo width: How widely the grains are spread across the stereo field.
+Stimme / Chor	Voice / Choir
+Stimmung der Musik: %s   (Valenz %s, Energie %.2f, zärtlich %.2f)	Mood of the music: %s   (valence %s, energy %.2f, tender %.2f)
+Stimmung: -	Mood: -
+Stopp	Stop
+Stopp und laden	Stop and load
+Stopp: Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. "nie" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei "frei"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält "Note aus" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Events). "nach Zeit": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T ...; ein Notenwert gilt vor den ms).	Stop: Off trigger: the event (Note on, Note off, end of partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) halts the LFO - no modulation until its start event starts it again. "never" = keeps running. Only works with a start event (not with "free"); with Stop the LFO also waits for its first start initially. For per-note LFOs, "Note off" halts only the released note. Delay as with Start (tab Timing / Events). "after time": the LFO stops after a fixed run time from its start - in ms or as a note value (2/1, 1/1, 1/2, 1/4, 1/4T ...; a note value takes precedence over ms).
+Stopp: Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, \nSidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den \nLFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. "nie" = \nläuft weiter. Wirkt nur mit Start-Ereignis (nicht bei "frei"); mit Stopp wartet \nder LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält "Note aus" \nnur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / \nEvents). "nach Zeit": der LFO hält nach einer festen Laufzeit ab seinem Start \nan - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T ...; ein Notenwert gilt \nvor den ms).	Stop: Off trigger: the event (Note on, Note off, end of partner LFO, \nSidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) halts the \nLFO - no modulation until its start event starts it again. "never" = \nkeeps running. Only works with a start event (not with "free"); with Stop the \nLFO also waits for its first start initially. For per-note LFOs, "Note off" halts \nonly the released note. Delay as with Start (tab Timing / \nEvents). "after time": the LFO stops after a fixed run time from its start \n- in ms or as a note value (2/1, 1/1, 1/2, 1/4, 1/4T ...; a note value takes \nprecedence over ms).
+Stoppzeit	Stop time
+Stoppzeit Takt	Stop time sync
+Streuung	Scatter
+Stufen	Steps
+Summe	Master
+Summen-Breite	Master width
+Summen-Panorama	Master pan
+Sustain	Sustain
+Swing	Swing
+Sync	Sync
+Sync (Obertöne)	Sync (overtones)
+Sync (Obertöne): Hard Sync: 0 = saubere Welle, höher = immer mehr Obertöne, \nschneidend (nicht bei Rauschen).	Sync (overtones): Hard sync: 0 = clean wave, higher = more and more overtones, \ncutting (not with noise).
+Sync (Obertöne): Hard Sync: 0 = saubere Welle, höher = immer mehr Obertöne, schneidend (nicht bei Rauschen).	Sync (overtones): Hard sync: 0 = clean wave, higher = more and more overtones, cutting (not with noise).
+Synthese	Synthesis
+Sägezahn	Saw
+Sättigung	Saturation
+Sättigung: Warme Übersteuerung.	Saturation: Warm overdrive.
+Sättigung: warme Übersteuerung. Freeze: Position steht, Hall klingt lange. Breite: 0 % mono, 200 % extra breit. Panorama per LFO über die Matrix bewegen = Auto-Pan.	Saturation: warm overdrive. Freeze: position holds, reverb rings long. Width: 0 % mono, 200 % extra wide. Move pan via LFO in the matrix = auto-pan.
+Tapete / Stoff	Wallpaper / Fabric
+Telefon	Telephone
+Tempo	Tempo
+Textur	Texture
+Textur, Bewegung, Helligkeit, Raum, Streuung, Hüllkurven-Länge: jeder Regler verändert mehrere Einstellungen auf einmal. 50 % = Preset unverändert; „Makros auf 50 %“ setzt alle zurück.	Texture, Motion, Brightness, Space, Scatter, Envelope length: each control changes several settings at once. 50 % = preset unchanged; "Macros to 50 %" resets them all.
+Theoretische Last: %.0f %% der Volllast (alles an, A + B, 32 Stimmen)	Theoretical load: %.0f %% of full load (everything on, A + B, 32 voices)
+Tiefe	Depth
+Tiefpass	Low-pass
+Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, steil), Kamm (metallisch, Cutoff = Tonhöhe), Formant (Vokale A-E-I-O-U über den Cutoff).	Low-pass, band-pass, high-pass, Ladder 24 dB (warm, driven, steep), comb (metallic, cutoff = pitch), formant (vowels A-E-I-O-U via the cutoff).
+Timing / Events	Timing / Events
+Tipp: Audiodateien lassen sich auch aus dem Explorer auf das Fenster ziehen - auf eine Zonen-Zeile = in diese Zone, sonst als Hauptsample.	Tip: audio files can also be dragged from Explorer onto the window - onto a zone row = into that zone, otherwise as the main sample.
+Ton	Pitch
+Tonhöhe: %s  (%.0f Hz)	Pitch: %s  (%.0f Hz)
+Tonhöhe: -	Pitch: -
+Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.	Transpose, fine tune in cents, volume (up to 200 %) and position.
+Tonleiter	Scale
+Tonleiter / Grundton	Scale / Root
+Tonleiter / Grundton: Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie \nein falscher Ton.	Scale / Root: All pitches snap to the notes of the scale - never \na wrong note.
+Tonleiter / Grundton: Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.	Scale / Root: All pitches snap to the notes of the scale - never a wrong note.
+Tonleiter: alle Tonhöhen (Tasten, Arp, Pitch-Zufall, LFO auf Pitch) rasten auf die Töne der Tonleiter ein - Zufall klingt so immer musikalisch.	Scale: all pitches (keys, Arp, pitch random, LFO to pitch) snap to the notes of the scale - so randomness always sounds musical.
+Tor-Quelle	Gate source
+Tor-Schwelle	Gate threshold
+Trance-Gate	Trance gate
+Trance-Gate (Schrittmuster im Songtempo)	Trance gate (step pattern at song tempo)
+Trance-Gate Glättung	Trance gate smoothing
+Trance-Gate Notenwert	Trance gate note value
+Trance-Gate Schritte	Trance gate steps
+Trance-Gate Tiefe	Trance gate depth
+Trance-Gate an	Trance gate on
+Trance-Gate: 16 Schritte zum Anklicken, Notenwert, Schritte, Tiefe, Glättung - \nzerhackt den Klang im Songtempo.	Trance gate: 16 clickable steps, note value, steps, depth, smoothing - \nchops the sound at song tempo.
+Trance-Gate: 16 Schritte zum Anklicken, Notenwert, Schritte, Tiefe, Glättung - zerhackt den Klang im Songtempo.	Trance gate: 16 clickable steps, note value, steps, depth, smoothing - chops the sound at song tempo.
+Trapez	Trapezoid
+Trigger auf den eigenen Ausgangspegel: überschreitet er die Schwelle, startet ein LFO mit diesem Neustart. Ein so gestarteter LFO löst sich nicht selbst erneut aus, solange er läuft (keine Rückkopplung).	Trigger on the own output level: when it exceeds the threshold, an LFO with this retrigger mode starts. An LFO started this way does not retrigger itself while it is running (no feedback).
+Trigger-Protokoll (live): Noten, Pitchbend/Modrad/Aftertouch, Ereignisse, Einmal-LFOs	Trigger log (live): notes, pitch bend/mod wheel/aftertouch, events, one-shot LFOs
+Trigger-Schwellen (Sidechain / Ausgang)	Trigger thresholds (Sidechain / Output)
+Typ	Type
+Unison	Unison
+Unison / Verstimmung / Breite	Unison / Detune / Width
+Unison / Verstimmung / Breite: 2 bis 7 verstimmte Stimmen je Note, im Stereobild verteilt (fette Pads und Leads).	Unison / Detune / Width: 2 to 7 detuned voices per note, spread across the stereo field (fat pads and leads).
+Unison / Verstimmung / Breite: 2 bis 7 verstimmte Stimmen je Note, im \nStereobild verteilt (fette Pads und Leads).	Unison / Detune / Width: 2 to 7 detuned voices per note, spread across the \nstereo field (fat pads and leads).
+VST laden...	Load VST...
+VST-Parameter	VST parameters
+VST2/VST3-Plugin laden (32 Bit)	Load VST2/VST3 plugin (32 bit)
+VST2/VST3-Plugin laden (64 Bit)	Load VST2/VST3 plugin (64 bit)
+Variieren	Vary
+Variieren - Stärke	Vary - amount
+Variieren / Stärke / Gesperrt	Vary / Strength / Locked
+Variieren ändert die nicht gesperrten Bereiche zufällig um die eingestellte Stärke. Rückgängig (Strg+Z) nimmt jede Reglerbewegung, Variieren, Preset-Wechsel und A/B zurück, Wiederholen (Strg+Y) stellt sie wieder her. A/B merkt sich zwei Fassungen zum Vergleichen. Rechtsklick auf einen Regler: Modulation zuweisen oder MIDI-Learn. Alt + Mausrad: Modulationsmenge.	Vary randomly changes the unlocked sections by the set amount. Undo (Ctrl+Z) reverts every control move, Vary, preset change and A/B; Redo (Ctrl+Y) restores them. A/B stores two versions for comparison. Right-click a control: assign modulation or MIDI Learn. Alt + mouse wheel: modulation amount.
+Variieren, Vergleichen, Qualität	Vary, Compare, Quality
+Velocity	Velocity
+Verschiebt die Grains um ganze Oktaven (-4 bis +4), zusätzlich zu Pitch.	Shifts the grains by whole octaves (-4 to +4), in addition to Pitch.
+Verschiebt die PC-Tastatur und die Klaviatur um eine Oktave.	Shifts the PC keyboard and the on-screen keyboard by one octave.
+Verschobene Kopien: breit und schwebend; viel Rückkopplung = Flanger.	Delayed copies: wide and shimmering; lots of feedback = flanger.
+Version	Version
+Verstimmung	Detune
+Verz. Ausgang	Dly. Output
+Verz. Ausgang Takt	Dly. Output sync
+Verz. Note an	Dly. Note on
+Verz. Note an Takt	Dly. Note on sync
+Verz. Note aus	Dly. Note off
+Verz. Note aus ... Verz. Ausgang Takt	Delay note off ... Delay output sync
+Verz. Note aus Takt	Dly. Note off sync
+Verz. Partner-Ende	Dly. partner end
+Verz. Partner-Ende Takt	Dly. partner end sync
+Verz. Ruhe	Dly. Silence
+Verz. Ruhe Takt	Dly. Silence sync
+Verz. SC-Ton	Dly. SC pitch
+Verz. SC-Ton Takt	Dly. SC pitch sync
+Verz. SC-Trigger	Dly. SC trigger
+Verz. SC-Trigger Takt	Dly. SC trigger sync
+Verz. Tor	Dly. Gate
+Verz. Tor Takt	Dly. Gate sync
+Verzögerung frei	Delay free
+Verzögerung je Ereignis	Delay per event
+Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).	Delay per event: Every event that retriggers an LFO (Note on, Note off, end of partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) can take effect delayed: free in ms or synced (2/1 to 1/32, dotted and triplet; the note value wins). Note on for per-note LFOs: until then the LFO of that note rests - e.g. violin with vibrato only after a half note (preset 159).
+Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, \nNote aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, \nAusgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis \n1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je \nNote: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach \neiner halben Note (Preset 159).	Delay per event: Every event that retriggers an LFO (Note on, \nNote off, end of partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, \nOutput > Threshold) can take effect delayed: free in ms or synced (2/1 to \n1/32, dotted and triplet; the note value wins). Note on for per-note \nLFOs: until then the LFO of that note rests - e.g. violin with vibrato only after \na half note (preset 159).
+Verzögerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.	Delay time, number of repeats, brightness and amount of the echoes.
+Voll (32 Stimmen)	Full (32 voices)
+Vorwärts	Forward
+Wann der Trigger auslöst: Pegel über der Schwelle und/oder Ton über der Note; beide angehakt = beides nötig.	When the trigger fires: level above the threshold and/or pitch above the note; both checked = both required.
+Warme Übersteuerung.	Warm overdrive.
+Was er bewirkt	What it does
+Was jeder Regler und Knopf bewirkt - Reiter für Reiter.	What every control and button does - tab by tab.
+Was passiert	What happens
+Weitere Samples je Tastenbereich (ab Starttaste); Laden, Leeren, Datei auf die Zeile ziehen.	Additional samples per key range (from start key); Load, Clear, drag a file onto the row.
+Weißes Rauschen	White noise
+Welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall ...).	Which sound modules in the current sound cost how much CPU time (grains, HQ, oscillators, filters, matrix, Echo, Reverb ...).
+Welcher LFO mit seinem Einmal-Ende das Ereignis "Ende Partner-LFO (Einmal)" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf "Einmal" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt.	Which LFO triggers the event "End of partner LFO (one-shot)" with its one-shot end - for Start and Stop. Default: 1 and 2 or 3 and 4 mutually; any chains possible (e.g. 1 -> 2 -> 3 -> 4). The partner must be set to "One-shot". Only active if Start or Stop uses this event.
+Welcher Teil des Samples benutzt wird (auch in der Wellenansicht ziehbar).	Which part of the sample is used (can also be dragged in the waveform view).
+Welle	Wave
+Welle: Sinus, Dreieck, Säge, Rechteck, FM (zwei Sinus), Rauschen.	Wave: Sine, triangle, saw, square, FM (two sines), noise.
+Werte überblenden	Crossfade values
+Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".	Like on the microKORG: released keys keep playing in the Arp until new keys are struck - the new chord replaces the old one. While keys are held, more are added. To stop: Latch off or "All notes off".
+Wie gespielt	As played
+Wie jede Note einschwillt, auf den Haltepegel abfällt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note.	How each note fades in, falls to the sustain level, is held and fades out after release. The graphic shows the curve, the red dot the note currently playing.
+Wie schnell die Leseposition durch die Auswahl wandert (0 = steht, 1 = Originaltempo).	How fast the read position moves through the selection (0 = stands still, 1 = original speed).
+Wie stark der Effekt den Klang verändert (grün, ab -6 dB gelb, ab 0 dB rot)	How strongly the effect changes the sound (green, yellow from -6 dB, red from 0 dB)
+Wie steil das Filter wirkt (sanft bis scharf).	How steep the filter is (gentle to sharp).
+Wie viele Grains pro Sekunde entstehen.	How many grains are created per second.
+Wie weit Pitchbend die Tonhöhe biegt (Halbtöne).	How far pitch bend bends the pitch (semitones).
+Wie weit die Grains im Stereobild verteilt werden.	How widely the grains are spread across the stereo field.
+Wiederholen	Redo
+Wiederholung alle	Repeat every
+Wiederholung im Takt alle	Repeat synced every
+Wird 1, sobald eine beliebige Quelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.	Becomes 1 as soon as any source exceeds the threshold (switch/trigger); Silence = event after this long a quiet period.
+Wirkwert = Grundwert + (Quelle x Faktor + Offset) x Menge, im Reglerbereich (Zeiten	Effective value = base value + (Source x Factor + Offset) x Amount, within the control range (times
+Wirkwert = Grundwert + (Quelle x Faktor + Offset) x Menge, im Reglerbereich (Zeiten logarithmisch). LFOs bipolar, übrige Quellen 0..1. Roter Strich unter einem Regler = aktueller Wirkwert. Tonhöhe folgen: SC-Tonhöhe -> Pitch, Faktor x2,65 Ton, Offset -125 %, Menge 100 % (C4 = Originalhöhe).	Effective value = base value + (Source x Factor + Offset) x Amount, within the control range (times logarithmic). LFOs bipolar, other sources 0..1. Red line under a control = current effective value. Pitch follow: SC pitch -> Pitch, Factor x2.65 pitch, Offset -125 %, Amount 100 % (C4 = original pitch).
+Wo in der Auswahl die Grains gelesen werden.	Where in the selection the grains are read.
+Wärmer	Warmer
+Würfelt eine Abwandlung des Klangs; die Stärke bestimmt wie weit, gesperrte Bereiche bleiben unverändert. „Rückgängig“ holt den vorigen Stand.	Rolls a variation of the sound; the amount sets how far, locked sections stay unchanged. "Undo" restores the previous state.
+Zeiger / Laufzeit	Pointer / Runtime
+Zeigt live, welche Frequenzen wie laut klingen.	Shows live which frequencies sound how loud.
+Zeile %d	Row %d
+Zeile %d: %s  %s	Row %d: %s  %s
+Zeile 1	Row 1
+Zeile 10	Row 10
+Zeile 11	Row 11
+Zeile 12	Row 12
+Zeile 13	Row 13
+Zeile 14	Row 14
+Zeile 15	Row 15
+Zeile 16	Row 16
+Zeile 17	Row 17
+Zeile 18	Row 18
+Zeile 19	Row 19
+Zeile 2	Row 2
+Zeile 20	Row 20
+Zeile 21	Row 21
+Zeile 22	Row 22
+Zeile 23	Row 23
+Zeile 24	Row 24
+Zeile 25	Row 25
+Zeile 26	Row 26
+Zeile 27	Row 27
+Zeile 28	Row 28
+Zeile 29	Row 29
+Zeile 3	Row 3
+Zeile 30	Row 30
+Zeile 31	Row 31
+Zeile 32	Row 32
+Zeile 4	Row 4
+Zeile 5	Row 5
+Zeile 6	Row 6
+Zeile 7	Row 7
+Zeile 8	Row 8
+Zeile 9	Row 9
+Zeit	Time
+Zerhackt den Klang im Takt: zu = leiser um "Tiefe" (100 % = stumm). Glättung gegen Knacken. Wirkt vor Echo und Hall - die laufen frei aus. Beginnt nach einer Pause wieder bei Schritt 1. Die Effekte liegen auf der Summe, nach den Filtern und vor Echo/Hall; alle Regler sind Matrix-Ziele.	Chops the sound in time: closed = quieter by "Depth" (100 % = muted). Smoothing against clicks. Acts before Echo and Reverb - they ring out freely. Restarts at step 1 after a pause. The effects sit on the master, after the filters and before Echo/Reverb; all controls are matrix targets.
+Ziehen setzt Werte (auch über mehrere Stufen), Rechtsklick setzt 0, Mausrad = +/- 1 Halbton. "Auf Pitch legen" stellt Form Frei, Neustart bei Note an und einen Matrix-Slot LFO -> Pitch (Menge 50 %, Faktor x1) ein: jede Stufe trifft genau ihren Halbton, jede Note spielt die Folge von vorn. Rate/Sync gilt für einen ganzen Durchlauf. Änderungen wirken sofort.	Dragging sets values (also across several steps), right-click sets 0, mouse wheel = +/- 1 semitone. "Apply to Pitch" sets shape Free, Retrigger on Note on and a matrix slot LFO -> Pitch (Amount 50 %, Factor x1): each step hits its semitone exactly, each note plays the sequence from the start. Rate/Sync applies to one full cycle. Changes take effect immediately.
+Ziel	Target
+Ziel B	Target B
+Ziel B gesetzt (gleiches Sample)	Target B set (same sample)
+Ziel B ist gemerkt.	Target B is stored.
+Ziel B löschen	Clear Target B
+Ziel B merken / laden / löschen	Store / load / clear target B
+Ziele zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro 1-4, oder eine Matrix-Zeile mit Quelle "Makro n". Menge, Faktor und Offset je Ziel; die Kurve gilt für alle Ziele des Makros. Die Makros sind in der DAW automatisierbar.	Assign targets: right-click a control > Modulate with > Macro 1-4, or a matrix row with source "Macro n". Amount, Factor and Offset per target; the curve applies to all targets of the macro. The macros can be automated in the DAW.
+Zone %d	Zone %d
+Zone 1	Zone 1
+Zone 2	Zone 2
+Zone 3	Zone 3
+Zonen 1-3	Zones 1-3
+Zonen: weitere Samples je Tastenbereich	Zones: additional samples per key range
+Zufall	Random
+Zufall je Note	Random per note
+Zufall: alle Stücke, mit Variation	Random: all pieces, with variation
+Zufall: zum Preset passende Stücke	Random: pieces matching the preset
+Zufällige Streuung der Leseposition - macht den Klang lebendiger.	Random scatter of the read position - makes the sound more alive.
+Zurückgenommenen Schritt wiederherstellen (Strg+Y oder Strg+Umschalt+Z)	Restore reverted step (Ctrl+Y or Ctrl+Shift+Z)
+Zurücksetzen	Reset
+Zwei Klänge	Two sounds
+Zwei Klänge (Morph-Art)	Two sounds (Morph mode)
+Zwei Klänge (Morph-Art): An (Standard): A und B sind zwei vollstaendig \ngetrennte Klänge - jeder mit eigenen Stimmen, Arpeggiator, LFOs, Matrix, \nFiltern und Effekten; Morph regelt nur, wie laut A und B sind. Aus: ein \neinziger Klang, dessen Reglerwerte stufenlos von A nach B wandern (Schalter \nspringen bei 50 %). Aeltere Presets mit Ziel B laden mit 'aus'.	Two sounds (Morph mode): On (default): A and B are two completely \nseparate sounds - each with its own voices, arpeggiator, LFOs, matrix, \nfilters and effects; Morph only sets how loud A and B are. Off: a \nsingle sound whose control values glide seamlessly from A to B (switches \njump at 50 %). Older presets with Target B load with 'off'.
+Zwei Klänge (Morph-Art): An (Standard): A und B sind zwei vollstaendig getrennte Klänge - jeder mit eigenen Stimmen, Arpeggiator, LFOs, Matrix, Filtern und Effekten; Morph regelt nur, wie laut A und B sind. Aus: ein einziger Klang, dessen Reglerwerte stufenlos von A nach B wandern (Schalter springen bei 50 %). Aeltere Presets mit Ziel B laden mit 'aus'.	Two sounds (Morph mode): On (default): A and B are two completely separate sounds - each with its own voices, arpeggiator, LFOs, matrix, filters and effects; Morph only sets how loud A and B are. Off: a single sound whose control values glide seamlessly from A to B (switches jump at 50 %). Older presets with Target B load with 'off'.
+Zwei frei setzbare Bänder (Frequenz und Pegel), auch per Matrix steuerbar.	Two freely adjustable bands (frequency and level), also controllable via the matrix.
+Zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).	Second filter with the same controls; in series (one after the other) or parallel (mixed).
+Zwischen zwei Fassungen hin- und herschalten und vergleichen.	Switch back and forth between two versions and compare.
+[nur eingeschaltet, solange	[only on while
+[wird zusätzlich von	[additionally influenced by
+ab	from
+aktuelle Einstellung als Preset speichern; eigene Töne werden nach „Eigene Töne“ kopiert. Dateityp „mit eingebetteten Samples“: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach „Eigene Töne“ ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste.	save the current settings as a preset; your own sounds are copied to "Eigene Töne". File type "with embedded samples": all samples used (main sample, sound B, zones) go into the preset file - a single file to pass on. On another computer, missing samples are unpacked to "Eigene Töne" when loading. The choice is remembered; older versions load such presets too (without unpacking). After saving, the new name appears in the preset list.
+aktuellen Klang oder ein anderes Preset als Ziel B festlegen.	set the current sound or another preset as target B.
+aktueller Wirkwert. Tonhöhe folgen: SC-Tonhöhe -> Pitch, Faktor x2,65 Ton, Offset -125 %, Menge 100 % (C4 = Originalhöhe).	current effective value. Pitch follow: SC pitch -> Pitch, Factor x2.65 pitch, Offset -125 %, Amount 100 % (C4 = original pitch).
+alle	all
+alle Lautstärken an einem Ort: Grains, Osz 1-3, Echo, Hall, die Effekte Gate (Tiefe), Crusher, Chorus und Phaser (Mix; ihre Anzeige zeigt, wie stark der Effekt den Klang verändert), Morph, Panorama, Summe (Grains + Oszillatoren), Master. Es sind dieselben Regler wie in den anderen Reitern - wer hier schiebt, sieht es dort und umgekehrt.	all volumes in one place: Grains, Osc 1-3, Echo, Reverb, the effects Gate (Depth), Crusher, Chorus and Phaser (Mix; their meter shows how strongly the effect changes the sound), Morph, Pan, Sum (grains + oscillators), Master. These are the same controls as in the other tabs - move one here and it moves there, and vice versa.
+alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.	all pitches snap to the notes of the scale - never a wrong note.
+alle Zeilen	all rows
+an	on
+an (Standard): A und B sind zwei vollstaendig getrennte Klänge - jeder mit eigenen Stimmen, Arpeggiator, LFOs, Matrix, Filtern und Effekten; Morph regelt nur, wie laut A und B sind. Aus: ein einziger Klang, dessen Reglerwerte stufenlos von A nach B wandern (Schalter springen bei 50 %). Aeltere Presets mit Ziel B laden mit 'aus'.	on (default): A and B are two completely separate sounds - each with its own voices, arpeggiator, LFOs, matrix, filters and effects; Morph only sets how loud A and B are. Off: a single sound whose control values glide smoothly from A to B (switches jump at 50 %). Older presets with target B load with 'off'.
+an + aus	on + off
+an = die Tonhöhe folgt der Taste; aus = jede Taste spielt dieselbe Tonhöhe (Flächen, Geräusche).	on = pitch follows the key; off = every key plays the same pitch (pads, noises).
+aus	off
+aus (1 Stimme)	off (1 voice)
+beeinflusst]	]
+beendet sofort alle klingenden Noten (Notbremse).	immediately stops all sounding notes (panic button).
+beim Export der DAW immer HQ und volle Stimmenzahl.	DAW export always uses HQ and the full voice count.
+beliebige Audiodatei (WAV, MP3, FLAC ...) als Rohmaterial der Grains laden.	load any audio file (WAV, MP3, FLAC ...) as raw material for the grains.
+bessere Interpolation der Grains (etwas mehr Rechenlast).	better grain interpolation (slightly more CPU load).
+bleibt fest (Tasten ändern die Tonhöhe nicht)	stays fixed (keys do not change the pitch)
+blendet	fades
+blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik).	crossfades between sound A and target B; the Morph LFO moves it automatically (also hand-drawn, click the graphic).
+dB	dB
+der Hintergrund zeigt den Ausgang: blau/weiß nach Pegel, blauer wo der EQ absenkt, röter wo er anhebt.	the background shows the output: blue/white by level, bluer where the EQ cuts, redder where it boosts.
+der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).	the LFO runs only one cycle and then stops (melodies, effect entries).
+die Tonhöhe kommt vom Sidechain (gesungener Ton) statt von der Taste - stufenlos oder in Halbtönen.	pitch comes from the sidechain (sung note) instead of the key - continuous or in semitones.
+dieselben Parameter wie in den Reitern (kein eigener Wert)	the same parameters as in the tabs (no value of their own)
+dieses Fenster.	this window.
+drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte Sägezähne + Sub-Sinus).	three identically built oscillators, each plays every note - can be switched on individually and layered (e.g. two detuned saws + sub sine).
+dunkel  <->  hell	dark  <->  bright
+eigene ADSR, die mit jeder Note das Filter öffnet und schließt.	its own ADSR that opens and closes the filter with every note.
+eigene Hüllkurve (nur Welle FM)	own envelope (FM wave only)
+eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.	its own envelope for the FM amount (not the volume): bright on the attack, then soft.
+ein/aus	on/off
+erkennt beim Laden den Grundton eines Samples (z.B. „C3 +31 Cent“) und stimmt es so, dass die Taste C4 wirklich ein C spielt. Wirkt nur bei einem klaren Einzelton (Flöte, Klavier-Ton, Cello ...), nicht bei Akkorden, Sprache oder Geräuschen; braucht Key Tracking. Kommt die Tonhöhe per Auto-Pitch vom Sidechain, hat diese Vorrang.	detects the root pitch of a sample on loading (e.g. "C3 +31 cents") and tunes it so that key C4 really plays a C. Works only with a clear single note (flute, piano note, cello ...), not with chords, speech or noises; requires key tracking. If pitch comes from the sidechain via Auto-Pitch, that takes priority.
+es einschaltet]	switches it on]
+filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dröhnen, Höhen-Schnitt für einen dunklen Raum.	filter only the reverb signal (the dry sound stays): low cut against boominess, high cut for a dark room.
+folgt der Taste	follows the key
+frei	free
+frei, %d Halbton-Stufen (%s)	free, %d semitone steps (%s)
+frei, %d Stufen (%s)	free, %d steps (%s)
+frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), Sidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor öffnet, Ruhe, Ausgang > Schwelle.	free, note on, note off, on + off, end of partner LFO (one-shot), sidechain trigger, SC pitch > threshold, threshold gate opens, silence, output > threshold.
+freie Form	free shape
+freie, gezeichnete Kurve	free, drawn curve
+fängt Spitzen am Ausgang ab, damit nichts verzerrt.	catches peaks at the output so nothing distorts.
+gehaltene Tasten nacheinander: Richtung, Oktaven, Notenwert, Länge, Swing, Schritte und Schrittmuster (Klick = Schritt an/aus).	held keys one after another: direction, octaves, note value, length, swing, steps and step pattern (click = step on/off).
+geordnet  <->  zufällig	ordered  <->  random
+geschätzte Gesamtlast und gemessene Rechenzeit im Host (Aufrufe/s, Anteil am Puffer, Spitzenwert).	estimated total load and measured processing time in the host (calls/s, share of buffer, peak value).
+global: letzte Note	global: last note
+hat kein eigenes Fenster. Spielbar über Klaviatur/Autoplay.	has no window of its own. Playable via keyboard/autoplay.
+im Host automatisierbar und Ziel in der Modulationsmatrix	automatable in the host and a target in the modulation matrix
+im Takt (	synced (
+inaktiv - Form "Frei" wählen (Knopf rechts oder Modulations-Reiter)	inactive - choose shape "Free" (button on the right or Modulation tab)
+ja	yes
+jede Wiederholung wird um diese Halbtöne verschoben - steigende oder fallende Treppen.	each repeat is shifted by these semitones - rising or falling staircases.
+jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).	every event that restarts an LFO (note on, note off, end of partner LFO, sidechain trigger, SC pitch, threshold gate, silence, output > threshold) can take effect with a delay: free in ms or in sync (2/1 to 1/32, dotted and triplet; the note value wins). Note on with per-note LFOs: until then the LFO of that note rests - e.g. violin with vibrato only after a half note (preset 159).
+jedes Grain leicht verstimmt - Chor-/Schwebeeffekt.	each grain slightly detuned - chorus/shimmer effect.
+kein Sample	no sample
+kein Sidechain-Signal	no sidechain signal
+keine Reduktion	no reduction
+kommt als MIDI-Signal	comes as a MIDI signal
+körnig, dicht  <->  weich, flächig	grainy, dense  <->  soft, pad-like
+langsame Schwingung (Sinus, Dreieck, Säge, Rechteck, Zufall, Frei); Sync = im Takt des Hosts. Klick auf die Grafik öffnet die freie Form. Umschalter unten rechts: LFO 1-4 / LFO 5-8 (in Klammern: benutzte LFOs 5-8; unbenutzte kosten keine Rechenzeit).	slow oscillation (sine, triangle, saw, square, random, free); Sync = in time with the host. Clicking the graphic opens the free shape. Switch at bottom right: LFO 1-4 / LFO 5-8 (in brackets: LFOs 5-8 in use; unused ones cost no CPU).
+leuchten bei Übersteuerung bzw. bei jedem empfangenen MIDI-Ereignis.	light up on clipping or on every received MIDI event.
+läuft frei durch	runs freely
+mit der Maus zeichnen, rechte Taste = 0 dB; Linear, Wärmer, Heller ... sind fertige Kurven.	draw with the mouse, right button = 0 dB; Linear, Warmer, Brighter ... are ready-made curves.
+nach Zeit	after time
+neben der Klaviatur: Tonhöhe biegen (federt in 0,1 s zurück) und Modrad (bleibt stehen).	next to the keyboard: pitch bend (springs back within 0.1 s) and mod wheel (stays put).
+nein	no
+nicht modulierbar	not modulatable
+nie	never
+nimmt den Sidechain-Eingang auf (bis 60 s) und lädt ihn als Hauptsample (WAV in Eigene Toene).	records the sidechain input (up to 60 s) and loads it as the main sample (WAV in Eigene Toene).
+noch keine Ziele	no targets yet
+nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.	FM wave only: modulator frequency and strength - bells, e-piano, bass.
+nur im Plugin-Fenster	only in the plugin window
+nur im Test-Host: spielt Stücke ab; die Liste zeigt die zum Preset passenden, mit „alle“ jedes Stück (z.B. eine Fläche mit flotter Musik).	test host only: plays tracks; the list shows those matching the preset, with "all" every track (e.g. a pad with upbeat music).
+oder im Takt	or synced
+perkussiv  <->  langsam, lang ausklingend	percussive  <->  slow, long decay
+rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle "Makro n"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal für die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37.	to the right of the matrix: four controls Macro 1-4, each moves any number of targets. Assign a target: right-click a control > Modulate with > Macro n (or a matrix row with source "Macro n"); amount, factor and offset per target. Curve per macro: Linear, Slow rise, Fast rise, S-curve. Each macro's targets are listed below it. Ideal for DAW automation: one lane moves many controls. Learning presets L35-L37.
+rückwärts	reverse
+schiebt die Grains nach links oder rechts (die Streuung bleibt um die neue Mitte); der Oszillator hat sein eigenes Panorama.	moves the grains left or right (the spread stays around the new center); the oscillator has its own pan.
+sechs Allpässe, wandernde Kerben im Spektrum.	six allpasses, moving notches in the spectrum.
+spielt	plays
+startet bei Note an und Note aus neu	restarts on Note on and Note off
+startet beim Loslassen einer Taste neu	restarts when a key is released
+startet mit jeder Note neu	restarts with every note
+startet, wenn LFO %d seinen Einmal-Durchlauf beendet	starts when LFO %d finishes its one-shot cycle
+startet, wenn das Schwellen-Tor öffnet	starts when the threshold gate opens
+startet, wenn der Sidechain-Pegel	starts when the sidechain level
+startet, wenn die Sidechain-Tonhöhe über	starts when the sidechain pitch above
+steht still  <->  wandert und schwebt	stands still  <->  drifts and floats
+steigt	rises
+stellt den zuletzt mit Rückgängig zurückgenommenen Schritt wieder her (Strg+Y).	restores the step last reverted with Undo (Ctrl+Y).
+steuert	controls
+trocken, schmal  <->  weit mit Echo	dry, narrow  <->  wide with Echo
+verschiebt die Grains um ganze Oktaven (-4 bis +4), zusätzlich zu Pitch.	shifts the grains by whole octaves (-4 to +4), in addition to Pitch.
+verschiebt die PC-Tastatur und die Klaviatur um eine Oktave.	shifts the PC keyboard and the on-screen keyboard by one octave.
+verschobene Kopien: breit und schwebend; viel Rückkopplung = Flanger.	delayed copies: wide and shimmering; lots of feedback = flanger.
+versetzt	offset
+wann der Trigger auslöst: Pegel über der Schwelle und/oder Ton über der Note; beide angehakt = beides nötig.	when the trigger fires: level above the threshold and/or pitch above the note; both checked = both required.
+warme Übersteuerung	warm overdrive
+warme Übersteuerung.	warm overdrive.
+weitere Samples je Tastenbereich (ab Starttaste); Laden, Leeren, Datei auf die Zeile ziehen.	additional samples per key range (from the start key); load, clear, drag a file onto the row.
+welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall ...).	which sound components in the current sound cost how much CPU (grains, HQ, oscillators, filters, matrix, echo, reverb ...).
+welcher LFO mit seinem Einmal-Ende das Ereignis "Ende Partner-LFO (Einmal)" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf "Einmal" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt.	which LFO triggers the event "End of partner LFO (one-shot)" with its one-shot end - for start and stop. Default: 1 and 2 or 3 and 4 mutually; any chains possible (e.g. 1 -> 2 -> 3 -> 4). The partner must be set to "One-shot". Only active if start or stop uses this event.
+welcher Teil des Samples benutzt wird (auch in der Wellenansicht ziehbar).	which part of the sample is used (can also be dragged in the waveform view).
+wie Echtzeit	like real time
+wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".	as on the microKORG: released keys keep playing in the arp until new keys are struck - the new chord replaces the old one. While keys are held, further ones are added. To stop: Latch off or "All notes off".
+wie jede Note einschwillt, auf den Haltepegel abfällt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note.	how each note fades in, falls to the sustain level, is held and fades out after release. The graphic shows the curve, the red dot the note currently playing.
+wie schnell die Leseposition durch die Auswahl wandert (0 = steht, 1 = Originaltempo).	how fast the read position moves through the selection (0 = still, 1 = original tempo).
+wie steil das Filter wirkt (sanft bis scharf).	how steep the filter slope is (gentle to sharp).
+wie viele Grains pro Sekunde entstehen.	how many grains are created per second.
+wie weit Pitchbend die Tonhöhe biegt (Halbtöne).	how far pitch bend bends the pitch (semitones).
+wie weit die Grains im Stereobild verteilt werden.	how widely the grains are spread across the stereo field.
+wird 1, sobald eine beliebige Quelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.	becomes 1 as soon as any source exceeds the threshold (switch/trigger); Silence = event after that much quiet.
+wirksam	effective
+wo in der Auswahl die Grains gelesen werden.	where in the selection the grains are read.
+würfelt eine Abwandlung des Klangs; die Stärke bestimmt wie weit, gesperrte Bereiche bleiben unverändert. „Rückgängig“ holt den vorigen Stand.	rolls a variation of the sound; Strength sets how far, locked areas stay unchanged. "Undo" restores the previous state.
+x1	x1
+x1/16	x1/16
+x1/2	x1/2
+x1/4	x1/4
+x1/8	x1/8
+x16	x16
+x2	x2
+x2,65 Ton	x2.65 pitch
+x4	x4
+x8	x8
+yyyy-mm-dd hh-nn-ss	yyyy-mm-dd hh-nn-ss
+zeigt live, welche Frequenzen wie laut klingen.	shows live which frequencies sound how loud.
+zufällige Streuung der Leseposition - macht den Klang lebendiger.	random scatter of the read position - makes the sound more lively.
+zum gemerkten Klang B.	to the stored Sound B.
+zwei frei setzbare Bänder (Frequenz und Pegel), auch per Matrix steuerbar.	two freely placeable bands (frequency and level), also controllable via the matrix.
+zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).	second filter with the same controls; in series (one after the other) or parallel (mixed).
+zwischen zwei Fassungen hin- und herschalten und vergleichen.	switch back and forth between two versions and compare.
+öffnet, wenn "%s" über %s steigt (schließt knapp darunter wieder)	opens when "%s" rises above %s (closes again just below)
+über	above
+überschreitet	exceeds
+★ Favoriten	★ Favorites

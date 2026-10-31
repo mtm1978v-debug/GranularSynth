@@ -19,6 +19,7 @@ unit Granular.Editor;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, Winapi.Messages, Winapi.ShellAPI, System.Classes, System.SysUtils, System.StrUtils, System.Math, System.IOUtils,
   Vcl.Controls, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Dialogs, Vcl.Graphics, Vcl.Forms, Vcl.Menus,
   Granular.Params, Granular.Sample, Granular.Engine, Granular.WaveView, Granular.Keyboard,
@@ -201,6 +202,9 @@ type
     FOnSidechainSwitch: TSidechainSwitchEvent;
     FOnParamEdit: TParamEditEvent;
     FOnHostMenu: THostMenuEvent;
+    FOnLanguageChange: TNotifyEvent;   // Sprache gewechselt: die Huelle baut die Oberflaeche neu auf
+    FLangCombo: TComboBox;
+    FLangCodes: TStringList;
     FHostEditParam: Integer;      // Regler, dessen Bewegung der DAW gerade gemeldet wird (-1 = keiner)
     FHostEditTick: Cardinal;
     FHostItem: TMenuItem;
@@ -294,6 +298,7 @@ type
     procedure FreeGateClick(Sender: TObject);
     procedure InfoClick(Sender: TObject);
     procedure HelpClick(Sender: TObject);
+    procedure LangComboChange(Sender: TObject);
     procedure ComboCloseUp(Sender: TObject);
     procedure WMEditorDefocus(var Msg: TMessage); message WM_EDITOR_DEFOCUS;
     procedure SortDestCombo(var B: TParamBinding);
@@ -360,6 +365,9 @@ type
     { gesetzt vom Plugin (VST2/VST3): Reglerbewegungen an die DAW melden }
     property OnParamEdit: TParamEditEvent read FOnParamEdit write FOnParamEdit;
     property OnHostMenu: THostMenuEvent read FOnHostMenu write FOnHostMenu;
+    property OnLanguageChange: TNotifyEvent read FOnLanguageChange write FOnLanguageChange;
+    destructor Destroy; override;
+    function PageIndex: Integer;
     { 'VST2', 'VST3', 'VST2 FX', 'VST3 FX': steht im Banner hinter der Version }
     property FormatName: string write SetFormatName;
     { eigenes Rechtsklick-Menue fuer einen Regler zeigen (aus dem DAW-Menue heraus) }
@@ -455,6 +463,8 @@ begin
   Parent := AParent;
   Align := alClient;
   BuildControls;
+  // Sprache: Beschriftungen, Hinweise, Menues nach dem Aufbau uebersetzen (Listen uebersetzt AddParam selbst)
+  TranslateComponents(Self);
   // nach jeder Auswahl in einer Liste den Fokus zurueck an den Editor geben: sonst blaettern
   // die PC-Tasten (Klaviatur) in der gerade geschlossenen Liste weiter
   for I := 0 to ComponentCount - 1 do
@@ -606,7 +616,7 @@ begin
       B.Combo.Items.BeginUpdate;     // ohne Neuzeichnen je Eintrag (Matrix-Ziele: ~300 Eintraege)
       try
         for S := 0 to Info.Steps - 1 do
-          B.Combo.Items.Add(StepName(Index, S));
+          B.Combo.Items.Add(Tr(StepName(Index, S)));
       finally
         B.Combo.Items.EndUpdate;
       end;
@@ -748,10 +758,10 @@ begin
   FTopBar.ParentBackground := False;
   FTopBar.Color := BG_DARK;
 
-  FLoadButton := MakeButton('Audio laden...', 8, 100, LoadClick);
-  FPanicButton := MakeButton('Alle Noten aus', 114, 100, PanicClick);
-  FOctDown := MakeButton('Okt -', 232, 50, OctaveClick);
-  FOctUp := MakeButton('Okt +', 286, 50, OctaveClick);
+  FLoadButton := MakeButton(Tr('Audio laden...'), 8, 100, LoadClick);
+  FPanicButton := MakeButton(Tr('Alle Noten aus'), 114, 100, PanicClick);
+  FOctDown := MakeButton(Tr('Okt -'), 232, 50, OctaveClick);
+  FOctUp := MakeButton(Tr('Okt +'), 286, 50, OctaveClick);
 
   FPresetCombo := TComboBox.Create(Self);
   FPresetCombo.Parent := FTopBar;
@@ -765,18 +775,18 @@ begin
   FPresetCat.DropDownCount := 20;
   FPresetCat.TabStop := False;
   for var CatName in PRESET_CATS do
-    FPresetCat.Items.Add(CatName);
+    FPresetCat.Items.Add(Tr(CatName));
   FPresetCat.ItemIndex := 0;
-  FPresetCat.Hint := 'Kategorie der Presetliste (ergibt sich aus dem Namen); ★ Favoriten = mit dem Stern markierte';
+  FPresetCat.Hint := Tr('Kategorie der Presetliste (ergibt sich aus dem Namen); ★ Favoriten = mit dem Stern markierte');
   FPresetCat.ShowHint := True;
   FPresetCat.OnChange := PresetCatChange;
   FPresetFilter := TEdit.Create(Self);
   FPresetFilter.Parent := FTopBar;
   FPresetFilter.SetBounds(446, 8, 58, 21);
-  FPresetFilter.TextHint := 'Filter';
+  FPresetFilter.TextHint := Tr('Filter');
   FPresetFilter.Color := $00A09C98;       // Metallgrau wie die Aufklapplisten
-  FPresetFilter.Hint := 'Presetliste filtern: nur Namen, die diesen Text enthalten (z.B. FM, Arp, Natur, Stimme). ' +
-    'Esc = Filter löschen, Enter = Liste aufklappen';
+  FPresetFilter.Hint := Tr('Presetliste filtern: nur Namen, die diesen Text enthalten (z.B. FM, Arp, Natur, Stimme). ' +
+    'Esc = Filter löschen, Enter = Liste aufklappen');
   FPresetFilter.ShowHint := True;
   FPresetFilter.OnChange := PresetFilterChange;
   FPresetFilter.OnKeyDown := PresetFilterKeyDown;
@@ -787,27 +797,27 @@ begin
   FPresetCombo.OnChange := PresetComboChange;
   FPresetNext := MakeButton('>', 708, 24, PresetStepClick);
   FPresetFav := MakeButton('☆', 736, 26, PresetFavClick);
-  FPresetFav.Hint := 'Aktuelles Preset als Favorit markieren / Markierung entfernen';
+  FPresetFav.Hint := Tr('Aktuelles Preset als Favorit markieren / Markierung entfernen');
   FPresetFav.ShowHint := True;
-  FPresetSave := MakeButton('Speichern...', 766, 76, PresetSaveClick);
+  FPresetSave := MakeButton(Tr('Speichern...'), 766, 76, PresetSaveClick);
 
   FStatus := TLabel.Create(Self);
   FStatus.Parent := FTopBar;
   FClipLed := TClipLed.Create(Self, FEngine);
   FClipLed.Parent := FTopBar;
   FClipLed.SetBounds(850, 9, 36, 19);
-  FClipLed.Hint := 'Leuchtet, wenn der weiche Clipper eingreift (Ausgang zu laut) - Lautstärke etwas zurücknehmen';
+  FClipLed.Hint := Tr('Leuchtet, wenn der weiche Clipper eingreift (Ausgang zu laut) - Lautstärke etwas zurücknehmen');
   FClipLed.ShowHint := True;
   FMidiLed := TClipLed.Create(Self, FEngine);
   FMidiLed.Midi := True;
   FMidiLed.Parent := FTopBar;
   FMidiLed.SetBounds(890, 9, 36, 19);
-  FMidiLed.Hint := 'Leuchtet bei jedem MIDI-Ereignis (Noten, Pitchbend, Modrad, Aftertouch, Pedal)';
+  FMidiLed.Hint := Tr('Leuchtet bei jedem MIDI-Ereignis (Noten, Pitchbend, Modrad, Aftertouch, Pedal)');
   FMidiLed.ShowHint := True;
-  MakeButton('Info', 930, 44, InfoClick).Hint := 'Klartext-Übersicht: was passiert bei einem Tastendruck (live)';
-  MakeButton('Hilfe', 978, 48, HelpClick).Hint := 'Bedienung in einfachen Worten (Kapitel)';
+  MakeButton(Tr('Info'), 930, 44, InfoClick).Hint := Tr('Klartext-Übersicht: was passiert bei einem Tastendruck (live)');
+  MakeButton(Tr('Hilfe'), 978, 48, HelpClick).Hint := Tr('Bedienung in einfachen Worten (Kapitel)');
   FStatus.SetBounds(1034, 11, 800, 16);
-  FStatus.Hint := 'PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave';
+  FStatus.Hint := Tr('PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave');
   FStatus.ShowHint := True;
   FStatus.Font.Color := COL_NAME;
   FStatus.Transparent := True;
@@ -830,16 +840,16 @@ begin
   FKeysRow.BevelOuter := bvNone;
   FKeysRow.ParentBackground := False;
   FKeysRow.Color := Color;
-  FBendWheel := TWheelView.Create(Self, 'Bend', True);
+  FBendWheel := TWheelView.Create(Self, Tr('Bend'), True);
   FBendWheel.Parent := FKeysRow;
   FBendWheel.SetBounds(4, 4, 28, 62);
   FBendWheel.OnChange := WheelChange;
-  FBendWheel.Hint := 'Pitchbend: ziehen, beim Loslassen federt es zurück';
-  FModWheel := TWheelView.Create(Self, 'Mod', False);
+  FBendWheel.Hint := Tr('Pitchbend: ziehen, beim Loslassen federt es zurück');
+  FModWheel := TWheelView.Create(Self, Tr('Mod'), False);
   FModWheel.Parent := FKeysRow;
   FModWheel.SetBounds(36, 4, 28, 62);
   FModWheel.OnChange := WheelChange;
-  FModWheel.Hint := 'Modrad: bleibt stehen';
+  FModWheel.Hint := Tr('Modrad: bleibt stehen');
   FKeys := TKeyboardView.Create(Self);
   FKeys.Parent := FKeysRow;
   FKeys.Align := alClient;
@@ -859,46 +869,46 @@ begin
   FPages.OnChange := RelayoutAll;
   FTabQuick := TTabSheet.Create(Self);
   FTabQuick.PageControl := FPages;
-  FTabQuick.Caption := '   Schnell   ';
+  FTabQuick.Caption := Tr('   Schnell   ');
   FTabSynth := TTabSheet.Create(Self);
   FTabSynth.PageControl := FPages;
-  FTabSynth.Caption := '   Grain   ';
+  FTabSynth.Caption := Tr('   Grain   ');
   FTabSamples := TTabSheet.Create(Self);
   FTabSamples.PageControl := FPages;
-  FTabSamples.Caption := '   Samples   ';
+  FTabSamples.Caption := Tr('   Samples   ');
   FTabMod := TTabSheet.Create(Self);
   FTabMod.PageControl := FPages;
-  FTabMod.Caption := '   Modulation   ';
+  FTabMod.Caption := Tr('   Modulation   ');
   FTabMod2 := TTabSheet.Create(Self);
   FTabMod2.PageControl := FPages;
-  FTabMod2.Caption := '   LFO 1-8 / Trigger   ';
+  FTabMod2.Caption := Tr('   LFO 1-8 / Trigger   ');
   FTabTiming := TTabSheet.Create(Self);
   FTabTiming.PageControl := FPages;
-  FTabTiming.Caption := '   Timing / Events   ';
+  FTabTiming.Caption := Tr('   Timing / Events   ');
   FTabFx := TTabSheet.Create(Self);
   FTabFx.PageControl := FPages;
-  FTabFx.Caption := '   Filter / Echo / Hall   ';
+  FTabFx.Caption := Tr('   Filter / Echo / Hall   ');
   FTabEq := TTabSheet.Create(Self);
   FTabEq.PageControl := FPages;
-  FTabEq.Caption := '   Filter 2 / EQ   ';
+  FTabEq.Caption := Tr('   Filter 2 / EQ   ');
   FTabFx2 := TTabSheet.Create(Self);
   FTabFx2.PageControl := FPages;
-  FTabFx2.Caption := '   Effekte   ';
+  FTabFx2.Caption := Tr('   Effekte   ');
   FTabExtra := TTabSheet.Create(Self);
   FTabExtra.PageControl := FPages;
-  FTabExtra.Caption := '   Extras   ';
+  FTabExtra.Caption := Tr('   Extras   ');
   for var OI := 0 to OSC_COUNT - 1 do
   begin
     FTabOsc[OI] := TTabSheet.Create(Self);
     FTabOsc[OI].PageControl := FPages;
-    FTabOsc[OI].Caption := Format('  Osz %d  ', [OI + 1]);
+    FTabOsc[OI].Caption := Format(Tr('  Osz %d  '), [OI + 1]);
   end;
   FTabMix := TTabSheet.Create(Self);
   FTabMix.PageControl := FPages;
-  FTabMix.Caption := '  Mischpult  ';
+  FTabMix.Caption := Tr('  Mischpult  ');
   FTabPerf := TTabSheet.Create(Self);
   FTabPerf.PageControl := FPages;
-  FTabPerf.Caption := '  Leistung  ';
+  FTabPerf.Caption := Tr('  Leistung  ');
 
   FEditBinding := -1;
   FEditParam := -1;
@@ -984,22 +994,22 @@ begin
   FWave.OnPreStartChange := WavePreStartChange;
   FWave.OnPositionChange := WavePositionChange;
 
-  FCols[2] := MakePanel(FSynthArea, alClient, 'Hüllkurve');
-  FCols[0] := MakePanel(FSynthArea, alLeft, 'Sample / Grains');
-  FCols[1] := MakePanel(FSynthArea, alLeft, 'Klang');
+  FCols[2] := MakePanel(FSynthArea, alClient, Tr('Hüllkurve'));
+  FCols[0] := MakePanel(FSynthArea, alLeft, Tr('Sample / Grains'));
+  FCols[1] := MakePanel(FSynthArea, alLeft, Tr('Klang'));
   FCols[1].Left := FCols[0].Left + FCols[0].Width + 1;  // Reihenfolge links -> rechts
 
   for I := 0 to High(COL0) do
     AddParam(FCols[0], Ord(COL0[I]), 8, 24 + I * ROW_H, 92, 66);
   // Grains abschaltbar: dann spielen nur die Oszillatoren (klassischer Synthesizer)
-  AddParam(FCols[0], Ord(gpGrainOn), 8, 24 + 7 * ROW_H, 92, 0, 0, 'Grains an');
-  AddParam(FCols[0], Ord(gpGrainLevel), 232, 24 + 7 * ROW_H, 40, 66, 0, 'Pegel');   // nur die Grains
+  AddParam(FCols[0], Ord(gpGrainOn), 8, 24 + 7 * ROW_H, 92, 0, 0, Tr('Grains an'));
+  AddParam(FCols[0], Ord(gpGrainLevel), 232, 24 + 7 * ROW_H, 40, 66, 0, Tr('Pegel'));   // nur die Grains
   for I := 0 to High(COL1) do
     AddParam(FCols[1], Ord(COL1[I]), 8, 24 + I * ROW_H, 92, 66, 120);
   // Auto-Stimmung neben Key Tracking (gleiche Zeile)
   // Oktave der Grains (ganze Oktaven, zusaetzlich zu Pitch) rechts neben dem Fenster
-  AddParam(FCols[1], Ord(gpGrainOct), 270, 24 + 7 * ROW_H, 52, 0, 84, 'Oktave');
-  AddParam(FCols[1], Ord(gpAutoTune), 270, 24 + 8 * ROW_H, 0, 0, 0, 'Auto-Stimmung');
+  AddParam(FCols[1], Ord(gpGrainOct), 270, 24 + 7 * ROW_H, 52, 0, 84, Tr('Oktave'));
+  AddParam(FCols[1], Ord(gpAutoTune), 270, 24 + 8 * ROW_H, 0, 0, 0, Tr('Auto-Stimmung'));
 
   FEnvView := TEnvelopeView.Create(Self, FEngine);
   FEnvView.Parent := FCols[2];
@@ -1008,9 +1018,9 @@ begin
   for I := 0 to High(COL2) do
     AddParam(FCols[2], Ord(COL2[I]), 8, 114 + I * ROW_H, 70, 66);
   // Anlauf vor der Auswahl und Art der Schleife in der Auswahl
-  AddParam(FCols[2], Ord(gpPreOn), 8, 114 + 4 * ROW_H + 2, 70, 0, 0, 'Anlauf');
-  AddParam(FCols[2], Ord(gpLoopMode), 150, 114 + 4 * ROW_H + 2, 0, 0, 0, 'Schleife hin und her');
-  AddParam(FCols[2], Ord(gpPreStart), 8, 114 + 5 * ROW_H + 2, 70, 66, 0, 'Anlauf-Start');
+  AddParam(FCols[2], Ord(gpPreOn), 8, 114 + 4 * ROW_H + 2, 70, 0, 0, Tr('Anlauf'));
+  AddParam(FCols[2], Ord(gpLoopMode), 150, 114 + 4 * ROW_H + 2, 0, 0, 0, Tr('Schleife hin und her'));
+  AddParam(FCols[2], Ord(gpPreStart), 8, 114 + 5 * ROW_H + 2, 70, 66, 0, Tr('Anlauf-Start'));
 end;
 
 procedure TGranularEditor.SynthAreaResize(Sender: TObject);
@@ -1047,24 +1057,24 @@ begin
 
   // Sidechain-Trigger: wann die LFO-Neustart-Option "Sidechain-Trigger" ausloest
   // (Verstaerkung/Attack/Release des Huellkurvenfolgers bleiben im Preset, ohne eigene Regler)
-  P := MakePanel(Left, alNone, 'Trigger-Schwellen (Sidechain / Ausgang)');
+  P := MakePanel(Left, alNone, Tr('Trigger-Schwellen (Sidechain / Ausgang)'));
   P.SetBounds(0, 288, Left.Width, 204);
   FTrigPanel := P;
   FLevelView := TLevelView.Create(Self, FEngine);
   FLevelView.Parent := P;
   FLevelView.SetBounds(8, 24, 140, 20);
   AddParam(P, Ord(gpScPitchMode), 156, 20, 72, 0, 90);
-  AddParam(P, Ord(gpScUseLevel), 8, 50, 0, 0, 0, 'Pegel');
-  AddParam(P, Ord(gpScTrigLevel), 90, 48, 60, 60, 0, 'Schwelle');
-  AddParam(P, Ord(gpScUsePitch), 8, 50 + 26, 0, 0, 0, 'Ton');
-  AddParam(P, Ord(gpScTrigNote), 90, 48 + 26, 60, 60, 0, 'über');
+  AddParam(P, Ord(gpScUseLevel), 8, 50, 0, 0, 0, Tr('Pegel'));
+  AddParam(P, Ord(gpScTrigLevel), 90, 48, 60, 60, 0, Tr('Schwelle'));
+  AddParam(P, Ord(gpScUsePitch), 8, 50 + 26, 0, 0, 0, Tr('Ton'));
+  AddParam(P, Ord(gpScTrigNote), 90, 48 + 26, 60, 60, 0, Tr('über'));
   // eigener Ausgangspegel als Trigger (LFO-Neustart "Ausgang > Schwelle")
   // Pegelanzeige des eigenen Ausgangs mit Schwellen-Marke, rechts daneben die Schwelle
   FOutLevelView := TLevelView.Create(Self, FEngine);
   FOutLevelView.Output := True;
   FOutLevelView.Parent := P;
   FOutLevelView.SetBounds(8, 48 + 2 * 26 + 2, 112, 20);
-  FOutLevelView.Hint := 'Eigener Ausgangspegel; weiße Marke = Schwelle für den Trigger "Ausgang > Schwelle"';
+  FOutLevelView.Hint := Tr('Eigener Ausgangspegel; weiße Marke = Schwelle für den Trigger "Ausgang > Schwelle"');
   FOutLevelView.ShowHint := True;
   AddParam(P, Ord(gpOutTrigLevel), 128, 48 + 2 * 26, 0, 60, 0, '');
   L := TLabel.Create(Self);
@@ -1075,8 +1085,8 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Sidechain-Trigger: alle Haken müssen erfüllt sein. Ausgang > Schwelle: eigener Pegel, ' +
-    'kein Selbst-Neustart, solange der LFO läuft.';
+    Tr('Sidechain-Trigger: alle Haken müssen erfüllt sein. Ausgang > Schwelle: eigener Pegel, ' +
+    'kein Selbst-Neustart, solange der LFO läuft.');
   AddStretch(L, 8);
   FMicCheck := TCheckBox.Create(Self);
   FMicCheck.Parent := P;
@@ -1087,7 +1097,7 @@ begin
   FMicLabel := TLabel.Create(Self);
   FMicLabel.Parent := P;
   FMicLabel.SetBounds(122, 48 + 5 * 26 + 5, 250, 16);
-  FMicLabel.Caption := 'Mikrofon als Sidechain';
+  FMicLabel.Caption := Tr('Mikrofon als Sidechain');
   FMicLabel.Font.Color := COL_NAME;
   FMicLabel.Transparent := True;
   FMicLabel.Visible := False;
@@ -1095,7 +1105,7 @@ begin
   // Tempo kommt vom Host (VST-Zeitinfo) - kein eigener Regler mehr
 
   // Matrix
-  Right := MakePanel(FTabMod, alClient, 'Modulationsmatrix');
+  Right := MakePanel(FTabMod, alClient, Tr('Modulationsmatrix'));
   for S := 0 to 4 do
   begin
     L := TLabel.Create(Self);
@@ -1103,11 +1113,11 @@ begin
     L.Font.Color := COL_NAME;
     L.Transparent := True;
     case S of
-      0: begin L.SetBounds(26 + MX, 26, 100, 16); L.Caption := 'Quelle'; end;
-      1: begin L.SetBounds(130 + MX, 26, 120, 16); L.Caption := 'Ziel'; end;
-      2: begin L.SetBounds(262 + MX, 26, 150, 16); L.Caption := 'Menge'; end;
-      3: begin L.SetBounds(418 + MX, 26, 70, 16); L.Caption := 'Faktor'; end;
-      4: begin L.SetBounds(496 + MX, 26, 120, 16); L.Caption := 'Offset'; end;
+      0: begin L.SetBounds(26 + MX, 26, 100, 16); L.Caption := Tr('Quelle'); end;
+      1: begin L.SetBounds(130 + MX, 26, 120, 16); L.Caption := Tr('Ziel'); end;
+      2: begin L.SetBounds(262 + MX, 26, 150, 16); L.Caption := Tr('Menge'); end;
+      3: begin L.SetBounds(418 + MX, 26, 70, 16); L.Caption := Tr('Faktor'); end;
+      4: begin L.SetBounds(496 + MX, 26, 120, 16); L.Caption := Tr('Offset'); end;
     end;
   end;
   // Seiten: je MAT_ROWS Zeilen, Knopf zeigt, wie viele Zeilen der Seite benutzt sind
@@ -1120,14 +1130,14 @@ begin
     FMatPageBtn[S].Tag := S;
     FMatPageBtn[S].TabStop := False;
     FMatPageBtn[S].OnClick := MatPageClick;
-    FMatPageBtn[S].Hint := 'Matrix-Zeilen dieser Seite zeigen (in Klammern: benutzte Zeilen)';
+    FMatPageBtn[S].Hint := Tr('Matrix-Zeilen dieser Seite zeigen (in Klammern: benutzte Zeilen)');
     FMatPageBtn[S].ShowHint := True;
   end;
   // freie Makros: ein Regler bewegt beliebig viele Ziele (Matrix-Zeilen mit Quelle 'Makro n')
   L := TLabel.Create(Self);
   L.Parent := Right;
   L.SetBounds(728, 58, 520, 16);
-  L.Caption := 'Freie Makros';
+  L.Caption := Tr('Freie Makros');
   L.Font.Color := COL_NAME;
   L.Font.Style := [fsBold];
   L.Transparent := True;
@@ -1150,9 +1160,9 @@ begin
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := 'Ziele zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro 1-4, ' +
+  L.Caption := Tr('Ziele zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro 1-4, ' +
     'oder eine Matrix-Zeile mit Quelle "Makro n". Menge, Faktor und Offset je Ziel; ' +
-    'die Kurve gilt für alle Ziele des Makros. Die Makros sind in der DAW automatisierbar.';
+    'die Kurve gilt für alle Ziele des Makros. Die Makros sind in der DAW automatisierbar.');
 
   for S := 0 to MOD_SLOTS - 1 do
   begin
@@ -1171,7 +1181,7 @@ begin
     NumL.Caption := IntToStr(S + 1);
     NumL.Font.Color := COL_NAME;
     NumL.Transparent := True;
-    FSlotLeds[S].Hint := Format('Zeile %d', [S + 1]);
+    FSlotLeds[S].Hint := Format(Tr('Zeile %d'), [S + 1]);
     FSlotLeds[S].ShowHint := True;
     FirstB := Length(FBindings);
     AddParam(Right, SlotSourceIndex(S), 26 + MX, Y, 0, 0, 100);
@@ -1196,7 +1206,7 @@ begin
       Caption := #$00D7;
       Tag := S;
       TabStop := False;
-      Hint := 'Diese Matrix-Zeile leeren (Quelle aus, Ziel aus, Menge 0) - Strg+Z nimmt es zurück';
+      Hint := Tr('Diese Matrix-Zeile leeren (Quelle aus, Ziel aus, Menge 0) - Strg+Z nimmt es zurück');
       ShowHint := True;
       OnClick := SlotClearClick;
       FSlotCtrls[S] := FSlotCtrls[S] + [TControl(Self.Components[Self.ComponentCount - 1])];
@@ -1208,9 +1218,9 @@ begin
     FSlotGlobal[S].Font.Size := 6;
     FSlotGlobal[S].Font.Color := $0050A0E0;
     FSlotGlobal[S].Transparent := True;
-    FSlotGlobal[S].Caption := 'global: letzte Note';
-    FSlotGlobal[S].Hint := 'Dieses Ziel gibt es nur einmal für den ganzen Klang. Eine Noten-Quelle ' +
-      '(Velocity, Noten-LFO ...) wirkt hier global und folgt der zuletzt angeschlagenen Note.';
+    FSlotGlobal[S].Caption := Tr('global: letzte Note');
+    FSlotGlobal[S].Hint := Tr('Dieses Ziel gibt es nur einmal für den ganzen Klang. Eine Noten-Quelle ' +
+      '(Velocity, Noten-LFO ...) wirkt hier global und folgt der zuletzt angeschlagenen Note.');
     FSlotGlobal[S].ShowHint := True;
     FSlotGlobal[S].Visible := False;
   end;
@@ -1220,14 +1230,14 @@ begin
   L := TLabel.Create(Self);
   L.Parent := Right;
   L.SetBounds(28 + MX, Y + 5, 100, 16);
-  L.Caption := 'Glide';
+  L.Caption := Tr('Glide');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   K := AddParam(Right, Ord(gpGlideMode), 130 + MX, Y, 0, 0, 128);
-  FBindings[K].Combo.Hint := 'Glide (Portamento): Aus / Immer / Nur legato';
+  FBindings[K].Combo.Hint := Tr('Glide (Portamento): Aus / Immer / Nur legato');
   FBindings[K].Combo.ShowHint := True;
   K := AddParam(Right, Ord(gpGlideTime), 262 + MX, Y, 0, 46, 0, '', 108);
-  FBindings[K].Track.Hint := 'Glide-Zeit: Dauer des Gleitens von Ton zu Ton';
+  FBindings[K].Track.Hint := Tr('Glide-Zeit: Dauer des Gleitens von Ton zu Ton');
   FBindings[K].Track.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := Right;
@@ -1237,10 +1247,10 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Wirkwert = Grundwert + (Quelle x Faktor + Offset) x Menge, im Reglerbereich (Zeiten ' +
+    Tr('Wirkwert = Grundwert + (Quelle x Faktor + Offset) x Menge, im Reglerbereich (Zeiten ' +
     'logarithmisch). LFOs bipolar, übrige Quellen 0..1. Roter Strich unter einem Regler = ' +
     'aktueller Wirkwert. Tonhöhe folgen: SC-Tonhöhe -> Pitch, Faktor x2,65 Ton, Offset ' +
-    '-125 %, Menge 100 % (C4 = Originalhöhe).';
+    '-125 %, Menge 100 % (C4 = Originalhöhe).');
   AddStretch(L, 10);
 end;
 
@@ -1266,19 +1276,19 @@ begin
   Area.Color := BG_MAIN;
 
   // Reihenfolge links -> rechts: Filter | Echo | Hall (Signalweg)
-  PF := MakePanel(Area, alLeft, 'Filter');
+  PF := MakePanel(Area, alLeft, Tr('Filter'));
   PF.Width := 360;
-  PE := MakePanel(Area, alLeft, 'Echo (Ping-Pong)');
+  PE := MakePanel(Area, alLeft, Tr('Echo (Ping-Pong)'));
   PE.Width := 310;
   PE.Left := PF.Left + PF.Width + 1;
-  PR := MakePanel(Area, alClient, 'Hall');
+  PR := MakePanel(Area, alClient, Tr('Hall'));
 
   for I := 0 to High(FLT) do
     AddParam(PF, Ord(FLT[I]), 8, 24 + I * ROW_H, 100, 70, 130);
   L := TLabel.Create(Self);
   L.Parent := PF;
   L.SetBounds(8, 24 + 6 * ROW_H + 6, 300, 16);
-  L.Caption := 'Filter-Hüllkurve (startet mit jeder Note)';
+  L.Caption := Tr('Filter-Hüllkurve (startet mit jeder Note)');
   L.Font.Color := COL_VAL;
   L.Transparent := True;
   FFltEnvView := TEnvelopeView.Create(Self, FEngine);
@@ -1293,9 +1303,9 @@ begin
     AddParam(PE, Ord(ECHO[I]), 8, 24 + I * ROW_H, 92, 62);
   for I := 0 to High(REV) do
     AddParam(PR, Ord(REV[I]), 8, 24 + I * ROW_H, 100, 62, 150, REV_CAP[I]);
-  AddParam(PR, Ord(gpRevRoom), 8, 24 + 7 * ROW_H, 100, 0, 140, 'Raum');
-  AddParam(PR, Ord(gpRevLowCut), 8, 24 + 8 * ROW_H, 100, 62, 150, 'Bass-Schnitt');
-  AddParam(PR, Ord(gpRevHighCut), 8, 24 + 9 * ROW_H, 100, 62, 150, 'Höhen-Schnitt');
+  AddParam(PR, Ord(gpRevRoom), 8, 24 + 7 * ROW_H, 100, 0, 140, Tr('Raum'));
+  AddParam(PR, Ord(gpRevLowCut), 8, 24 + 8 * ROW_H, 100, 62, 150, Tr('Bass-Schnitt'));
+  AddParam(PR, Ord(gpRevHighCut), 8, 24 + 9 * ROW_H, 100, 62, 150, Tr('Höhen-Schnitt'));
   L := TLabel.Create(Self);
   L.Parent := PE;
   L.SetBounds(8, 24 + 8 * ROW_H + 8, 290, 150);
@@ -1304,10 +1314,10 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Filter-Hüllkurve verschiebt den ' +
+    Tr('Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Filter-Hüllkurve verschiebt den ' +
     'Cutoff um bis zu +-6 Oktaven. Echo-Zeit mit Sync = Notenwert zum Tempo. ' +
     'Echo Pitch transponiert jede Wiederholung um den eingestellten Wert (+5 = jede ' +
-    'Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.';
+    'Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.');
   L := TLabel.Create(Self);
   L.Parent := PR;
   L.SetBounds(8, 24 + 11 * ROW_H + 6, 290, 110);
@@ -1316,8 +1326,8 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Größe = Raumgröße, Zeit = Nachhallzeit, Dämpfung = wie schnell die Höhen verklingen, Raum = Wandmaterial. ' +
-    'Bass-/Höhen-Schnitt filtern nur den Hall (der trockene Klang bleibt): Bass-Schnitt hoch = kein Dröhnen.';
+    Tr('Größe = Raumgröße, Zeit = Nachhallzeit, Dämpfung = wie schnell die Höhen verklingen, Raum = Wandmaterial. ' +
+    'Bass-/Höhen-Schnitt filtern nur den Hall (der trockene Klang bleibt): Bass-Schnitt hoch = kein Dröhnen.');
   AddStretch(L, 10);
   AddStretch(L, 10);
 end;
@@ -1432,27 +1442,27 @@ begin
   Area.Color := BG_MAIN;
 
   // Spalten: Arpeggiator | Harmonie + Klangfarbe | Morph
-  PA := MakePanel(Area, alLeft, 'Arpeggiator');
+  PA := MakePanel(Area, alLeft, Tr('Arpeggiator'));
   PA.Width := 340;
-  PH := MakePanel(Area, alLeft, 'Harmonie');
+  PH := MakePanel(Area, alLeft, Tr('Harmonie'));
   PH.Width := 320;
   PH.Left := PA.Left + PA.Width + 1;
-  PM := MakePanel(Area, alClient, 'Morph (A -> B)');
+  PM := MakePanel(Area, alClient, Tr('Morph (A -> B)'));
   // oben verankert direkt unter der Harmonie-Erklaerung (nicht unten: sonst wandert der Block mit der Fensterhoehe)
-  PK := MakePanel(PH, alNone, 'Klangfarbe und Halten');
+  PK := MakePanel(PH, alNone, Tr('Klangfarbe und Halten'));
   PK.SetBounds(0, 24 + 2 * ROW_H + 6 + 90 + 8, PH.Width, 214);
   PK.Anchors := [akLeft, akTop, akRight];
 
   for I := 0 to High(ARP) do
     AddParam(PA, Ord(ARP[I]), 8, 24 + I * ROW_H, 90, 52, 140, ARP_CAP[I]);
   // Latch (wie microKORG): losgelassene Tasten spielen weiter, bis neue Tasten kommen
-  I := AddParam(PA, Ord(gpArpLatch), 190, 24, 0, 0, 0, 'Latch');
-  FBindings[I].Check.Hint := 'Latch: losgelassene Tasten spielen weiter, bis neue Tasten angeschlagen werden';
+  I := AddParam(PA, Ord(gpArpLatch), 190, 24, 0, 0, 0, Tr('Latch'));
+  FBindings[I].Check.Hint := Tr('Latch: losgelassene Tasten spielen weiter, bis neue Tasten angeschlagen werden');
   FBindings[I].Check.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := PA;
   L.SetBounds(8, 24 + 7 * ROW_H + 6, 300, 16);
-  L.Caption := 'Schrittmuster (Klick = Schritt an/aus)';
+  L.Caption := Tr('Schrittmuster (Klick = Schritt an/aus)');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   FArpPattern := TArpPatternView.Create(Self, FEngine);
@@ -1460,54 +1470,71 @@ begin
   FArpPattern.SetBounds(8, 24 + 7 * ROW_H + 24, 300, 30);
   AddStretch(FArpPattern, 8);
   Hint(PA, 24 + 7 * ROW_H + 60, 120,
-    'Gehaltene Tasten werden nacheinander gespielt, im Tempo des Hosts; auch eine einzelne ' +
+    Tr('Gehaltene Tasten werden nacheinander gespielt, im Tempo des Hosts; auch eine einzelne ' +
     'Taste läuft über die Oktaven. Schritte im Muster ausschalten = Pause an dieser Stelle ' +
     '(wie beim microKorg). Akkord = alle Tasten gleichzeitig im Rhythmus des Musters. ' +
-    'Tonleiter (rechts) gilt auch für den Arp.');
+    'Tonleiter (rechts) gilt auch für den Arp.'));
 
   AddParam(PH, Ord(gpScale), 8, 24, 90, 0, 180);
   AddParam(PH, Ord(gpScaleRoot), 8, 24 + ROW_H, 90, 0, 80);
-  Hint(PH, 24 + 2 * ROW_H + 6, 90,
-    'Tonleiter: alle Tonhöhen (Tasten, Arp, Pitch-Zufall, LFO auf Pitch) rasten auf die ' +
-    'Töne der Tonleiter ein - Zufall klingt so immer musikalisch.');
+  Hint(PH, 24 + 2 * ROW_H + 6, 56,
+    Tr('Tonleiter: alle Tonhöhen (Tasten, Arp, Pitch-Zufall, LFO auf Pitch) rasten auf die ' +
+    'Töne der Tonleiter ein - Zufall klingt so immer musikalisch.'));
+
+  // Sprache der Oberflaeche: "Deutsch" + jede Datei in Sprachen\ (Beschriftung bewusst zweisprachig)
+  L := TLabel.Create(Self);
+  L.Parent := PH;
+  L.SetBounds(8, 24 + 2 * ROW_H + 6 + 62, 120, 16);
+  L.Caption := 'Sprache / Language';
+  L.Font.Color := COL_NAME;
+  L.Transparent := True;
+  FLangCodes := TStringList.Create;
+  FLangCombo := TComboBox.Create(Self);
+  FLangCombo.Parent := PH;
+  FLangCombo.Style := csDropDownList;
+  FLangCombo.SetBounds(130, 24 + 2 * ROW_H + 6 + 58, 150, 21);
+  FLangCombo.TabStop := False;
+  LangList(FLangCodes, FLangCombo.Items);
+  FLangCombo.ItemIndex := Max(0, FLangCodes.IndexOf(LangCode));
+  FLangCombo.OnChange := LangComboChange;
 
   AddParam(PK, Ord(gpDrive), 8, 24, 90, 52);
   AddParam(PK, Ord(gpFreeze), 8, 24 + ROW_H, 90, 0);
-  AddParam(PK, Ord(gpWidth), 8, 24 + 2 * ROW_H, 90, 52, 0, 'Stereobreite');
-  AddParam(PK, Ord(gpPan), 8, 24 + 3 * ROW_H, 90, 52, 0, 'Panorama');
+  AddParam(PK, Ord(gpWidth), 8, 24 + 2 * ROW_H, 90, 52, 0, Tr('Stereobreite'));
+  AddParam(PK, Ord(gpPan), 8, 24 + 3 * ROW_H, 90, 52, 0, Tr('Panorama'));
   Hint(PK, 24 + 4 * ROW_H + 2, 70,
-    'Sättigung: warme Übersteuerung. Freeze: Position steht, Hall klingt lange. Breite: 0 % mono, ' +
-    '200 % extra breit. Panorama per LFO über die Matrix bewegen = Auto-Pan.');
+    Tr('Sättigung: warme Übersteuerung. Freeze: Position steht, Hall klingt lange. Breite: 0 % mono, ' +
+    '200 % extra breit. Panorama per LFO über die Matrix bewegen = Auto-Pan.'));
 
   AddParam(PM, Ord(gpMorph), 8, 24, 70, 52);
   // eigener Morph-LFO (unabhaengig von beiden Klaengen)
-  AddParam(PM, Ord(gpMorphLfoShape), 8, 24 + ROW_H, 70, 0, 120, 'Morph-LFO');
-  AddParam(PM, Ord(gpMorphLfoSync), 210, 24 + ROW_H, 0, 0, 0, 'Sync');
-  AddParam(PM, Ord(gpMorphLfoRate), 8, 24 + 2 * ROW_H, 70, 52, 0, 'Rate');
-  AddParam(PM, Ord(gpMorphLfoDepth), 8, 24 + 3 * ROW_H, 70, 52, 0, 'Tiefe');
-  B := Btn(PM, 24 + 4 * ROW_H + 6, 'Jetzigen Klang als Ziel B merken', MorphStoreClick);
+  AddParam(PM, Ord(gpMorphLfoShape), 8, 24 + ROW_H, 70, 0, 120, Tr('Morph-LFO'));
+  AddParam(PM, Ord(gpMorphLfoSync), 210, 24 + ROW_H, 0, 0, 0, Tr('Sync'));
+  AddParam(PM, Ord(gpMorphLfoRate), 8, 24 + 2 * ROW_H, 70, 52, 0, Tr('Rate'));
+  AddParam(PM, Ord(gpMorphLfoDepth), 8, 24 + 3 * ROW_H, 70, 52, 0, Tr('Tiefe'));
+  B := Btn(PM, 24 + 4 * ROW_H + 6, Tr('Jetzigen Klang als Ziel B merken'), MorphStoreClick);
   B.Width := 200;
-  B := Btn(PM, 24 + 4 * ROW_H + 6, 'Ziel B löschen', MorphClearClick);
+  B := Btn(PM, 24 + 4 * ROW_H + 6, Tr('Ziel B löschen'), MorphClearClick);
   B.Left := 214;
   B.Width := 100;
   // Bearbeitungstausch: B nach vorn holen, bearbeiten, zuruecktauschen (Klang bleibt gleich)
-  B := Btn(PM, 24 + 4 * ROW_H + 6, 'A <-> B tauschen', MorphSwapClick);
+  B := Btn(PM, 24 + 4 * ROW_H + 6, Tr('A <-> B tauschen'), MorphSwapClick);
   B.Left := 320;
   B.Width := 120;
-  B.Hint := 'A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample). ' +
+  B.Hint := Tr('A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample). ' +
     'Morph wird gespiegelt, der Klang bleibt gleich - die Regler zeigen jetzt den anderen Klang. ' +
-    'Nochmal klicken = zurück.';
+    'Nochmal klicken = zurück.');
   B.ShowHint := True;
-  B := Btn(PM, 24 + 4 * ROW_H + 38, 'Preset als Ziel B laden ...', MorphLoadClick);
+  B := Btn(PM, 24 + 4 * ROW_H + 38, Tr('Preset als Ziel B laden ...'), MorphLoadClick);
   B.Width := 200;
-  B := Btn(PM, 24 + 4 * ROW_H + 38, 'Frei zeichnen ...', MorphFreeClick);
+  B := Btn(PM, 24 + 4 * ROW_H + 38, Tr('Frei zeichnen ...'), MorphFreeClick);
   B.Left := 214;
   B.Width := 100;
   FMorphLabel := TLabel.Create(Self);
   FMorphLabel.Parent := PM;
   FMorphLabel.SetBounds(8, 24 + 4 * ROW_H + 72, 200, 16);
   // Morph-Art: an = A und B zwei vollstaendig getrennte Klaenge, aus = Werte stufenlos ueberblenden
-  AddParam(PM, Ord(gpMorphMode), 210, 24 + 4 * ROW_H + 66, 0, 0, 0, 'Zwei Klänge');
+  AddParam(PM, Ord(gpMorphMode), 210, 24 + 4 * ROW_H + 66, 0, 0, 0, Tr('Zwei Klänge'));
   FMorphLabel.Font.Color := COL_VAL;
   FMorphLabel.Transparent := True;
   // Anzeige des Morph-LFOs (Klick = freie Form bearbeiten)
@@ -1515,7 +1542,7 @@ begin
   FMorphLfoView.Lfo := LFO_COUNT;   // = Morph-LFO
   FMorphLfoView.Parent := PM;
   FMorphLfoView.SetBounds(8, 24 + 4 * ROW_H + 92, 300, 36);
-  FMorphLfoView.Hint := 'Morph-LFO (Klick: freie Form zeichnen)';
+  FMorphLfoView.Hint := Tr('Morph-LFO (Klick: freie Form zeichnen)');
   FMorphLfoView.ShowHint := True;
   FMorphLfoView.Cursor := crHandPoint;
   TControlAccess(FMorphLfoView).OnClick := MorphFreeClick;
@@ -1524,17 +1551,17 @@ begin
   L := TLabel.Create(Self);
   L.Parent := PM;
   L.SetBounds(8, 24 + 4 * ROW_H + 134, 300, 16);
-  L.Caption := 'Schwellen-Tor';
+  L.Caption := Tr('Schwellen-Tor');
   L.Font.Color := COL_VAL;
   L.Font.Style := [fsBold];
   L.Transparent := True;
-  AddParam(PM, Ord(gpGateSrc), 8, 24 + 4 * ROW_H + 152, 70, 0, 130, 'Quelle');
-  AddParam(PM, Ord(gpGateThresh), 8, 24 + 5 * ROW_H + 152, 70, 52, 0, 'Schwelle');
-  AddParam(PM, Ord(gpGateQuiet), 8, 24 + 6 * ROW_H + 152, 70, 52, 0, 'Ruhe-Dauer');
+  AddParam(PM, Ord(gpGateSrc), 8, 24 + 4 * ROW_H + 152, 70, 0, 130, Tr('Quelle'));
+  AddParam(PM, Ord(gpGateThresh), 8, 24 + 5 * ROW_H + 152, 70, 52, 0, Tr('Schwelle'));
+  AddParam(PM, Ord(gpGateQuiet), 8, 24 + 6 * ROW_H + 152, 70, 52, 0, Tr('Ruhe-Dauer'));
   Hint(PM, 24 + 7 * ROW_H + 152, 64,
-    'Schwellen-Tor = 1, sobald die Quelle über der Schwelle liegt: als ' +
+    Tr('Schwellen-Tor = 1, sobald die Quelle über der Schwelle liegt: als ' +
     'Matrix-Quelle schaltet es Ein/Aus-Regler, als LFO-Trigger startet es einen LFO. Trigger "Ruhe": startet den LFO, wenn die Quelle die ' +
-    'Ruhe-Dauer lang unter der Schwelle blieb (Pause, Stille).');
+    'Ruhe-Dauer lang unter der Schwelle blieb (Pause, Stille).'));
   UpdateMorphLabel;
 end;
 
@@ -1543,20 +1570,20 @@ begin
   if FMorphLabel = nil then
     Exit;
   if FEngine.MorphValid and FEngine.MorphSwapped then
-    FMorphLabel.Caption := 'Getauscht: du bearbeitest B'
+    FMorphLabel.Caption := Tr('Getauscht: du bearbeitest B')
   else if FEngine.MorphValid and (FEngine.MorphSampleLoaded <> '') then
-    FMorphLabel.Caption := 'Ziel B: ' + ChangeFileExt(ExtractFileName(FEngine.MorphSampleLoaded), '')
+    FMorphLabel.Caption := Tr('Ziel B: ') + ChangeFileExt(ExtractFileName(FEngine.MorphSampleLoaded), '')
   else if FEngine.MorphValid then
-    FMorphLabel.Caption := 'Ziel B gesetzt (gleiches Sample)'
+    FMorphLabel.Caption := Tr('Ziel B gesetzt (gleiches Sample)')
   else
-    FMorphLabel.Caption := 'Noch kein Ziel B';
+    FMorphLabel.Caption := Tr('Noch kein Ziel B');
 end;
 
 procedure TGranularEditor.MorphSwapClick(Sender: TObject);
 begin
   if not FEngine.SwapMorphAB then
   begin
-    MessageDlg('Erst ein Ziel B merken oder laden - dann lassen sich A und B tauschen.', mtInformation, [mbOK], 0);
+    MessageDlg(Tr('Erst ein Ziel B merken oder laden - dann lassen sich A und B tauschen.'), mtInformation, [mbOK], 0);
     Exit;
   end;
   // Pfad von B fuers Speichern: das bisherige A-Sample (oder keins = gleiches Sample)
@@ -1594,7 +1621,7 @@ begin
     Tmp := TGranularEngine.Create;
     try
       if not LoadChunkFromFile(Tmp, Dlg.FileName, Path) then
-        raise Exception.Create('Keine gültige Preset-Datei: ' + Dlg.FileName);
+        raise Exception.Create(Tr('Keine gültige Preset-Datei: ') + Dlg.FileName);
       FEngine.SetMorphFromEngine(Tmp);   // vollstaendig: Matrix, freie LFOs, Arp-Muster, EQ
       // Sample des geladenen Presets wird das Sample von Ziel B
       FEngine.MorphSampleRef := Path;
@@ -1674,9 +1701,38 @@ begin
   end;
 end;
 
+procedure TGranularEditor.LangComboChange(Sender: TObject);
+var
+  Code: string;
+begin
+  if (FLangCombo.ItemIndex < 0) or (FLangCombo.ItemIndex >= FLangCodes.Count) then
+    Exit;
+  Code := FLangCodes[FLangCombo.ItemIndex];
+  if Code = LangCode then
+    Exit;
+  LangSet(Code);
+  // neu aufbauen macht die Huelle (Plugin) per Nachricht - der Editor darf sich nicht selbst freigeben
+  if Assigned(FOnLanguageChange) then
+    FOnLanguageChange(Self)
+  else
+    MessageDlg('Die neue Sprache gilt beim nächsten Öffnen des Fensters.' + sLineBreak +
+      'The new language applies the next time the window is opened.', mtInformation, [mbOK], 0);
+end;
+
+destructor TGranularEditor.Destroy;
+begin
+  FLangCodes.Free;
+  inherited;
+end;
+
+function TGranularEditor.PageIndex: Integer;
+begin
+  Result := FPages.ActivePageIndex;
+end;
+
 procedure TGranularEditor.HelpClick(Sender: TObject);
 begin
-  ShowHelpWindow(Self, FBaseDir + 'Hilfe\Hilfe.rtf');
+  ShowHelpWindow(Self, LangHelpFile(FBaseDir));
 end;
 
 procedure TGranularEditor.InfoClick(Sender: TObject);
@@ -1713,7 +1769,7 @@ begin
     FLfoPageBtn[K].Tag := K;
     FLfoPageBtn[K].TabStop := False;
     FLfoPageBtn[K].OnClick := LfoPageClick;
-    FLfoPageBtn[K].Hint := 'LFO 1-4 bzw. 5-8 zeigen (in Klammern: benutzte LFOs 5-8)';
+    FLfoPageBtn[K].Hint := Tr('LFO 1-4 bzw. 5-8 zeigen (in Klammern: benutzte LFOs 5-8)');
     FLfoPageBtn[K].ShowHint := True;
   end;
   L := TLabel.Create(Self);
@@ -1727,10 +1783,10 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Alle acht LFOs können dasselbe und sind in der Matrix "LFO 1" bis "LFO 8" (Umschalter unten). "frei" = läuft für alle ' +
+    Tr('Alle acht LFOs können dasselbe und sind in der Matrix "LFO 1" bis "LFO 8" (Umschalter unten). "frei" = läuft für alle ' +
     'Noten; "Note an/aus" = eigener LFO je Note. Feld unter "Einmal" = Partner: dessen Einmal-Ende ist ' +
     '"Ende Partner-LFO" (Ketten 1 -> 2 -> 3 möglich). "Stopp" hält den LFO an, bis er wieder startet; ' +
-    '"nach Zeit" = nach der Zeit darunter. Klick auf eine Anzeige: freie Form bearbeiten.';
+    '"nach Zeit" = nach der Zeit darunter. Klick auf eine Anzeige: freie Form bearbeiten.');
 end;
 
 { --- ein LFO-Feld (LFO 1..8, gleicher Aufbau): Anzeige, Rate, Form, Einmal, Sync, Neustart, Stopp, Zeit, Partner --- }
@@ -1738,7 +1794,7 @@ procedure TGranularEditor.BuildLfoPanel(AParent: TWinControl; K, Y, W: Integer);
 var
   P: TPanel;
 begin
-  P := MakePanel(AParent, alNone, Format('LFO %d', [K + 1]));
+  P := MakePanel(AParent, alNone, Format(Tr('LFO %d'), [K + 1]));
   P.SetBounds(0, Y, W, 168);
   P.Visible := K < 4;
   FLfoPanels[K] := P;
@@ -1748,19 +1804,19 @@ begin
   FLfoViews[K].SetBounds(8, 24, 110, 52);
   FLfoViews[K].Tag := K;
   FLfoViews[K].Cursor := crHandPoint;
-  FLfoViews[K].Hint := 'Klick: freie Form bearbeiten (Stufen / Halbtöne / zeichnen)';
+  FLfoViews[K].Hint := Tr('Klick: freie Form bearbeiten (Stufen / Halbtöne / zeichnen)');
   FLfoViews[K].ShowHint := True;
   TControlAccess(FLfoViews[K]).OnClick := LfoViewClick;
-  AddParam(P, Ord(LFO_ONCE_IDS[K]), 8, 22 + 2 * ROW_H, 0, 0, 0, 'Einmal');
-  AddParam(P, Ord(LFO_RATE_IDS[K]), 124, 22, 40, 56, 0, 'Rate');
-  AddParam(P, Ord(LFO_SHAPE_IDS[K]), 124, 22 + ROW_H, 40, 0, 120, 'Form');
-  AddParam(P, Ord(LFO_SYNC_IDS[K]), 86, 22 + 2 * ROW_H, 0, 0, 0, 'Sync');
+  AddParam(P, Ord(LFO_ONCE_IDS[K]), 8, 22 + 2 * ROW_H, 0, 0, 0, Tr('Einmal'));
+  AddParam(P, Ord(LFO_RATE_IDS[K]), 124, 22, 40, 56, 0, Tr('Rate'));
+  AddParam(P, Ord(LFO_SHAPE_IDS[K]), 124, 22 + ROW_H, 40, 0, 120, Tr('Form'));
+  AddParam(P, Ord(LFO_SYNC_IDS[K]), 86, 22 + 2 * ROW_H, 0, 0, 0, Tr('Sync'));
   AddParam(P, Ord(LFO_TRIG_IDS[K]), 164 + COMBO_INSET, 22 + 2 * ROW_H, 0, 0, 120);   // Neustart, buendig unter Form
-  AddParam(P, Ord(LFO_STOP_IDS[K]), 124, 22 + 3 * ROW_H, 40, 0, 120, 'Stopp');        // Aus-Trigger
+  AddParam(P, Ord(LFO_STOP_IDS[K]), 124, 22 + 3 * ROW_H, 40, 0, 120, Tr('Stopp'));        // Aus-Trigger
   FStopSyncIdx[K] := AddParam(P, Ord(LFO_STOP_SYNC[K]), 8 + COMBO_INSET, 22 + 4 * ROW_H, 0, 0, 100);
-  FStopMsIdx[K] := AddParam(P, Ord(LFO_STOP_MS[K]), 124, 22 + 4 * ROW_H, 40, 66, 0, 'Zeit');
+  FStopMsIdx[K] := AddParam(P, Ord(LFO_STOP_MS[K]), 124, 22 + 4 * ROW_H, 40, 66, 0, Tr('Zeit'));
   FPartnerIdx[K] := AddParam(P, Ord(LFO_PARTNER_IDS[K]), 8 + COMBO_INSET, 22 + 3 * ROW_H, 0, 0, 100);
-  FBindings[FPartnerIdx[K]].Combo.Hint := 'Partner: dessen Einmal-Ende ist das Ereignis "Ende Partner-LFO"';
+  FBindings[FPartnerIdx[K]].Combo.Hint := Tr('Partner: dessen Einmal-Ende ist das Ereignis "Ende Partner-LFO"');
   FBindings[FPartnerIdx[K]].Combo.ShowHint := True;
 end;
 
@@ -1795,9 +1851,9 @@ begin
       Inc(N);
   for K := 0 to 1 do
   begin
-    if K = 0 then Cap := 'LFO 1-4' else Cap := 'LFO 5-8';
+    if K = 0 then Cap := Tr('LFO 1-4') else Cap := Tr('LFO 5-8');
     if (K = 1) and (N > 0) then
-      Cap := Cap + Format(' (%d benutzt)', [N]);
+      Cap := Cap + Format(Tr(' (%d benutzt)'), [N]);
     FLfoPageBtn[K].Active := K = FLfoPage;
     if FLfoPageBtn[K].Caption <> Cap then
       FLfoPageBtn[K].Caption := Cap;
@@ -1831,11 +1887,11 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-  P := MakePanel(Area, alLeft, 'Ereignis-Verzögerung (LFO-Neustart)');
+  P := MakePanel(Area, alLeft, Tr('Ereignis-Verzögerung (LFO-Neustart)'));
   P.Width := X_SYNC + 130;
-  Head(X_MS, 'Ereignis');
-  Head(X_MS + NAME_W, 'Verzögerung frei');
-  Head(X_SYNC, 'oder im Takt');
+  Head(X_MS, Tr('Ereignis'));
+  Head(X_MS + NAME_W, Tr('Verzögerung frei'));
+  Head(X_SYNC, Tr('oder im Takt'));
   for I := 0 to DLY_EVENT_COUNT - 1 do
   begin
     Y := 46 + I * ROW_H;
@@ -1850,16 +1906,16 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Jedes Ereignis, das einen LFO startet oder stoppt (Reiter LFO 1-8 / Trigger), kann hier verzögert wirken: ' +
-    'frei in Millisekunden oder im Takt (Notenwert; dann gilt der Notenwert). 0 ms und "Aus" = sofort.' +
+    Tr('Jedes Ereignis, das einen LFO startet oder stoppt (Reiter LFO 1-8 / Trigger), kann hier verzögert wirken: ' +
+    'frei in Millisekunden oder im Takt (Notenwert; dann gilt der Notenwert). 0 ms und "Aus" = sofort.') +
     sLineBreak + sLineBreak +
-    'Note an bei LFOs je Note: bis die Verzögerung um ist, ruht der LFO dieser Note (keine Modulation) - ' +
+    Tr('Note an bei LFOs je Note: bis die Verzögerung um ist, ruht der LFO dieser Note (keine Modulation) - ' +
     'der Ton beginnt glatt, danach setzt der Effekt ein. Beispiel Geige: LFO 1 Neustart "Note an", ' +
     'nicht Einmal, Sinus 5,5 Hz -> Pitch; hier "Note an" auf 1/2 = das Vibrato beginnt nach einer halben Note, ' +
-    'für jede Note einzeln.' + sLineBreak + sLineBreak +
-    'Note aus: der LFO läuft bis zum verzögerten Neustart weiter. Alle anderen Ereignisse: der LFO startet ' +
+    'für jede Note einzeln.') + sLineBreak + sLineBreak +
+    Tr('Note aus: der LFO läuft bis zum verzögerten Neustart weiter. Alle anderen Ereignisse: der LFO startet ' +
     'nach der Wartezeit neu; ein neues Ereignis in der Wartezeit beginnt sie von vorn. Als Stopp-Ereignis ' +
-    'hält es den LFO nach derselben Wartezeit an.';
+    'hält es den LFO nach derselben Wartezeit an.');
   AddStretch(L, 10);
 end;
 
@@ -1897,9 +1953,9 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-  P0 := MakePanel(Area, alLeft, Format('Oszillator %d (zusätzlich zu den Grains, je Note)', [O + 1]));
+  P0 := MakePanel(Area, alLeft, Format(Tr('Oszillator %d (zusätzlich zu den Grains, je Note)'), [O + 1]));
   P0.Width := 480;
-  P2 := MakePanel(Area, alRight, Format('Eigener Filter (nur Oszillator %d)', [O + 1]));
+  P2 := MakePanel(Area, alRight, Format(Tr('Eigener Filter (nur Oszillator %d)'), [O + 1]));
   P2.Width := 400;
   for I := 0 to High(OFlt) do
     AddParam(P2, Ord(OFlt[I]), 8, 24 + I * ROW_H, 80, 62, 150, OFLT_CAP[I]);
@@ -1911,9 +1967,9 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Eingeschaltet läuft der Oszillator nur durch diesen Filter, an Filter 1/2 vorbei - z.B. Rausch-' +
-    'Hats per Hochpass, während die Fläche tief gefiltert bleibt. Echo, Hall und EQ wirken weiter.';
-  P1 := MakePanel(Area, alClient, Format('Lautstärke-Hüllkurve (Oszillator %d)', [O + 1]));
+    Tr('Eingeschaltet läuft der Oszillator nur durch diesen Filter, an Filter 1/2 vorbei - z.B. Rausch-' +
+    'Hats per Hochpass, während die Fläche tief gefiltert bleibt. Echo, Hall und EQ wirken weiter.');
+  P1 := MakePanel(Area, alClient, Format(Tr('Lautstärke-Hüllkurve (Oszillator %d)'), [O + 1]));
   // Anzeige der Oszillator-Huellkurve (roter Punkt = juengste Stimme)
   FOscEnvView[O] := TEnvelopeView.Create(Self, FEngine);
   FOscEnvView[O].Kind := ekOsc;
@@ -1931,23 +1987,23 @@ begin
   L := TLabel.Create(Self);
   L.Parent := P0;
   L.SetBounds(8, 24 + 9 * ROW_H + 9, 106, 16);
-  L.Caption := 'FM-Klangfarbe';
+  L.Caption := Tr('FM-Klangfarbe');
   L.Font.Color := COL_VAL;
   L.Font.Style := [fsBold];
   L.Transparent := True;
   FFmEnvIdx[O, 0] := AddParam(P0, Ord(Op.FmEnvOn), 8, 24 + 9 * ROW_H + 4, 110, 0, 0,
-    'eigene Hüllkurve (nur Welle FM)');
-  FFmEnvIdx[O, 1] := AddParam(P0, Ord(Op.FmAttack), 8, 24 + 10 * ROW_H + 4, 110, 62, 0, 'Farbe Attack');
-  FFmEnvIdx[O, 2] := AddParam(P0, Ord(Op.FmDecay), 8, 24 + 11 * ROW_H + 4, 110, 62, 0, 'Farbe Decay');
-  FFmEnvIdx[O, 3] := AddParam(P0, Ord(Op.FmSustain), 8, 24 + 12 * ROW_H + 4, 110, 62, 0, 'Farbe Sustain');
-  FFmEnvIdx[O, 4] := AddParam(P0, Ord(Op.FmRelease), 8, 24 + 13 * ROW_H + 4, 110, 62, 0, 'Farbe Release');
+    Tr('eigene Hüllkurve (nur Welle FM)'));
+  FFmEnvIdx[O, 1] := AddParam(P0, Ord(Op.FmAttack), 8, 24 + 10 * ROW_H + 4, 110, 62, 0, Tr('Farbe Attack'));
+  FFmEnvIdx[O, 2] := AddParam(P0, Ord(Op.FmDecay), 8, 24 + 11 * ROW_H + 4, 110, 62, 0, Tr('Farbe Decay'));
+  FFmEnvIdx[O, 3] := AddParam(P0, Ord(Op.FmSustain), 8, 24 + 12 * ROW_H + 4, 110, 62, 0, Tr('Farbe Sustain'));
+  FFmEnvIdx[O, 4] := AddParam(P0, Ord(Op.FmRelease), 8, 24 + 13 * ROW_H + 4, 110, 62, 0, Tr('Farbe Release'));
   FFmEnvState[O] := -1;
   for I := 0 to High(Col1) do
     AddParam(P1, Ord(Col1[I]), 8, ENV_Y + I * ROW_H, 70, 62);
   // Unison: mehrere verstimmte Stimmen je Note, ueber das Stereobild verteilt
-  AddParam(P1, Ord(UNI[O, 0]), 8, ENV_Y + 4 * ROW_H + 6, 70, 0, 120, 'Unison');
-  AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 70, 62, 0, 'Verstimmung');
-  AddParam(P1, Ord(UNI[O, 2]), 8, ENV_Y + 6 * ROW_H + 6, 70, 62, 0, 'Breite');
+  AddParam(P1, Ord(UNI[O, 0]), 8, ENV_Y + 4 * ROW_H + 6, 70, 0, 120, Tr('Unison'));
+  AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 70, 62, 0, Tr('Verstimmung'));
+  AddParam(P1, Ord(UNI[O, 2]), 8, ENV_Y + 6 * ROW_H + 6, 70, 62, 0, Tr('Breite'));
   L := TLabel.Create(Self);
   L.Parent := P1;
   L.SetBounds(8, ENV_Y + 7 * ROW_H + 10, 420, 80);
@@ -1956,9 +2012,9 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Spielt jede Note mit: z.B. Bass (Sinus, Oktave -1/-2), Glocke (FM 3,5 / 40 %), Kick (FM + kurzer ' +
+    Tr('Spielt jede Note mit: z.B. Bass (Sinus, Oktave -1/-2), Glocke (FM 3,5 / 40 %), Kick (FM + kurzer ' +
     'Decay) oder Hats (Rauschen + Hochpass). Drei Oszillatoren lassen sich schichten (z.B. zwei ' +
-    'leicht verstimmte Sägezähne + Sub-Sinus). Alle Regler sind Matrix-Ziele, auch je Note.';
+    'leicht verstimmte Sägezähne + Sub-Sinus). Alle Regler sind Matrix-Ziele, auch je Note.');
   AddStretch(L, 10);
 end;
 
@@ -1986,9 +2042,9 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-  PZ := MakePanel(Area, alLeft, 'Zonen: weitere Samples je Tastenbereich');
+  PZ := MakePanel(Area, alLeft, Tr('Zonen: weitere Samples je Tastenbereich'));
   PZ.Width := 640;
-  PR := MakePanel(Area, alClient, 'Aufnahme (Resampling)');
+  PR := MakePanel(Area, alClient, Tr('Aufnahme (Resampling)'));
 
   L := TLabel.Create(Self);
   L.Parent := PZ;
@@ -1997,8 +2053,8 @@ begin
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := 'Das Hauptsample (Reiter Grain) spielt unterhalb der ersten Zone. Jede Zone gilt ab ihrer ' +
-    'Starttaste bis zur nächsten Zone - z.B. tiefe Töne vom Cello, hohe von der Geige. Alle Grain-Regler wirken auf alle Zonen.';
+  L.Caption := Tr('Das Hauptsample (Reiter Grain) spielt unterhalb der ersten Zone. Jede Zone gilt ab ihrer ' +
+    'Starttaste bis zur nächsten Zone - z.B. tiefe Töne vom Cello, hohe von der Geige. Alle Grain-Regler wirken auf alle Zonen.');
   for Z := 1 to ZONE_COUNT do
   begin
     FZoneRow[Z] := TPanel.Create(Self);
@@ -2010,7 +2066,7 @@ begin
     L := TLabel.Create(Self);
     L.Parent := FZoneRow[Z];
     L.SetBounds(0, 9, 56, 16);
-    L.Caption := Format('Zone %d', [Z]);
+    L.Caption := Format(Tr('Zone %d'), [Z]);
     L.Font.Color := COL_NAME;
     L.Transparent := True;
     L := TLabel.Create(Self);
@@ -2034,14 +2090,14 @@ begin
     B := TButton.Create(Self);
     B.Parent := FZoneRow[Z];
     B.SetBounds(160, 3, 90, 26);
-    B.Caption := 'Laden...';
+    B.Caption := Tr('Laden...');
     B.Tag := Z;
     B.TabStop := False;
     B.OnClick := ZoneLoadClick;
     B := TButton.Create(Self);
     B.Parent := FZoneRow[Z];
     B.SetBounds(256, 3, 70, 26);
-    B.Caption := 'Leeren';
+    B.Caption := Tr('Leeren');
     B.Tag := Z;
     B.TabStop := False;
     B.OnClick := ZoneClearClick;
@@ -2059,13 +2115,13 @@ begin
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := 'Tipp: Audiodateien lassen sich auch aus dem Explorer auf das Fenster ziehen - auf eine ' +
-    'Zonen-Zeile = in diese Zone, sonst als Hauptsample.';
+  L.Caption := Tr('Tipp: Audiodateien lassen sich auch aus dem Explorer auf das Fenster ziehen - auf eine ' +
+    'Zonen-Zeile = in diese Zone, sonst als Hauptsample.');
 
   FRecButton := TButton.Create(Self);
   FRecButton.Parent := PR;
   FRecButton.SetBounds(8, 26, 170, 30);
-  FRecButton.Caption := 'Aufnahme starten';
+  FRecButton.Caption := Tr('Aufnahme starten');
   FRecButton.TabStop := False;
   FRecButton.OnClick := RecClick;
   FRecLabel := TLabel.Create(Self);
@@ -2080,9 +2136,9 @@ begin
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := 'Nimmt den Sidechain-Eingang auf (in der DAW: Eingang des Plugins, im Host: Mikrofon/Eingang) ' +
+  L.Caption := Tr('Nimmt den Sidechain-Eingang auf (in der DAW: Eingang des Plugins, im Host: Mikrofon/Eingang) ' +
     'und lädt das Ergebnis als neues Hauptsample - so lässt sich eine Spur, die Stimme oder der eigene ' +
-    'Klang live granulieren. Die Aufnahme wird als WAV in "Eigene Toene" gespeichert und ist damit Teil des Presets.';
+    'Klang live granulieren. Die Aufnahme wird als WAV in "Eigene Toene" gespeichert und ist damit Teil des Presets.');
   AddStretch(L, 10);
 end;
 
@@ -2095,28 +2151,28 @@ begin
   begin
     FEngine.StartRecording(60);
     FRecButton.Tag := 1;
-    FRecButton.Caption := 'Stopp und laden';
-    FRecLabel.Caption := 'Aufnahme läuft ...';
+    FRecButton.Caption := Tr('Stopp und laden');
+    FRecLabel.Caption := Tr('Aufnahme läuft ...');
     Exit;
   end;
   FRecButton.Tag := 0;
-  FRecButton.Caption := 'Aufnahme starten';
+  FRecButton.Caption := Tr('Aufnahme starten');
   Data := FEngine.StopRecording;
   if Data = nil then
   begin
-    FRecLabel.Caption := 'Nichts aufgenommen (kommt Signal am Sidechain-Eingang an?)';
+    FRecLabel.Caption := Tr('Nichts aufgenommen (kommt Signal am Sidechain-Eingang an?)');
     Exit;
   end;
   Dir := FBaseDir + 'Eigene Toene' + PathDelim;
   try
     ForceDirectories(Dir);
-    Fn := Dir + 'Aufnahme ' + FormatDateTime('yyyy-mm-dd hh-nn-ss', Now) + '.wav';
+    Fn := Dir + Tr('Aufnahme ') + FormatDateTime(Tr('yyyy-mm-dd hh-nn-ss'), Now) + '.wav';
     SaveWaveFile(Data, Fn);
     Data.FileName := Fn;
   except
     Fn := '';                 // Ordner schreibgeschuetzt: Sample gilt bis zum Schliessen
   end;
-  FRecLabel.Caption := Format('%.1f s geladen', [Data.Frames / Data.SampleRate]);
+  FRecLabel.Caption := Format(Tr('%.1f s geladen'), [Data.Frames / Data.SampleRate]);
   PushUndo;
   SetSample(Data);
 end;
@@ -2146,7 +2202,7 @@ begin
       LoadZoneFile(Z, Dlg.FileName);
     except
       on E: Exception do
-        MessageDlg('Datei konnte nicht geladen werden:' + sLineBreak + E.Message, mtError, [mbOK], 0);
+        MessageDlg(Tr('Datei konnte nicht geladen werden:') + sLineBreak + E.Message, mtError, [mbOK], 0);
     end;
   finally
     Dlg.Free;
@@ -2189,7 +2245,7 @@ begin
       if FEngine.ZoneSample(Z) <> nil then
         FZoneName[Z].Caption := ExtractFileName(FEngine.GetZoneLoaded(Z))
       else
-        FZoneName[Z].Caption := '(leer)';
+        FZoneName[Z].Caption := Tr('(leer)');
     end;
   finally
     FUpdating := False;
@@ -2230,7 +2286,7 @@ begin
       end;
     except
       on E: Exception do
-        MessageDlg('Datei konnte nicht geladen werden:' + sLineBreak + E.Message, mtError, [mbOK], 0);
+        MessageDlg(Tr('Datei konnte nicht geladen werden:') + sLineBreak + E.Message, mtError, [mbOK], 0);
     end;
   finally
     DragFinish(Msg.Drop);
@@ -2254,7 +2310,7 @@ var
   end;
 
 begin
-  H := ParamHint(B.Index);
+  H := Tr(ParamHint(B.Index));
   if H = '' then
     Exit;
   H := WrapText(H, 80);
@@ -2273,7 +2329,7 @@ begin
   for I := 0 to ComponentCount - 1 do
     if (Components[I] is TButton) and (TButton(Components[I]).Hint = '') then
     begin
-      H := CaptionHint(TButton(Components[I]).Caption);
+      H := Tr(CaptionHint(TButton(Components[I]).Caption));
       if H <> '' then
       begin
         TButton(Components[I]).Hint := WrapText(H, 80);
@@ -2321,15 +2377,15 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-  P1 := MakePanel(Area, alLeft, 'Chorus / Flanger');
+  P1 := MakePanel(Area, alLeft, Tr('Chorus / Flanger'));
   P1.Width := 300;
-  P2 := MakePanel(Area, alLeft, 'Phaser');
+  P2 := MakePanel(Area, alLeft, Tr('Phaser'));
   P2.Width := 300;
   P2.Left := P1.Left + P1.Width + 1;
-  P3 := MakePanel(Area, alLeft, 'Bitcrusher');
+  P3 := MakePanel(Area, alLeft, Tr('Bitcrusher'));
   P3.Width := 300;
   P3.Left := P2.Left + P2.Width + 1;
-  P4 := MakePanel(Area, alClient, 'Trance-Gate (Schrittmuster im Songtempo)');
+  P4 := MakePanel(Area, alClient, Tr('Trance-Gate (Schrittmuster im Songtempo)'));
   for I := 0 to High(CHO) do
     AddParam(P1, Ord(CHO[I]), 8, 24 + I * ROW_H, 92, 62, 0, CHO_CAP[I]);
   for I := 0 to High(PHA) do
@@ -2345,23 +2401,23 @@ begin
   FGatePattern.Gate := True;
   FGatePattern.Parent := P4;
   FGatePattern.SetBounds(8, 24 + 5 * ROW_H + 6, 280, 34);
-  FGatePattern.Hint := 'Klick schaltet einen Schritt auf/zu (zu = um "Tiefe" leiser). Der laufende Schritt leuchtet.';
+  FGatePattern.Hint := Tr('Klick schaltet einen Schritt auf/zu (zu = um "Tiefe" leiser). Der laufende Schritt leuchtet.');
   FGatePattern.ShowHint := True;
   FGatePattern.OnChange := GatePatternChange;
   AddStretch(FGatePattern, 8);
   Hint(P1, 24 + 5 * ROW_H + 8,
-    'Mehrere leicht verschobene Kopien: breiter, schwebender Klang. Rückkopplung hoch und Tiefe klein = ' +
-    'Flanger (Düsenjet). Links und rechts laufen versetzt - schön auf Pads und E-Piano.');
+    Tr('Mehrere leicht verschobene Kopien: breiter, schwebender Klang. Rückkopplung hoch und Tiefe klein = ' +
+    'Flanger (Düsenjet). Links und rechts laufen versetzt - schön auf Pads und E-Piano.'));
   Hint(P2, 24 + 5 * ROW_H + 8,
-    'Sechs Allpässe erzeugen wandernde Kerben im Spektrum: der typische Wusch der 70er. Langsames Tempo ' +
-    'auf Flächen, schneller auf Rhodes und Gitarren-Sounds. Rückkopplung macht die Kerben schärfer.');
+    Tr('Sechs Allpässe erzeugen wandernde Kerben im Spektrum: der typische Wusch der 70er. Langsames Tempo ' +
+    'auf Flächen, schneller auf Rhodes und Gitarren-Sounds. Rückkopplung macht die Kerben schärfer.'));
   Hint(P3, 24 + 4 * ROW_H + 8,
-    'Senkt Auflösung (Bits) und Abtastrate: Lo-Fi, Retro-Konsole, Dreck. 8 Bit / 11 kHz = Heimcomputer, ' +
-    '4 Bit = kaputt. Mix unter 100 % mischt das Original dazu.');
+    Tr('Senkt Auflösung (Bits) und Abtastrate: Lo-Fi, Retro-Konsole, Dreck. 8 Bit / 11 kHz = Heimcomputer, ' +
+    '4 Bit = kaputt. Mix unter 100 % mischt das Original dazu.'));
   Hint(P4, 24 + 5 * ROW_H + 50,
-    'Zerhackt den Klang im Takt: zu = leiser um "Tiefe" (100 % = stumm). Glättung gegen Knacken. Wirkt vor ' +
+    Tr('Zerhackt den Klang im Takt: zu = leiser um "Tiefe" (100 % = stumm). Glättung gegen Knacken. Wirkt vor ' +
     'Echo und Hall - die laufen frei aus. Beginnt nach einer Pause wieder bei Schritt 1. Die Effekte liegen ' +
-    'auf der Summe, nach den Filtern und vor Echo/Hall; alle Regler sind Matrix-Ziele.');
+    'auf der Summe, nach den Filtern und vor Echo/Hall; alle Regler sind Matrix-Ziele.'));
 end;
 
 procedure TGranularEditor.GatePatternChange(Sender: TObject);
@@ -2398,21 +2454,21 @@ var
   end;
 
 begin
-  SetCh(0, gpGrainLevel, 'Grains', True, gpGrainOn, 'an');
-  SetCh(1, gpOscLevel, 'Osz 1', True, gpOscOn, 'an');
-  SetCh(2, gpOsc2Level, 'Osz 2', True, gpOsc2On, 'an');
-  SetCh(3, gpOsc3Level, 'Osz 3', True, gpOsc3On, 'an');
-  SetCh(4, gpEchoMix, 'Echo', True, gpEchoOn, 'an');
-  SetCh(5, gpRevMix, 'Hall', True, gpRevOn, 'an');
+  SetCh(0, gpGrainLevel, Tr('Grains'), True, gpGrainOn, 'an');
+  SetCh(1, gpOscLevel, Tr('Osz 1'), True, gpOscOn, 'an');
+  SetCh(2, gpOsc2Level, Tr('Osz 2'), True, gpOsc2On, 'an');
+  SetCh(3, gpOsc3Level, Tr('Osz 3'), True, gpOsc3On, 'an');
+  SetCh(4, gpEchoMix, Tr('Echo'), True, gpEchoOn, 'an');
+  SetCh(5, gpRevMix, Tr('Hall'), True, gpRevOn, 'an');
   // Summen-Effekte (Reiter Effekte): Mix bzw. Gate-Tiefe, Schalter an/aus
-  SetCh(6, gpTgDepth, 'Gate', True, gpTgOn, 'an');
-  SetCh(7, gpCrushMix, 'Crusher', True, gpCrushOn, 'an');
-  SetCh(8, gpChoMix, 'Chorus', True, gpChoOn, 'an');
-  SetCh(9, gpPhaMix, 'Phaser', True, gpPhaOn, 'an');
-  SetCh(10, gpMorph, 'Morph A/B', False, gpMorph, '');
-  SetCh(11, gpPan, 'Panorama', False, gpPan, '');
-  SetCh(12, gpVolume, 'Summe', False, gpVolume, '');
-  SetCh(13, gpMaster, 'Master', False, gpMaster, '');
+  SetCh(6, gpTgDepth, Tr('Gate'), True, gpTgOn, 'an');
+  SetCh(7, gpCrushMix, Tr('Crusher'), True, gpCrushOn, 'an');
+  SetCh(8, gpChoMix, Tr('Chorus'), True, gpChoOn, 'an');
+  SetCh(9, gpPhaMix, Tr('Phaser'), True, gpPhaOn, 'an');
+  SetCh(10, gpMorph, Tr('Morph A/B'), False, gpMorph, '');
+  SetCh(11, gpPan, Tr('Panorama'), False, gpPan, '');
+  SetCh(12, gpVolume, Tr('Summe'), False, gpVolume, '');
+  SetCh(13, gpMaster, Tr('Master'), False, gpMaster, '');
   // Pegelanzeige je Kanal (Morph und Panorama haben keinen eigenen Pegel); Effekte: was sie veraendern
   MeterOf[0] := MM_GRAINS; MeterOf[1] := MM_OSC1; MeterOf[2] := MM_OSC1 + 1; MeterOf[3] := MM_OSC1 + 2;
   MeterOf[4] := MM_ECHO; MeterOf[5] := MM_HALL;
@@ -2427,7 +2483,7 @@ begin
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
   // rechts: Frequenzband wie im Reiter Schnell
-  P := MakePanel(Area, alRight, 'Frequenzband');
+  P := MakePanel(Area, alRight, Tr('Frequenzband'));
   P.Width := 150;
   FMixSpectrum := TSpectrumView.Create(Self, FEngine);
   FMixSpectrum.Parent := P;
@@ -2435,7 +2491,7 @@ begin
   FMixSpectrum.AlignWithMargins := True;
   FMixSpectrum.Margins.SetBounds(8, 24, 8, 8);
   FMixSpectrum.Align := alClient;
-  P := MakePanel(Area, alClient, 'Mischpult  (dieselben Regler wie in den Reitern - ändern sich hier und dort gemeinsam)');
+  P := MakePanel(Area, alClient, Tr('Mischpult  (dieselben Regler wie in den Reitern - ändern sich hier und dort gemeinsam)'));
   X := 12;
   for I := 0 to High(Chs) do
   begin
@@ -2449,9 +2505,9 @@ begin
       FMixMeters[MeterOf[I]].Parent := P;
       FMixMeters[MeterOf[I]].SetBounds(X + (W - 4) div 2 + 18, 26 + 24, 7, FADER_H - 8);
       if I in [6..9] then
-        FMixMeters[MeterOf[I]].Hint := 'Wie stark der Effekt den Klang verändert (grün, ab -6 dB gelb, ab 0 dB rot)'
+        FMixMeters[MeterOf[I]].Hint := Tr('Wie stark der Effekt den Klang verändert (grün, ab -6 dB gelb, ab 0 dB rot)')
       else
-        FMixMeters[MeterOf[I]].Hint := 'Pegel (grün, ab -6 dB gelb, ab 0 dB rot)';
+        FMixMeters[MeterOf[I]].Hint := Tr('Pegel (grün, ab -6 dB gelb, ab 0 dB rot)');
       FMixMeters[MeterOf[I]].ShowHint := True;
     end;
     if Chs[I].HasSwitch then
@@ -2460,7 +2516,7 @@ begin
       K := AddParam(P, Ord(Chs[I].Switch_), X + (W - 4) div 2 - 22, 26 + FADER_H + 46, 0, 0, 0, 'an');
       FBindings[K].OnOffCaption := True;
       FBindings[K].NameLabel.Width := 40;
-      FBindings[K].Check.Hint := Chs[I].Cap + ' ein/aus';
+      FBindings[K].Check.Hint := Chs[I].Cap + Tr(' ein/aus');
       FBindings[K].Check.ShowHint := True;
       SetControlValue(K, FEngine.GetParam(Ord(Chs[I].Switch_)));
     end;
@@ -2474,9 +2530,9 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Grains/Osz 1-3 = Pegel der Quellen, Echo/Hall = Mischanteil, Gate/Crusher/Chorus/Phaser = Reiter Effekte ' +
+    Tr('Grains/Osz 1-3 = Pegel der Quellen, Echo/Hall = Mischanteil, Gate/Crusher/Chorus/Phaser = Reiter Effekte ' +
     '(Gate: Tiefe, sonst Mix; die Anzeige zeigt, wie stark der Effekt den Klang verändert), Summe = Lautstärke, ' +
-    'Master = Ausgang (bleibt beim Presetwechsel). Haken darunter: an/aus.';
+    'Master = Ausgang (bleibt beim Presetwechsel). Haken darunter: an/aus.');
   AddStretch(L, 12);
 
   // Eingaenge der DAW: welches Eingangspaar ist Sidechain 1 / 2, dazu die Live-Pegel aller vier
@@ -2485,35 +2541,35 @@ begin
   L := TLabel.Create(Self);
   L.Parent := P;
   L.SetBounds(12, Y + 5, 110, 16);
-  L.Caption := 'Eingänge (DAW):';
+  L.Caption := Tr('Eingänge (DAW):');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
-  AddParam(P, Ord(gpSc1Input), 120, Y, 82, 0, 110, 'Sidechain 1');
-  AddParam(P, Ord(gpSc2Input), 340, Y, 82, 0, 110, 'Sidechain 2');
+  AddParam(P, Ord(gpSc1Input), 120, Y, 82, 0, 110, Tr('Sidechain 1'));
+  AddParam(P, Ord(gpSc2Input), 340, Y, 82, 0, 110, Tr('Sidechain 2'));
   FInLevels := TLabel.Create(Self);
   FInLevels.Parent := P;
   FInLevels.SetBounds(560, Y + 5, 420, 16);
   FInLevels.Font.Color := COL_NAME;
   FInLevels.Transparent := True;
-  FInLevels.Hint := 'Pegel der vier Plugin-Eingänge. Alles "-" = die DAW schickt kein Audio: in FL Studio ' +
-    'die Eingänge des Plugins im Wrapper (Processing) bzw. Mixer zuordnen, siehe Hilfe.';
+  FInLevels.Hint := Tr('Pegel der vier Plugin-Eingänge. Alles "-" = die DAW schickt kein Audio: in FL Studio ' +
+    'die Eingänge des Plugins im Wrapper (Processing) bzw. Mixer zuordnen, siehe Hilfe.');
   FInLevels.ShowHint := True;
   // Leistungsstufe (gehoert zum Rechner, nicht zum Preset)
   Y := Y + 28;
   L := TLabel.Create(Self);
   L.Parent := P;
   L.SetBounds(12, Y + 5, 110, 16);
-  L.Caption := 'Leistung:';
+  L.Caption := Tr('Leistung:');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   K := AddParam(P, Ord(gpPerformance), 120, Y, 0, 0, 200);
-  FBindings[K].Combo.Hint := 'Begrenzt gleichzeitige Stimmen und Grains (weniger CPU-Spitzen, z. B. auf ' +
-    'langsamen Rechnern oder mit vielen Instanzen in FL Studio). Bleibt beim Presetwechsel erhalten.';
+  FBindings[K].Combo.Hint := Tr('Begrenzt gleichzeitige Stimmen und Grains (weniger CPU-Spitzen, z. B. auf ' +
+    'langsamen Rechnern oder mit vielen Instanzen in FL Studio). Bleibt beim Presetwechsel erhalten.');
   FBindings[K].Combo.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := P;
   L.SetBounds(340, Y + 5, 560, 16);
-  L.Caption := 'Rechenlast und aktive Rechenblöcke: Reiter "Leistung".';
+  L.Caption := Tr('Rechenlast und aktive Rechenblöcke: Reiter "Leistung".');
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
 end;
@@ -2531,7 +2587,7 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-  PL := MakePanel(Area, alLeft, 'Aktive Rechenblöcke');
+  PL := MakePanel(Area, alLeft, Tr('Aktive Rechenblöcke'));
   PL.Width := 600;
   FLoadList := TLoadList.Create(Self, FEngine);
   FLoadList.Parent := PL;
@@ -2539,13 +2595,13 @@ begin
   FLoadList.Margins.SetBounds(8, 24, 8, 8);
   FLoadList.Align := alClient;
   FLoadList.Font.Assign(Font);
-  PR := MakePanel(Area, alClient, 'Rechenzeit (gemessen)');
+  PR := MakePanel(Area, alClient, Tr('Rechenzeit (gemessen)'));
   FLoadGauge := TLoadGauge.Create(Self);
   FLoadGauge.Parent := PR;
   FLoadGauge.SetBounds(8, 24, 380, 290);
   FLoadGauge.Font.Assign(Font);
-  FLoadGauge.Hint := 'Nadel: Rechenzeit des Plugins (Anteil eines Kerns, Mittel je Sekunde). ' +
-    'Bernsteinmarke: längster Aufruf im Verhältnis zur Pufferdauer.';
+  FLoadGauge.Hint := Tr('Nadel: Rechenzeit des Plugins (Anteil eines Kerns, Mittel je Sekunde). ' +
+    'Bernsteinmarke: längster Aufruf im Verhältnis zur Pufferdauer.');
   FLoadGauge.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
@@ -2555,9 +2611,9 @@ begin
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   FProcStat := L;
-  FProcStat.Hint := 'Laufzeit des Plugins (je Sekunde): Aufrufe der DAW, Samples je Aufruf, eigene Rechenzeit ' +
+  FProcStat.Hint := Tr('Laufzeit des Plugins (je Sekunde): Aufrufe der DAW, Samples je Aufruf, eigene Rechenzeit ' +
     'in % der Echtzeit (Durchschnitt / längster Aufruf im Verhältnis zur Pufferdauer), Zeit in Rückfragen an die ' +
-    'DAW, Thread-Wechsel zwischen den Aufrufen.';
+    'DAW, Thread-Wechsel zwischen den Aufrufen.');
   FProcStat.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
@@ -2566,9 +2622,9 @@ begin
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := 'Gemessen wird nur, solange dieser Reiter offen ist. FL Studio: Optionen > Audio > ' +
-    '"Multithreaded generator processing" verteilt Instanzen auf mehrere Kerne. Weniger Last: Mischpult > Leistung.';  // Rendern: beim Export (offline) HQ und volle Stimmenzahl, egal wie sparsam live eingestellt
-  AddParam(PR, Ord(gpRenderHQ), 400, 30, 0, 0, 0, 'Rendern in Höchstqualität');
+  L.Caption := Tr('Gemessen wird nur, solange dieser Reiter offen ist. FL Studio: Optionen > Audio > ' +
+    '"Multithreaded generator processing" verteilt Instanzen auf mehrere Kerne. Weniger Last: Mischpult > Leistung.');  // Rendern: beim Export (offline) HQ und volle Stimmenzahl, egal wie sparsam live eingestellt
+  AddParam(PR, Ord(gpRenderHQ), 400, 30, 0, 0, 0, Tr('Rendern in Höchstqualität'));
   L := TLabel.Create(Self);
   L.Parent := PR;
   L.SetBounds(404, 30 + ROW_H, 220, 110);
@@ -2576,8 +2632,8 @@ begin
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := 'An: Beim Export/Rendern der DAW (nicht in Echtzeit) rechnet GranularSynth immer mit HQ und ' +
-    'voller Stimmen- und Grainzahl - live darf es sparsam sein, die Datei klingt trotzdem bestmöglich.';
+  L.Caption := Tr('An: Beim Export/Rendern der DAW (nicht in Echtzeit) rechnet GranularSynth immer mit HQ und ' +
+    'voller Stimmen- und Grainzahl - live darf es sparsam sein, die Datei klingt trotzdem bestmöglich.');
 end;
 
 { --- Reiter EQ --- }
@@ -2604,11 +2660,11 @@ begin
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
   // Filter 2 links, Equalizer rechts
-  F2 := MakePanel(Area, alRight, 'Filter 2');   // rechts; die EQ-Kurve sitzt links unter ihren Reglern
+  F2 := MakePanel(Area, alRight, Tr('Filter 2'));   // rechts; die EQ-Kurve sitzt links unter ihren Reglern
   F2.Width := 330;
   // gleichmaessiges Raster: beide Haken in einer Zeile, dann Typ und Regler im selben Abstand
-  AddParam(F2, Ord(gpFlt2On), 8, 20, 92, 0, 0, 'Filter 2 an');
-  AddParam(F2, Ord(gpFltRouting), 190, 20, 0, 0, 0, 'Parallel statt Reihe');
+  AddParam(F2, Ord(gpFlt2On), 8, 20, 92, 0, 0, Tr('Filter 2 an'));
+  AddParam(F2, Ord(gpFltRouting), 190, 20, 0, 0, 0, Tr('Parallel statt Reihe'));
   for I := 2 to High(FLT2) do
     AddParam(F2, Ord(FLT2[I]), 8, 20 + (I - 1) * F2_ROW, 92, 62, 150, FLT2_CAP[I]);
   L := TLabel.Create(Self);
@@ -2619,18 +2675,18 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'In Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter ' +
+    Tr('In Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter ' +
     'bekommen das Signal, ihre Ausgänge werden gemischt (z.B. zwei Bandpässe = Vokal-Formanten). ' +
-    'Filter 2 folgt derselben Filter-Hüllkurve mit eigener Menge.';
-  Top := MakePanel(Area, alTop, 'Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)');
+    'Filter 2 folgt derselben Filter-Hüllkurve mit eigener Menge.');
+  Top := MakePanel(Area, alTop, Tr('Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)'));
   Top.Height := 112;
-  AddParam(Top, Ord(gpEqOn), 8, 24, 0, 0, 0, 'EQ an');
+  AddParam(Top, Ord(gpEqOn), 8, 24, 0, 0, 0, Tr('EQ an'));
   // Raster: Baesse ueber Band A, Hoehen ueber Band B; gleiche Schienenlaengen, Werte untereinander
-  AddParam(Top, Ord(gpEqBass), EQ_C1, 24, 60, 62, 0, 'Bässe', 110);
-  AddParam(Top, Ord(gpEqTreble), EQ_C2, 24, 60, 62, 0, 'Höhen', 110);
-  AddParam(Top, Ord(gpEqAFreq), EQ_C1, 52, 60, 62, 0, 'Band A', 110);
+  AddParam(Top, Ord(gpEqBass), EQ_C1, 24, 60, 62, 0, Tr('Bässe'), 110);
+  AddParam(Top, Ord(gpEqTreble), EQ_C2, 24, 60, 62, 0, Tr('Höhen'), 110);
+  AddParam(Top, Ord(gpEqAFreq), EQ_C1, 52, 60, 62, 0, Tr('Band A'), 110);
   AddParam(Top, Ord(gpEqAGain), EQ_C1 + 240, 52, 0, 56, 0, '', 110);
-  AddParam(Top, Ord(gpEqBFreq), EQ_C2, 52, 60, 62, 0, 'Band B', 110);
+  AddParam(Top, Ord(gpEqBFreq), EQ_C2, 52, 60, 62, 0, Tr('Band B'), 110);
   AddParam(Top, Ord(gpEqBGain), EQ_C2 + 240, 52, 0, 56, 0, '', 110);
   for I := 0 to High(NAMES) do
   begin
@@ -2645,7 +2701,7 @@ begin
   L := TLabel.Create(Self);
   L.Parent := Top;
   L.SetBounds(8 + 6 * 82 + 8, 86, 400, 16);
-  L.Caption := 'Bänder A/B, Bässe, Höhen: Matrix-Ziele (z.B. Sidechain 2 duckt Band A).';
+  L.Caption := Tr('Bänder A/B, Bässe, Höhen: Matrix-Ziele (z.B. Sidechain 2 duckt Band A).');
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   FEqView := TEqView.Create(Self, FEngine);
@@ -2702,7 +2758,7 @@ begin
     B.Combo.Items.BeginUpdate;
     try
       B.Combo.Items.Clear;
-      B.Combo.Items.Add(StepName(B.Index, 0));          // "Aus" zuerst
+      B.Combo.Items.Add(Tr(StepName(B.Index, 0)));      // "Aus" zuerst
       for I := 0 to L.Count - 1 do
       begin
         B.Combo.Items.Add(L[I]);
@@ -2856,8 +2912,8 @@ begin
   Frm.OnKeyUp := FreeFormKeyUp;
   Frm.FormStyle := fsStayOnTop;
   begin
-    if K = 2 then Frm.Caption := 'Morph-LFO - freie Form'
-    else Frm.Caption := Format('LFO %d - freie Form', [LfoOfFree(K) + 1]);
+    if K = 2 then Frm.Caption := Tr('Morph-LFO - freie Form')
+    else Frm.Caption := Format(Tr('LFO %d - freie Form'), [LfoOfFree(K) + 1]);
     Frm.BorderStyle := bsSizeToolWin;
     Frm.BorderIcons := [biSystemMenu];
     Frm.Position := poScreenCenter;
@@ -2879,9 +2935,9 @@ begin
     L := TLabel.Create(Frm);
     L.Parent := P;
     L.SetBounds(8, 4, 400, 16);
-    if K = 2 then L.Caption := 'Morph-LFO  -  Form "Frei" (Ausschlag = Morph A <-> B)'
-    else if K > 2 then L.Caption := Format('LFO %d  -  Form "Frei"', [LfoOfFree(K) + 1])
-    else L.Caption := Format('LFO %d  -  Form "Frei"', [K + 1]);
+    if K = 2 then L.Caption := Tr('Morph-LFO  -  Form "Frei" (Ausschlag = Morph A <-> B)')
+    else if K > 2 then L.Caption := Format(Tr('LFO %d  -  Form "Frei"'), [LfoOfFree(K) + 1])
+    else L.Caption := Format(Tr('LFO %d  -  Form "Frei"'), [K + 1]);
     L.Font.Color := COL_VAL;
     L.Font.Style := [fsBold];
     L.Transparent := True;
@@ -2891,7 +2947,7 @@ begin
     FFreeMode[K].Style := csDropDownList;
     FFreeMode[K].SetBounds(8, 23, 132, 21);
     for I := 0 to High(FREE_MODE_NAMES) do
-      FFreeMode[K].Items.Add(FREE_MODE_NAMES[I]);
+      FFreeMode[K].Items.Add(Tr(FREE_MODE_NAMES[I]));
     FFreeMode[K].Tag := K;
     FFreeMode[K].TabStop := False;
     FFreeMode[K].OnChange := FreeModeChange;
@@ -2900,7 +2956,7 @@ begin
     L := TLabel.Create(Frm);
     L.Parent := P;
     L.SetBounds(150, 26, 40, 16);
-    L.Caption := 'Stufen';
+    L.Caption := Tr('Stufen');
     L.Font.Color := COL_NAME;
     L.Transparent := True;
     FFreeSteps[K] := TTrackBar.Create(Frm);
@@ -2923,20 +2979,20 @@ begin
     FFreeRange[K].Parent := P;
     FFreeRange[K].Style := csDropDownList;
     FFreeRange[K].SetBounds(380, 23, 104, 21);
-    FFreeRange[K].Items.Add('Anzeige +/-12');
-    FFreeRange[K].Items.Add('Anzeige +/-24');
+    FFreeRange[K].Items.Add(Tr('Anzeige +/-12'));
+    FFreeRange[K].Items.Add(Tr('Anzeige +/-24'));
     FFreeRange[K].ItemIndex := 0;
     FFreeRange[K].Tag := K;
     FFreeRange[K].TabStop := False;
     FFreeRange[K].OnChange := FreeRangeChange;
 
-    Btn('Zurücksetzen', 8, 92, FreeResetClick);
-    Btn('Glätten', 104, 70, FreeSmoothClick);
-    Btn('Form = Frei', 286, 80, FreeActivateClick);
+    Btn(Tr('Zurücksetzen'), 8, 92, FreeResetClick);
+    Btn(Tr('Glätten'), 104, 70, FreeSmoothClick);
+    Btn(Tr('Form = Frei'), 286, 80, FreeActivateClick);
     if K <> 2 then
     begin
-      Btn('Auf Pitch legen', 178, 104, FreePitchClick);
-      Btn('Auf Gate legen', 370, 100, FreeGateClick);
+      Btn(Tr('Auf Pitch legen'), 178, 104, FreePitchClick);
+      Btn(Tr('Auf Gate legen'), 370, 100, FreeGateClick);
     end;
 
     L := TLabel.Create(Frm);
@@ -2950,10 +3006,10 @@ begin
     L.Font.Color := $00A0A0A0;
     L.Transparent := True;
     L.Caption :=
-      'Ziehen setzt Werte (auch über mehrere Stufen), Rechtsklick setzt 0, Mausrad = +/- 1 Halbton. ' +
+      Tr('Ziehen setzt Werte (auch über mehrere Stufen), Rechtsklick setzt 0, Mausrad = +/- 1 Halbton. ' +
       '"Auf Pitch legen" stellt Form Frei, Neustart bei Note an und einen Matrix-Slot LFO -> Pitch ' +
       '(Menge 50 %, Faktor x1) ein: jede Stufe trifft genau ihren Halbton, jede Note spielt die Folge von vorn. ' +
-      'Rate/Sync gilt für einen ganzen Durchlauf. Änderungen wirken sofort.';
+      'Rate/Sync gilt für einen ganzen Durchlauf. Änderungen wirken sofort.');
 
     FFreeView[K] := TFreeLfoView.Create(Frm, FEngine, K);
     FFreeView[K].Parent := P;
@@ -3165,9 +3221,9 @@ begin
   FSpectrum.Parent := FTabQuick;
   FSpectrum.Align := alBottom;
   FSpectrum.Height := 120;
-  PV := MakePanel(FTabQuick, alClient, 'Variieren, Vergleichen, Qualität');
+  PV := MakePanel(FTabQuick, alClient, Tr('Variieren, Vergleichen, Qualität'));
   FQuickPV := PV;
-  PM := MakePanel(FTabQuick, alLeft, 'Makros  (50 % = Preset unverändert)');
+  PM := MakePanel(FTabQuick, alLeft, Tr('Makros  (50 % = Preset unverändert)'));
   PM.Width := 520;
 
   for I := 0 to High(MACROS) do
@@ -3184,7 +3240,7 @@ begin
   B := TButton.Create(Self);
   B.Parent := PM;
   B.SetBounds(118, 26 + 6 * 46 + 4, 150, 25);
-  B.Caption := 'Makros auf 50 %';
+  B.Caption := Tr('Makros auf 50 %');
   B.TabStop := False;
   B.OnClick := MacroResetClick;
 
@@ -3194,14 +3250,14 @@ begin
   FLimiterLabel := TLabel.Create(Self);
   FLimiterLabel.Parent := PV;
   FLimiterLabel.SetBounds(240, 26 + ROW_H + 5, 200, 16);
-  AddParam(PV, Ord(gpMaster), 240, 26, 60, 60, 0, 'Master', 140);
+  AddParam(PV, Ord(gpMaster), 240, 26, 60, 60, 0, Tr('Master'), 140);
   FLimiterLabel.Font.Color := COL_VAL;
   FLimiterLabel.Transparent := True;
 
   L := TLabel.Create(Self);
   L.Parent := PV;
   L.SetBounds(8, 26 + 2 * ROW_H + 14, 120, 16);
-  L.Caption := 'Variieren - Stärke';
+  L.Caption := Tr('Variieren - Stärke');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   FVaryStrength := TTrackBar.Create(Self);
@@ -3216,10 +3272,10 @@ begin
   FVaryStyle.Parent := PV;
   FVaryStyle.Style := csDropDownList;
   FVaryStyle.SetBounds(318, 26 + 2 * ROW_H + 11, 128, 21);
-  FVaryStyle.Items.CommaText := '"Stil: frei","Pad / Fläche","Pluck / Zupf","Textur / Wolke","Rhythmisch","Bass"';
+  FVaryStyle.Items.CommaText := Tr('"Stil: frei","Pad / Fläche","Pluck / Zupf","Textur / Wolke","Rhythmisch","Bass"');
   FVaryStyle.ItemIndex := 0;
   FVaryStyle.TabStop := False;
-  FVaryStyle.Hint := 'Richtung beim Variieren: würfelt nur in Bereichen, die zu diesem Stil passen';
+  FVaryStyle.Hint := Tr('Richtung beim Variieren: würfelt nur in Bereichen, die zu diesem Stil passen');
   FVaryStyle.ShowHint := True;
   EnableComboFit(FVaryStyle);
 
@@ -3227,7 +3283,7 @@ begin
   L := TLabel.Create(Self);
   L.Parent := PV;
   L.SetBounds(8, Y, 300, 16);
-  L.Caption := 'Gesperrt (wird nicht verändert):';
+  L.Caption := Tr('Gesperrt (wird nicht verändert):');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   for Sec := Low(TVarySection) to High(TVarySection) do
@@ -3248,29 +3304,29 @@ begin
   B := TButton.Create(Self);
   B.Parent := PV;
   B.SetBounds(8, Y, 110, 30);
-  B.Caption := 'Variieren';
+  B.Caption := Tr('Variieren');
   B.TabStop := False;
   B.OnClick := VaryClick;
   FUndoButton := TButton.Create(Self);
   FUndoButton.Parent := PV;
   FUndoButton.SetBounds(124, Y, 110, 30);
-  FUndoButton.Caption := 'Rückgängig';
+  FUndoButton.Caption := Tr('Rückgängig');
   FUndoButton.TabStop := False;
   FUndoButton.OnClick := UndoClick;
-  FUndoButton.Hint := 'Letzten Schritt zurücknehmen (Strg+Z)';
+  FUndoButton.Hint := Tr('Letzten Schritt zurücknehmen (Strg+Z)');
   FUndoButton.ShowHint := True;
   FRedoButton := TButton.Create(Self);
   FRedoButton.Parent := PV;
   FRedoButton.SetBounds(240, Y, 110, 30);
-  FRedoButton.Caption := 'Wiederholen';
+  FRedoButton.Caption := Tr('Wiederholen');
   FRedoButton.TabStop := False;
   FRedoButton.OnClick := RedoClick;
-  FRedoButton.Hint := 'Zurückgenommenen Schritt wiederherstellen (Strg+Y oder Strg+Umschalt+Z)';
+  FRedoButton.Hint := Tr('Zurückgenommenen Schritt wiederherstellen (Strg+Y oder Strg+Umschalt+Z)');
   FRedoButton.ShowHint := True;
   FABButton := TButton.Create(Self);
   FABButton.Parent := PV;
   FABButton.SetBounds(356, Y, 80, 30);
-  FABButton.Caption := 'A/B: A';
+  FABButton.Caption := Tr('A/B: A');
   FABButton.TabStop := False;
   FABButton.OnClick := ABClick;
 
@@ -3282,10 +3338,10 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    'Variieren ändert die nicht gesperrten Bereiche zufällig um die eingestellte Stärke. ' +
+    Tr('Variieren ändert die nicht gesperrten Bereiche zufällig um die eingestellte Stärke. ' +
     'Rückgängig (Strg+Z) nimmt jede Reglerbewegung, Variieren, Preset-Wechsel und A/B zurück, ' +
     'Wiederholen (Strg+Y) stellt sie wieder her. A/B merkt sich zwei Fassungen zum Vergleichen. ' +
-    'Rechtsklick auf einen Regler: Modulation zuweisen oder MIDI-Learn. Alt + Mausrad: Modulationsmenge.';
+    'Rechtsklick auf einen Regler: Modulation zuweisen oder MIDI-Learn. Alt + Mausrad: Modulationsmenge.');
   AddStretch(L, 10);
 end;
 
@@ -3348,7 +3404,7 @@ begin
   FAB[FABActive] := TakeSnapshot;     // aktuelle Fassung merken
   FABActive := 1 - FABActive;
   ApplySnapshot(FAB[FABActive]);
-  if FABActive = 0 then FABButton.Caption := 'A/B: A' else FABButton.Caption := 'A/B: B';
+  if FABActive = 0 then FABButton.Caption := Tr('A/B: A') else FABButton.Caption := Tr('A/B: B');
 end;
 
 procedure TGranularEditor.MacroResetClick(Sender: TObject);
@@ -3448,7 +3504,7 @@ begin
   FModMenu := TPopupMenu.Create(Self);
   FModMenu.OnPopup := ModMenuPopup;
   Sub := TMenuItem.Create(FModMenu);
-  Sub.Caption := 'Modulieren mit';
+  Sub.Caption := Tr('Modulieren mit');
   FModMenu.Items.Add(Sub);
   for Src := Succ(msOff) to High(TModSource) do
   begin
@@ -3459,7 +3515,7 @@ begin
     Sub.Add(It);
   end;
   FModAmountMenu := TMenuItem.Create(FModMenu);
-  FModAmountMenu.Caption := 'Modulationsmenge';
+  FModAmountMenu.Caption := Tr('Modulationsmenge');
   FModMenu.Items.Add(FModAmountMenu);
   for I := 0 to High(AMOUNTS) do
   begin
@@ -3470,7 +3526,7 @@ begin
     FModAmountMenu.Add(It);
   end;
   FModRemoveItem := TMenuItem.Create(FModMenu);
-  FModRemoveItem.Caption := 'Modulation entfernen';
+  FModRemoveItem.Caption := Tr('Modulation entfernen');
   FModRemoveItem.OnClick := ModRemoveClick;
   FModMenu.Items.Add(FModRemoveItem);
   FModInfoItem := TMenuItem.Create(FModMenu);      // zeigt, wer den Regler schon moduliert
@@ -3480,21 +3536,21 @@ begin
   It.Caption := '-';
   FModMenu.Items.Add(It);
   FLearnItem := TMenuItem.Create(FModMenu);
-  FLearnItem.Caption := 'MIDI-Learn';
+  FLearnItem.Caption := Tr('MIDI-Learn');
   FLearnItem.OnClick := LearnClick;
   FModMenu.Items.Add(FLearnItem);
   FLearnRemoveItem := TMenuItem.Create(FModMenu);
   FLearnRemoveItem.OnClick := LearnRemoveClick;
   FModMenu.Items.Add(FLearnRemoveItem);
   FHostItem := TMenuItem.Create(FModMenu);
-  FHostItem.Caption := 'Automation in der DAW (als "zuletzt geändert" melden)';
+  FHostItem.Caption := Tr('Automation in der DAW (als "zuletzt geändert" melden)');
   FHostItem.OnClick := HostAutomationClick;
   FModMenu.Items.Add(FHostItem);
   It := TMenuItem.Create(FModMenu);
   It.Caption := '-';
   FModMenu.Items.Add(It);
   It := TMenuItem.Create(FModMenu);
-  It.Caption := 'Standardwert';
+  It.Caption := Tr('Standardwert');
   It.OnClick := ModDefaultClick;
   FModMenu.Items.Add(It);
 end;
@@ -3521,7 +3577,7 @@ end;
 { "Zeile 3: LFO 1  +25 %" }
 function TGranularEditor.SlotCaption(Slot: Integer): string;
 begin
-  Result := Format('Zeile %d: %s  %s', [Slot + 1,
+  Result := Format(Tr('Zeile %d: %s  %s'), [Slot + 1,
     StepName(SlotSourceIndex(Slot), ParamStep(SlotSourceIndex(Slot), FEngine.GetParam(SlotSourceIndex(Slot)))),
     SignedPct(Round(ParamToPlain(SlotAmountIndex(Slot), FEngine.GetParam(SlotAmountIndex(Slot)))))]);
 end;
@@ -3562,7 +3618,7 @@ begin
   FModAmountMenu.Visible := False;
   FModInfoItem.Visible := False;
   FModRemoveItem.Visible := Length(Slots) > 1;
-  FModRemoveItem.Caption := 'Alle Modulationen dieses Reglers entfernen';
+  FModRemoveItem.Caption := Tr('Alle Modulationen dieses Reglers entfernen');
   FModMenu.Items[0].Enabled := (Idx >= 0) and (Idx < NAMED_COUNT - 1);
   Pos := 1;
   for K := 0 to High(Slots) do
@@ -3575,7 +3631,7 @@ begin
     for A in AMOUNTS do
     begin
       It := TMenuItem.Create(Sub);
-      It.Caption := 'Menge ' + SignedPct(A);
+      It.Caption := Tr('Menge ') + SignedPct(A);
       It.Checked := Round(ParamToPlain(SlotAmountIndex(Slot), FEngine.GetParam(SlotAmountIndex(Slot)))) = A;
       It.Tag := Slot * 1000 + 500 + A;          // 400..600: Menge
       It.OnClick := ModSlotClick;
@@ -3585,13 +3641,13 @@ begin
     It.Caption := '-';
     Sub.Add(It);
     It := TMenuItem.Create(Sub);
-    It.Caption := 'Für Alt + Mausrad wählen';
+    It.Caption := Tr('Für Alt + Mausrad wählen');
     It.Checked := WheelSlotFor(Idx) = Slot;
     It.Tag := Slot * 1000 + 1;
     It.OnClick := ModSlotClick;
     Sub.Add(It);
     It := TMenuItem.Create(Sub);
-    It.Caption := 'Diese Modulation entfernen';
+    It.Caption := Tr('Diese Modulation entfernen');
     It.Tag := Slot * 1000 + 2;
     It.OnClick := ModSlotClick;
     Sub.Add(It);
@@ -3604,13 +3660,13 @@ begin
     Cc := FEngine.CcForParam(Idx);
   FLearnItem.Enabled := Idx >= 0;
   if FEngine.MidiLearnPending and (FLearnBinding >= 0) and (FBindings[FLearnBinding].Index = Idx) then
-    FLearnItem.Caption := 'MIDI-Learn abbrechen'
+    FLearnItem.Caption := Tr('MIDI-Learn abbrechen')
   else if Cc >= 0 then
-    FLearnItem.Caption := Format('MIDI-Learn (jetzt CC %d) - neu lernen', [Cc])
+    FLearnItem.Caption := Format(Tr('MIDI-Learn (jetzt CC %d) - neu lernen'), [Cc])
   else
-    FLearnItem.Caption := 'MIDI-Learn: Regler am Controller bewegen';
+    FLearnItem.Caption := Tr('MIDI-Learn: Regler am Controller bewegen');
   FLearnRemoveItem.Visible := Cc >= 0;
-  FLearnRemoveItem.Caption := Format('MIDI-Zuordnung CC %d entfernen', [Cc]);
+  FLearnRemoveItem.Caption := Format(Tr('MIDI-Zuordnung CC %d entfernen'), [Cc]);
 end;
 
 procedure TGranularEditor.LearnClick(Sender: TObject);
@@ -3624,12 +3680,12 @@ begin
   begin
     FEngine.MidiLearnCancel;
     FLearnBinding := -1;
-    FStatus.Caption := 'MIDI-Learn abgebrochen';
+    FStatus.Caption := Tr('MIDI-Learn abgebrochen');
     Exit;
   end;
   FLearnBinding := FModMenu.PopupComponent.Tag;
   FEngine.MidiLearnStart(Idx);
-  FStatus.Caption := 'MIDI-Learn "' + GetParamInfo(Idx).Name + '": jetzt einen Regler am Controller bewegen (Esc bricht ab)';
+  FStatus.Caption := Tr('MIDI-Learn "') + GetParamInfo(Idx).Name + Tr('": jetzt einen Regler am Controller bewegen (Esc bricht ab)');
 end;
 
 { Bewegung eines Reglers an die DAW melden. Beginn/Ende umschliessen eine zusammenhaengende Bewegung
@@ -3697,12 +3753,12 @@ begin
     Exit;
   if not Assigned(FOnParamEdit) then
   begin
-    FStatus.Caption := 'Nur im Plugin (DAW): hier im Test-Host gibt es keine Automationsspuren';
+    FStatus.Caption := Tr('Nur im Plugin (DAW): hier im Test-Host gibt es keine Automationsspuren');
     Exit;
   end;
   HostEdit(Idx, False);
-  FStatus.Caption := '"' + GetParamInfo(Idx).Name + '" gemeldet - in FL Studio jetzt: Tools > Last tweaked > ' +
-    'Create automation clip';
+  FStatus.Caption := '"' + GetParamInfo(Idx).Name + Tr('" gemeldet - in FL Studio jetzt: Tools > Last tweaked > ' +
+    'Create automation clip');
 end;
 
 procedure TGranularEditor.LearnRemoveClick(Sender: TObject);
@@ -3714,7 +3770,7 @@ begin
     Exit;
   FEngine.SetCcTarget(Cc, -1);
   SaveMidiMap(FEngine, FBaseDir + MIDI_MAP_FILE);
-  FStatus.Caption := Format('MIDI-Zuordnung CC %d entfernt', [Cc]);
+  FStatus.Caption := Format(Tr('MIDI-Zuordnung CC %d entfernt'), [Cc]);
 end;
 
 { vom Anzeige-Timer: hat die Engine einen Controller gelernt? -> speichern und melden }
@@ -3727,7 +3783,7 @@ begin
     Exit;
   SaveMidiMap(FEngine, FBaseDir + MIDI_MAP_FILE);
   if FLearnBinding >= 0 then
-    FStatus.Caption := Format('MIDI-Learn: CC %d steuert jetzt "%s"', [Cc, GetParamInfo(FBindings[FLearnBinding].Index).Name]);
+    FStatus.Caption := Format(Tr('MIDI-Learn: CC %d steuert jetzt "%s"'), [Cc, GetParamInfo(FBindings[FLearnBinding].Index).Name]);
   FLearnBinding := -1;
 end;
 
@@ -3765,7 +3821,7 @@ begin
   Slot := WheelSlotFor(Idx);
   if Slot < 0 then
   begin
-    FStatus.Caption := 'Alt + Mausrad: dieser Regler ist nicht moduliert (Rechtsklick > Modulieren mit)';
+    FStatus.Caption := Tr('Alt + Mausrad: dieser Regler ist nicht moduliert (Rechtsklick > Modulieren mit)');
     Exit;
   end;
   if (FEditParam <> -2 - Slot) or (GetTickCount - FEditTick > 1500) then
@@ -3783,9 +3839,9 @@ begin
   for K := 0 to High(Slots) do
     if Slots[K] = Slot then
       Lane := K;
-  FStatus.Caption := 'Alt + Mausrad: ' + SlotCaption(Slot);
+  FStatus.Caption := Tr('Alt + Mausrad: ') + SlotCaption(Slot);
   if Length(Slots) > 1 then
-    FStatus.Caption := FStatus.Caption + Format('  (Spur %s; andere Zeile: Rechtsklick > Zeile > Für Alt + Mausrad wählen)',
+    FStatus.Caption := FStatus.Caption + Format(Tr('  (Spur %s; andere Zeile: Rechtsklick > Zeile > Für Alt + Mausrad wählen)'),
       [MOD_LANE_NAMES[Min(Lane, High(MOD_LANE_NAMES))]]);
   RefreshModRings;
   UpdateMacroTargets;
@@ -3806,13 +3862,13 @@ begin
   Free := FirstFreeSlot;   // immer die oberste freie Zeile, nicht hinten anhaengen
   if Free < 0 then
   begin
-    MessageDlg('Alle ' + IntToStr(MOD_SLOTS) + ' Matrix-Zeilen sind belegt.', mtInformation, [mbOK], 0);
+    MessageDlg(Tr('Alle ') + IntToStr(MOD_SLOTS) + Tr(' Matrix-Zeilen sind belegt.'), mtInformation, [mbOK], 0);
     Exit;
   end;
   PushUndo;
   SetSlot(Free, Src, Idx + 1, 25, MOD_FACTOR_DEFAULT);
   UpdateFromEngine;
-  FStatus.Caption := Format('Modulation in Matrix-Zeile %d', [Free + 1]);
+  FStatus.Caption := Format(Tr('Modulation in Matrix-Zeile %d'), [Free + 1]);
 end;
 
 { oberste Matrix-Zeile, die nichts bewirkt (keine Quelle oder kein Ziel); -1 = alle belegt }
@@ -3892,9 +3948,9 @@ begin
     for S := P * MAT_ROWS to Min(MOD_SLOTS, (P + 1) * MAT_ROWS) - 1 do
       if ParamStep(SlotSourceIndex(S), FEngine.GetParam(SlotSourceIndex(S))) > 0 then
         Inc(N);
-    Cap := Format('%d-%d', [P * MAT_ROWS + 1, Min(MOD_SLOTS, (P + 1) * MAT_ROWS)]);
+    Cap := Format(Tr('%d-%d'), [P * MAT_ROWS + 1, Min(MOD_SLOTS, (P + 1) * MAT_ROWS)]);
     if N > 0 then
-      Cap := Cap + Format(' (%d)', [N]);
+      Cap := Cap + Format(Tr(' (%d)'), [N]);
     FMatPageBtn[P].Active := P = FMatPage;   // sichtbare Seite bernsteinfarben
     if FMatPageBtn[P].Caption <> Cap then
       FMatPageBtn[P].Caption := Cap;
@@ -3925,7 +3981,7 @@ begin
       end;
     end;
     if N = 0 then
-      T := 'noch keine Ziele'
+      T := Tr('noch keine Ziele')
     else
       T := '-> ' + T;
     if FMacroTargets[K].Caption <> T then
@@ -3966,7 +4022,7 @@ begin
       begin
         FWheelParam := MenuParamIndex;
         FWheelSlot := Slot;
-        FStatus.Caption := 'Alt + Mausrad: ' + SlotCaption(Slot);
+        FStatus.Caption := Tr('Alt + Mausrad: ') + SlotCaption(Slot);
       end;
     2:
       begin
@@ -4158,6 +4214,8 @@ begin
       Exit(LFO_DIV_NAMES[LfoDivisionIndex(Norm)]);
   if (Index = Ord(gpEchoTime)) and (FEngine.EffParam[Ord(gpEchoSync)] >= 0.5) then
     Result := LFO_DIV_NAMES[EchoDivisionIndex(Norm)]
+  else if GetParamInfo(Index).Curve = pcStepped then
+    Result := Tr(ParamDisplay(Index, Norm))
   else
     Result := ParamDisplay(Index, Norm);
 end;
@@ -4185,9 +4243,9 @@ begin
   Modulated := Abs(Eff - Base) > 0.0005;
   Cap := DisplayFor(B.Index, Base);
   if Modulated then
-    B.ValueLabel.Hint := 'wirksam: ' + DisplayFor(B.Index, Eff) + '  -  Klick: Wert eingeben'
+    B.ValueLabel.Hint := Tr('wirksam: ') + DisplayFor(B.Index, Eff) + Tr('  -  Klick: Wert eingeben')
   else
-    B.ValueLabel.Hint := 'Klick: Wert eingeben';
+    B.ValueLabel.Hint := Tr('Klick: Wert eingeben');
   if Cap <> B.LastCaption then
   begin
     B.ValueLabel.Caption := Cap;
@@ -4229,7 +4287,7 @@ begin
     begin
       B.Check.Checked := Norm >= 0.5;
       if B.OnOffCaption then
-        B.NameLabel.Caption := System.StrUtils.IfThen(Norm >= 0.5, 'an', 'aus');
+        B.NameLabel.Caption := System.StrUtils.IfThen(Norm >= 0.5, Tr('an'), Tr('aus'));
     end;
   finally
     FUpdating := False;
@@ -4482,7 +4540,7 @@ begin
       LoadFile(Dlg.FileName);
     except
       on E: Exception do
-        MessageDlg('Datei konnte nicht geladen werden:' + sLineBreak + E.Message, mtError, [mbOK], 0);
+        MessageDlg(Tr('Datei konnte nicht geladen werden:') + sLineBreak + E.Message, mtError, [mbOK], 0);
     end;
   finally
     Dlg.Free;
@@ -4728,14 +4786,14 @@ begin
       Load := 100 * (Ticks / Freq) / Max(Sec, 0.001);                       // Anteil an der Echtzeit
       MaxLoad := 100 * (MaxT / Freq) / Max(AvgFr / FEngine.SampleRate, 1E-6);  // laengster Aufruf / Pufferdauer
       HostPct := 100 * (Host / Freq) / Max(Sec, 0.001);
-      FProcStat.Caption := Format('Laufzeit: %d Aufrufe/s, %.0f Samples, Rechenzeit %.1f %% (max. %.0f %% eines Puffers)' +
-        sLineBreak + 'DAW-Rückfragen %.2f %%, Thread-Wechsel %d/s',
+      FProcStat.Caption := Format(Tr('Laufzeit: %d Aufrufe/s, %.0f Samples, Rechenzeit %.1f %% (max. %.0f %% eines Puffers)') +
+        sLineBreak + Tr('DAW-Rückfragen %.2f %%, Thread-Wechsel %d/s'),
         [Round(Calls / Sec), AvgFr, Load, MaxLoad, HostPct, Round(Hops / Sec)]);
       FLoadGauge.SetValues(Load, MaxLoad, FLoadList.TheoryPercent);
     end
     else
     begin
-      FProcStat.Caption := 'Laufzeit: keine Aufrufe der DAW (Plugin pausiert)';
+      FProcStat.Caption := Tr('Laufzeit: keine Aufrufe der DAW (Plugin pausiert)');
       FLoadGauge.SetValues(0, 0, FLoadList.TheoryPercent);
     end;
   end;
@@ -4749,7 +4807,7 @@ begin
   if P < 0.0001 then
     Result := '  -  '
   else
-    Result := Format('%4.0f dB', [20 * Log10(P)]);
+    Result := Format(Tr('%4.0f dB'), [20 * Log10(P)]);
 end;
 
 { Zahl rechtsbuendig auf feste Stellenzahl: vorn Ziffern-Leerzeichen (gleich breit wie eine Ziffer) }
@@ -4820,7 +4878,7 @@ begin
     if not FEngine.Recording and (FRecButton.Tag = 1) then
       RecClick(nil)                       // Puffer voll: Aufnahme endet von selbst -> laden
     else if FMainTick mod 8 = 0 then
-      FRecLabel.Caption := Format('Aufnahme läuft: %.1f s (max. 60 s)', [FEngine.RecordedSeconds]);
+      FRecLabel.Caption := Format(Tr('Aufnahme läuft: %.1f s (max. 60 s)'), [FEngine.RecordedSeconds]);
   end;
   if (FPages.ActivePage = FTabFx2) and (FGatePattern <> nil) then
     FGatePattern.Tick;
@@ -4832,7 +4890,7 @@ begin
     FLoadGauge.Tick;
   end;
   if (FPages.ActivePage = FTabMix) and (FInLevels <> nil) and (FMainTick mod 4 = 0) then
-    FInLevels.Caption := Format('Pegel  E1 %s   E2 %s   E3 %s   E4 %s',
+    FInLevels.Caption := Format(Tr('Pegel  E1 %s   E2 %s   E3 %s   E4 %s'),
       [InDb(FEngine.VstInputPeak(0)), InDb(FEngine.VstInputPeak(1)), InDb(FEngine.VstInputPeak(2)), InDb(FEngine.VstInputPeak(3))]);
   if FEngine.MetersOn then
     for I := 0 to MIX_METERS - 1 do
@@ -4933,9 +4991,9 @@ begin
   begin
     LimDb := FEngine.TakeLimiterReduction;
     if LimDb < -0.1 then
-      FLimiterLabel.Caption := Format('Reduktion %.1f dB', [LimDb])
+      FLimiterLabel.Caption := Format(Tr('Reduktion %.1f dB'), [LimDb])
     else
-      FLimiterLabel.Caption := 'keine Reduktion';
+      FLimiterLabel.Caption := Tr('keine Reduktion');
   end;
   if LiveFrame then
     for I := 0 to High(FBindings) do
@@ -4944,43 +5002,43 @@ begin
   FMidiLed.UpdateClip;
   if FIsForeground then
     if FGfxLevel = GFX_FG_BEST then
-      AnimInfo := 'Anim 51 B/s'
+      AnimInfo := Tr('Anim 51 B/s')
     else
-      AnimInfo := Format('Anim %d B/s', [Round(64 / GFX_DIVIDER[FGfxLevel])])
+      AnimInfo := Format(Tr('Anim %d B/s'), [Round(64 / GFX_DIVIDER[FGfxLevel])])
   else
-    AnimInfo := Format('Anim %d B/s (Hintergrund)', [Round(4 / GFX_DIVIDER[FGfxLevel])]);
+    AnimInfo := Format(Tr('Anim %d B/s (Hintergrund)'), [Round(4 / GFX_DIVIDER[FGfxLevel])]);
   // kurz halten, damit alles in die Kopfleiste passt; die Tastenbelegung steht im Tooltip
   // aktives Sample (bei Morph mit eigenem B-Sample: beide mit ihrem Anteil an den Grains)
   if FEngine.SamplePath <> '' then
     SmpA := ChangeFileExt(ExtractFileName(FEngine.SamplePath), '')
   else if IsEmptySample(FEngine.Sample) then
-    SmpA := 'kein Sample'
+    SmpA := Tr('kein Sample')
   else
-    SmpA := 'Demo-Klang (eingebaut)';
+    SmpA := Tr('Demo-Klang (eingebaut)');
   if FEngine.MorphValid and (FEngine.MorphSampleLoaded <> '') and
      not SameText(FEngine.MorphSampleLoaded, FEngine.SamplePath) then
   begin
     MorphB := EnsureRange(FEngine.EffParam[Ord(gpMorph)], 0, 1);
     SmpB := ChangeFileExt(ExtractFileName(FEngine.MorphSampleLoaded), '');
-    SmpFull := 'A: ' + SmpA + '   B: ' + SmpB;
-    SmpInfo := Format('A: %s %d %%  B: %s %d %%', [ShortName(SmpA), Round((1 - MorphB) * 100),
+    SmpFull := Tr('A: ') + SmpA + Tr('   B: ') + SmpB;
+    SmpInfo := Format(Tr('A: %s %d %%  B: %s %d %%'), [ShortName(SmpA), Round((1 - MorphB) * 100),
       ShortName(SmpB), Round(MorphB * 100)]);
   end
   else
   begin
-    SmpFull := 'Sample: ' + SmpA;
-    SmpInfo := 'Sample: ' + ShortName(SmpA);
+    SmpFull := Tr('Sample: ') + SmpA;
+    SmpInfo := Tr('Sample: ') + ShortName(SmpA);
   end;
   if FEngine.GetParam(Ord(gpGrainOn)) < 0.5 then
   begin
-    SmpInfo := 'Grains aus (nur Oszillator)';
+    SmpInfo := Tr('Grains aus (nur Oszillator)');
     SmpFull := SmpInfo + ' - ' + SmpFull;
   end;
   // Zahlen mit fester Breite (Ziffern-Leerzeichen U+2007 = so breit wie eine Ziffer): beim Wechsel
   // von ein- auf mehrstellig rutschen die Trenner und der Samplename nicht hin und her
-  FStatus.Caption := Format('Okt %s  |  %s Stimmen  |  %s Grains  |  %s',
+  FStatus.Caption := Format(Tr('Okt %s  |  %s Stimmen  |  %s Grains  |  %s'),
     [FixNum(FOctave, 2), FixNum(PC, 2), FixNum(FEngine.ActiveGrains, 4), SmpInfo]);
-  FStatus.Hint := SmpFull + sLineBreak + AnimInfo + ' - PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave';
+  FStatus.Hint := SmpFull + sLineBreak + AnimInfo + Tr(' - PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave');
 end;
 
 { --- Noten --- }
@@ -5060,7 +5118,7 @@ begin
   begin
     FEngine.MidiLearnCancel;
     FLearnBinding := -1;
-    FStatus.Caption := 'MIDI-Learn abgebrochen';
+    FStatus.Caption := Tr('MIDI-Learn abgebrochen');
     Exit(True);
   end;
   // aufgeklappte Auswahllisten brauchen die Tastatur selbst
@@ -5167,7 +5225,7 @@ begin
   try
     FPresetCombo.Items.Clear;
     FPresetFiles := [''];
-    FPresetCombo.Items.Add('- Preset wählen -');
+    FPresetCombo.Items.Add(Tr('- Preset wählen -'));
     Sel := 0;
     for I := 0 to High(FAllPresetNames) do
       if ((F = '') or (Pos(F, LowerCase(FAllPresetNames[I])) > 0)) and
@@ -5184,9 +5242,9 @@ begin
           Sel := High(FPresetFiles);
       end;
     if F <> '' then
-      FPresetCombo.Items[0] := Format('- %d Treffer für "%s" -', [High(FPresetFiles), Trim(FPresetFilter.Text)])
+      FPresetCombo.Items[0] := Format(Tr('- %d Treffer für "%s" -'), [High(FPresetFiles), Trim(FPresetFilter.Text)])
     else if (FPresetCat <> nil) and (FPresetCat.ItemIndex > 0) then
-      FPresetCombo.Items[0] := Format('- %d Presets: %s -', [High(FPresetFiles), FPresetCat.Text]);
+      FPresetCombo.Items[0] := Format(Tr('- %d Presets: %s -'), [High(FPresetFiles), FPresetCat.Text]);
   finally
     FPresetCombo.Items.EndUpdate;
   end;
@@ -5335,7 +5393,7 @@ begin
   PushUndo;
   Master := FEngine.GetParam(Ord(gpMaster));        // Master gehoert dem Nutzer, nicht dem Preset
   if not LoadChunkFromFile(FEngine, FileName, Path, FBaseDir) then
-    raise Exception.Create('Keine gültige Preset-Datei: ' + FileName);
+    raise Exception.Create(Tr('Keine gültige Preset-Datei: ') + FileName);
   FEngine.SetParamById(gpMaster, Master);
   FEngine.PresetName := ChangeFileExt(ExtractFileName(FileName), '');
   FBanner.Flash;   // Lichtimpuls durchs Banner
@@ -5348,7 +5406,7 @@ begin
   else if (Resolved <> '') and not SameText(Resolved, FEngine.SamplePath) then
     LoadFile(Resolved)
   else if (Path <> '') and (Resolved = '') then
-    MessageDlg('Das Sample des Presets wurde nicht gefunden:' + sLineBreak + Path, mtWarning, [mbOK], 0);
+    MessageDlg(Tr('Das Sample des Presets wurde nicht gefunden:') + sLineBreak + Path, mtWarning, [mbOK], 0);
   LoadMorphSample(FEngine, FBaseDir);   // Sample des Morph-Ziels B (Grain-Ueberblendung)
   LoadZoneSamples(FEngine, FBaseDir);
   UpdateFromEngine;
@@ -5407,8 +5465,8 @@ begin
   try
     // zwei Dateitypen = die Option: ohne Samples (klein, wie bisher) oder mit eingebetteten Samples
     // (eine Datei mit allem, z.B. zum Weitergeben an einen anderen Rechner)
-    Dlg.Filter := 'Granular-Preset (*.gspreset)|*.gspreset|' +
-      'Granular-Preset mit eingebetteten Samples (*.gspreset)|*.gspreset';
+    Dlg.Filter := Tr('Granular-Preset (*.gspreset)|*.gspreset|' +
+      'Granular-Preset mit eingebetteten Samples (*.gspreset)|*.gspreset');
     Dlg.FilterIndex := 1;
     try
       if (FBaseDir <> '') and FileExists(FBaseDir + EMBED_OPT_FILE) and
@@ -5466,7 +5524,7 @@ begin
       end;
     except
       on E: Exception do
-        MessageDlg('Preset konnte nicht gespeichert werden:' + sLineBreak + E.Message, mtError, [mbOK], 0);
+        MessageDlg(Tr('Preset konnte nicht gespeichert werden:') + sLineBreak + E.Message, mtError, [mbOK], 0);
     end;
   finally
     Dlg.Free;

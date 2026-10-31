@@ -63,7 +63,7 @@ function Get-Vst3Default([string]$Plat) {
 
 # Daten neben das Plugin: Programm-Dateien ueberschreiben, Nutzerdaten nie loeschen
 function Copy-Data([string]$From, [string]$To, [System.Collections.Generic.List[string]]$Log) {
-  foreach ($d in @('Presets', 'Beispieltoene', 'Hilfe')) {
+  foreach ($d in @('Presets', 'Beispieltoene', 'Hilfe', 'Sprachen')) {
     $s = Join-Path $From $d
     if (Test-Path $s) {
       $t = Join-Path $To $d
@@ -74,9 +74,11 @@ function Copy-Data([string]$From, [string]$To, [System.Collections.Generic.List[
   }
   $own = Join-Path $To 'Eigene Toene'
   New-Item -ItemType Directory -Force -Path $own | Out-Null
-  $readme = Join-Path $From 'Eigene Toene\LIESMICH.txt'
-  if (Test-Path $readme) { Copy-Item $readme $own -Force }
-  foreach ($f in @('LIESMICH.txt', 'CHANGELOG.md', 'LICENSE.txt')) {
+  foreach ($r in @('Eigene Toene\LIESMICH.txt', 'Eigene Toene\README_EN.txt')) {
+    $readme = Join-Path $From $r
+    if (Test-Path $readme) { Copy-Item $readme $own -Force }
+  }
+  foreach ($f in @('LIESMICH.txt', 'README_EN.txt', 'CHANGELOG.md', 'LICENSE.txt')) {
     $s = Join-Path $From $f
     if (Test-Path $s) { Copy-Item $s $To -Force }
   }
@@ -178,13 +180,13 @@ function Uninstall-Granular([string]$Plat, [bool]$KeepUser) {
 # Setup-Dateien.txt: alle Dateien, die das Setup in den Zielordner gelegt hat (relativ); bestehende Liste ergaenzen
 function Write-FileList([string]$From, [string]$To, [string[]]$Extra) {
   $rel = New-Object System.Collections.Generic.List[string]
-  foreach ($d in @('Presets', 'Beispieltoene', 'Hilfe')) {
+  foreach ($d in @('Presets', 'Beispieltoene', 'Hilfe', 'Sprachen')) {
     $s = Join-Path $From $d
     if (Test-Path $s) {
       Get-ChildItem -LiteralPath $s -Recurse -File | ForEach-Object { $rel.Add($d + $_.FullName.Substring($s.Length)) }
     }
   }
-  foreach ($f in @('Eigene Toene\LIESMICH.txt', 'LIESMICH.txt', 'CHANGELOG.md', 'LICENSE.txt') + $Extra) { $rel.Add($f) }
+  foreach ($f in @('Eigene Toene\LIESMICH.txt', 'Eigene Toene\README_EN.txt', 'LIESMICH.txt', 'README_EN.txt', 'CHANGELOG.md', 'LICENSE.txt') + $Extra) { $rel.Add($f) }
   $list = Join-Path $To 'Setup-Dateien.txt'
   if (Test-Path $list) { foreach ($l in (Get-Content -LiteralPath $list -Encoding UTF8)) { if ($l) { $rel.Add($l) } } }
   $rel | Sort-Object -Unique | Set-Content -LiteralPath $list -Encoding UTF8

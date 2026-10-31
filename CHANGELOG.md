@@ -6,6 +6,24 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.3 – 31.10.2026
+
+### Neu
+- **Englische Oberfläche:** Im Reiter *Extras* gibt es die Auswahl *Sprache / Language* (Deutsch oder English). Die Oberfläche baut sich sofort in der neuen Sprache auf, die Wahl wird gemerkt.
+  - Weitere Sprachen kommen als Datei in den Ordner *Sprachen* hinzu und erscheinen automatisch in der Auswahl.
+  - Ohne gespeicherte Wahl startet das Plugin auf deutschem Windows deutsch, sonst englisch.
+- **Englische Dokumente:** Hilfe (*Hilfe_en.rtf*), *README_EN.txt*, *Eigene Toene/README_EN.txt* und der Lernpfad (*Presets/LEARNING_PATH_EN.txt*). Die Hilfe öffnet sich in der gewählten Sprache.
+
+### Entfernt
+- 19 Presets wurden aussortiert: 02, 03, 23, 35, 40, 46, 48, 55, 65, 66, 95, 101, 107, 109, 112, 113, 117, 133 und 158. Die übrigen Presets behalten ihre Nummern, die freien Nummern werden nicht neu vergeben.
+
+### Hinweis
+- Presets, ihre Namen und die Parameternamen in der DAW bleiben deutsch. Presets sind in beiden Sprachen dieselben.
+- GranularHost übernimmt eine im Plugin umgestellte Sprache erst beim nächsten Start.
+- Wer die aussortierten Presets schon installiert hat, behält sie beim Aktualisieren. Sie lassen sich im Ordner *Presets* von Hand löschen.
+
+---
+
 ## Version 2.2 – 31.10.2026
 
 ### Neu

@@ -50,8 +50,9 @@ rc = '\r\n'.join([
     ''])
 open(os.path.join(root, 'Version.rc'), 'w', encoding='cp1252', newline='').write(rc)
 # Untertitel der Hilfe: "FM . Synthese . HABI M . Version x.y"
-hp = os.path.join(root, 'Hilfe', 'Hilfe.rtf')
-h = open(hp, encoding='latin-1').read()
-h = re.sub(r"(HABI M \\'b7 Version )\d+\.\d+", lambda m: m.group(1) + '%d.%d' % (ma, mi), h)
-open(hp, 'w', encoding='latin-1', newline='').write(h)
+import glob
+for hp in glob.glob(os.path.join(root, 'Hilfe', 'Hilfe*.rtf')):     # deutsche und uebersetzte Hilfe
+    h = open(hp, encoding='latin-1').read()
+    h = re.sub(r"(HABI M \\'b7 Version )\d+\.\d+", lambda m: m.group(1) + '%d.%d' % (ma, mi), h)
+    open(hp, 'w', encoding='latin-1', newline='').write(h)
 print('%d.%d' % (ma, mi))

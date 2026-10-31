@@ -4,6 +4,9 @@ ob automatisierbar/Matrix-Ziel und den VST-Parameternamen.
 Aufruf (aus beliebigem Ordner):   python Tools/Hilfe_Reglertabelle.py
 Das Skript ersetzt nur Kapitel 11; die Kapitel davor stehen direkt in Hilfe.rtf und werden von Hand
 gepflegt. Nach neuen/umbenannten Reglern hier TABS (Text) und PNAMES (VST-Namen) anpassen.
+Fremdsprachen: fuer jede Sprachdatei Sprachen/<Kuerzel>.txt mit passender Hilfe/Hilfe_<Kuerzel>.rtf wird
+Kapitel 11 dort ebenfalls erzeugt - alle Texte ueber das Woerterbuch der Sprachdatei. Fehlende Texte meldet
+das Skript; Tools/lang_check.py fuehrt sie als fehlende Uebersetzungen.
 """
 import os
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))   # Projektordner
@@ -216,12 +219,14 @@ def vst(n):
     return v
 
 BS = "\\"
-def row(c1, c2, c3, head=False, shade=False):
+def row(c1, c2, c3, head=False, shade=False, yes=None):
     pat = (BS + "clcbpat6") if head else ((BS + "clcbpat7") if shade else (BS + "clcbpat8"))
     r = BS + "trowd" + BS + "trgaph90" + BS + "trleft0"
     r += pat + BS + "cellx2500" + pat + BS + "cellx7300" + pat + BS + "cellx10200\n"
     b = (BS + "b ") if head else ""
-    c3col = (BS + "cf4 ") if c3.startswith("ja") else (BS + "cf5 ")
+    if yes is None:
+        yes = c3.startswith("ja")
+    c3col = (BS + "cf4 ") if yes else (BS + "cf5 ")
     if head:
         c3col = ""
     r += BS + "pard" + BS + "intbl{" + b + BS + "cf2 " + c1 + "}" + BS + "cell"
@@ -229,31 +234,99 @@ def row(c1, c2, c3, head=False, shade=False):
     r += BS + "pard" + BS + "intbl{" + b + c3col + c3 + "}" + BS + "cell" + BS + "row\n"
     return r
 
-parts = ["{" + BS + "cf3" + BS + "b" + BS + "fs26 11. Alle Regler im \u00dcberblick" + BS + "par}\n",
-         "Was jeder Regler und Knopf bewirkt - Reiter f\u00fcr Reiter. Spalte {" + BS + "b VST-Parameter}: "
-         "{" + BS + "cf4 ja} = im Host automatisierbar und Ziel in der Modulationsmatrix, "
-         "{" + BS + "cf5 nein} = nur im Plugin-Fenster, {" + BS + "cf5 MIDI} = kommt als MIDI-Signal. "
-         "Das Tempo kommt immer vom Host." + BS + "par" + BS + "par\n"]
-for tab, items in TABS:
-    parts.append("{" + BS + "cf3" + BS + "b" + BS + "fs22 " + tab + BS + "par}\n")
-    parts.append(row("Regler / Knopf", "Was er bewirkt", "VST-Parameter", head=True))
-    for k, (name, text) in enumerate(items):
-        parts.append(row(name, text, vst(name), shade=(k % 2 == 1)))
-    parts.append(BS + "pard" + BS + "par\n")
-block = esc(''.join(parts))
+import glob
 
-p = 'Hilfe/Hilfe.rtf'
-s = open(p, encoding='utf-8').read().rstrip()
-k = s.find(BS + "par\n{" + BS + "cf3" + BS + "b" + BS + "fs26 11. Alle Regler")
-if k > 0:
-    s = s[:k].rstrip() + "\n}"
-assert s.endswith('}')
-# Tabellenfarben: 6 = Kopfzeile, 7 = jede zweite Zeile
-if "red40" + BS + "green46" not in s:
-    s = s.replace(BS + "red180" + BS + "green180" + BS + "blue180;}",
-                  BS + "red180" + BS + "green180" + BS + "blue180;" + BS + "red40" + BS + "green46" + BS + "blue60;" + BS + "red34" + BS + "green34" + BS + "blue38;" + BS + "red40" + BS + "green42" + BS + "blue48;}", 1)
-if "red40" + BS + "green42" not in s:
-    s = s.replace(BS + "red34" + BS + "green34" + BS + "blue38;}", BS + "red34" + BS + "green34" + BS + "blue38;" + BS + "red40" + BS + "green42" + BS + "blue48;}", 1)
-s = s[:-1].rstrip() + "\n" + BS + "par\n" + block + "}\n"
-open(p, 'w', encoding='utf-8', newline='').write(s)
-print('ok', len(block), s.count('{') - s.count('}'))
+
+def load_dict(path):
+    d = {}
+    for ln in open(path, encoding='utf-8-sig').read().split('\n'):
+        ln = ln.rstrip('\r')
+        if ln and not ln.startswith('#') and '\t' in ln:
+            k, v = ln.split('\t', 1)
+            d[k.replace('\\n', '\n')] = v.replace('\\n', '\n')
+    return d
+
+
+def make_tr(d, missing):
+    if d is None:
+        return lambda t: t
+    def tr(t):
+        key = t.strip(' ').rstrip(' :') or t
+        if key in d:
+            return t.replace(key, d[key], 1)
+        missing.add(key)
+        return t
+    return tr
+
+
+def vst_tr(n, T):
+    v = vst(n)
+    if T('ja') == 'ja':
+        return v
+    # "ja (Name, Name; ...)" -> Teile einzeln uebersetzen
+    out = v
+    if v.startswith('ja'):
+        rest = v[2:].strip()
+        out = T('ja')
+        if rest.startswith('(') and rest.endswith(')'):
+            inner = rest[1:-1]
+            segs = []
+            for seg in inner.split(';'):
+                seg = seg.strip()
+                if ':' in seg:
+                    a, b = seg.split(':', 1)
+                    segs.append(T(a.strip()) + ': ' + T(b.strip()))
+                else:
+                    segs.append(', '.join(T(x.strip()) for x in seg.split(',')))
+            out += ' (' + '; '.join(segs) + ')'
+    elif v == 'nein':
+        out = T('nein')
+    else:
+        out = T(v)
+    return out
+
+
+def build_block(T):
+    parts = ["{" + BS + "cf3" + BS + "b" + BS + "fs26 " + T("11. Alle Regler im \u00dcberblick") + BS + "par}\n",
+             T("Was jeder Regler und Knopf bewirkt - Reiter f\u00fcr Reiter.") + " " +
+             T("Spalte") + " {" + BS + "b " + T("VST-Parameter") + "}: "
+             "{" + BS + "cf4 " + T("ja") + "} = " + T("im Host automatisierbar und Ziel in der Modulationsmatrix") + ", "
+             "{" + BS + "cf5 " + T("nein") + "} = " + T("nur im Plugin-Fenster") + ", {" + BS + "cf5 MIDI} = " +
+             T("kommt als MIDI-Signal") + ". " + T("Das Tempo kommt immer vom Host.") + BS + "par" + BS + "par\n"]
+    for tab, items in TABS:
+        parts.append("{" + BS + "cf3" + BS + "b" + BS + "fs22 " + T(tab) + BS + "par}\n")
+        parts.append(row(T("Regler / Knopf"), T("Was er bewirkt"), T("VST-Parameter"), head=True))
+        for k, (name, text) in enumerate(items):
+            parts.append(row(T(name), T(text), vst_tr(name, T), shade=(k % 2 == 1), yes=vst(name).startswith("ja")))
+        parts.append(BS + "pard" + BS + "par\n")
+    return esc(''.join(parts))
+
+
+def write_help(p, T):
+    block = build_block(T)
+    s = open(p, encoding='utf-8').read().rstrip()
+    k = s.find(BS + "par\n{" + BS + "cf3" + BS + "b" + BS + "fs26 11. ")
+    if k > 0:
+        s = s[:k].rstrip() + "\n}"
+    assert s.endswith('}')
+    # Tabellenfarben: 6 = Kopfzeile, 7 = jede zweite Zeile
+    if "red40" + BS + "green46" not in s:
+        s = s.replace(BS + "red180" + BS + "green180" + BS + "blue180;}",
+                      BS + "red180" + BS + "green180" + BS + "blue180;" + BS + "red40" + BS + "green46" + BS + "blue60;" + BS + "red34" + BS + "green34" + BS + "blue38;" + BS + "red40" + BS + "green42" + BS + "blue48;}", 1)
+    if "red40" + BS + "green42" not in s:
+        s = s.replace(BS + "red34" + BS + "green34" + BS + "blue38;}", BS + "red34" + BS + "green34" + BS + "blue38;" + BS + "red40" + BS + "green42" + BS + "blue48;}", 1)
+    s = s[:-1].rstrip() + "\n" + BS + "par\n" + block + "}\n"
+    open(p, 'w', encoding='utf-8', newline='').write(s)
+    print('ok', p, len(block), s.count('{') - s.count('}'))
+
+
+if __name__ == '__main__':
+    write_help('Hilfe/Hilfe.rtf', make_tr(None, None))
+    for lf in sorted(glob.glob('Sprachen/[!_]*.txt')):
+        code = os.path.splitext(os.path.basename(lf))[0]
+        hp = 'Hilfe/Hilfe_%s.rtf' % code
+        if os.path.exists(hp):
+            miss = set()
+            write_help(hp, make_tr(load_dict(lf), miss))
+            if miss:
+                print('  %s: %d Texte der Reglertabelle ohne Uebersetzung (stehen deutsch in %s; Tools/lang_check.py)' % (code, len(miss), hp))

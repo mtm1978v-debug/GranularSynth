@@ -20,6 +20,7 @@ unit MainForm;
 interface
 
 uses
+  Granular.Lang,
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, System.Math,
   System.SyncObjs, System.IOUtils, System.IniFiles, System.UITypes,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
@@ -225,14 +226,14 @@ begin
       Peak := 0;
       for F := 0 to D.Frames - 1 do
         Peak := Max(Peak, Max(Abs(D.L[F]), Abs(D.R[F])));
-      Result := Format('OK: %d Hz, %d Kanäle, %.2f s, Spitze %.3f, Dauer %.0f ms',
+      Result := Format(Tr('OK: %d Hz, %d Kanäle, %.2f s, Spitze %.3f, Dauer %.0f ms'),
         [Round(D.SampleRate), D.Channels, D.Frames / D.SampleRate, Peak, (Now - T0) * 86400000]);
     finally
       D.Free;
     end;
   except
     on E: Exception do
-      Result := 'FEHLER: ' + E.Message;
+      Result := Tr('FEHLER: ') + E.Message;
   end;
 end;
 
@@ -285,14 +286,14 @@ begin
   FTopBar.BevelOuter := bvNone;
   FTopBar.ParentBackground := False;
   FTopBar.Color := BG_DARK;
-  FLoadButton := MakeButton(FTopBar, 'VST laden...', 8, 96, LoadClick);
-  FResetButton := MakeButton(FTopBar, 'Zurücksetzen', 108, 96, ResetClick);
-  FResetButton.Hint := 'Gespeicherte Einstellungen dieses Plugins löschen und neu laden';
+  FLoadButton := MakeButton(FTopBar, Tr('VST laden...'), 8, 96, LoadClick);
+  FResetButton := MakeButton(FTopBar, Tr('Zurücksetzen'), 108, 96, ResetClick);
+  FResetButton.Hint := Tr('Gespeicherte Einstellungen dieses Plugins löschen und neu laden');
   FResetButton.ShowHint := True;
-  FPluginLabel := MakeLabel(FTopBar, '(kein Plugin)', 212, 230);
+  FPluginLabel := MakeLabel(FTopBar, Tr('(kein Plugin)'), 212, 230);
   FPluginLabel.Font.Color := COL_VAL;
   FPluginLabel.Font.Style := [fsBold];
-  MakeLabel(FTopBar, 'Tempo', 448, 40);
+  MakeLabel(FTopBar, Tr('Tempo'), 448, 40);
   FTempoTrack := TTrackBar.Create(Self);
   FTempoTrack.Parent := FTopBar;
   FTempoTrack.SetBounds(488, 6, 160, 24);
@@ -303,11 +304,11 @@ begin
   FTempoTrack.Position := 120;
   FTempoTrack.TabStop := False;
   FTempoTrack.OnChange := TempoChange;
-  FTempoLabel := MakeLabel(FTopBar, '120 BPM', 652, 60);
+  FTempoLabel := MakeLabel(FTopBar, Tr('120 BPM'), 652, 60);
   FTempoLabel.Font.Color := COL_VAL;
-  FPanicButton := MakeButton(FTopBar, 'Alle Noten aus', 716, 96, PanicClick);
-  FOctDown := MakeButton(FTopBar, 'Okt -', 818, 44, OctaveClick);
-  FOctUp := MakeButton(FTopBar, 'Okt +', 864, 44, OctaveClick);
+  FPanicButton := MakeButton(FTopBar, Tr('Alle Noten aus'), 716, 96, PanicClick);
+  FOctDown := MakeButton(FTopBar, Tr('Okt -'), 818, 44, OctaveClick);
+  FOctUp := MakeButton(FTopBar, Tr('Okt +'), 864, 44, OctaveClick);
 
   // --- Klaviatur: vor der Fussleiste erzeugt -> liegt darueber ---
   // Container fuer Klaviatur + Fussleiste: feste Reihenfolge unabhaengig von der Erzeugung
@@ -328,16 +329,16 @@ begin
   FWheelArea.BevelOuter := bvNone;
   FWheelArea.ParentBackground := False;
   FWheelArea.Color := BG_DARK;
-  FBendWheel := TWheelView.Create(Self, 'Bend', True);
+  FBendWheel := TWheelView.Create(Self, Tr('Bend'), True);
   FBendWheel.Parent := FWheelArea;
   FBendWheel.SetBounds(6, 4, 28, KEYS_H - 8);
   FBendWheel.OnChange := WheelChange;
-  FBendWheel.Hint := 'Pitchbend: ziehen, beim Loslassen federt es zurück';
-  FModWheel := TWheelView.Create(Self, 'Mod', False);
+  FBendWheel.Hint := Tr('Pitchbend: ziehen, beim Loslassen federt es zurück');
+  FModWheel := TWheelView.Create(Self, Tr('Mod'), False);
   FModWheel.Parent := FWheelArea;
   FModWheel.SetBounds(38, 4, 28, KEYS_H - 8);
   FModWheel.OnChange := WheelChange;
-  FModWheel.Hint := 'Modrad (MIDI CC 1): bleibt stehen';
+  FModWheel.Hint := Tr('Modrad (MIDI CC 1): bleibt stehen');
 
   // --- Fussleiste: Autoplay, Sidechain, Pegel, Klaviatur ---
   FBottomBar := TPanel.Create(Self);
@@ -347,14 +348,14 @@ begin
   FBottomBar.BevelOuter := bvNone;
   FBottomBar.ParentBackground := False;
   FBottomBar.Color := BG_DARK;
-  FAutoButton := MakeButton(FBottomBar, 'Autoplay Start', 8, 100, AutoButtonClick);
+  FAutoButton := MakeButton(FBottomBar, Tr('Autoplay Start'), 8, 100, AutoButtonClick);
   FAutoCombo := TComboBox.Create(Self);
   FAutoCombo.Parent := FBottomBar;
   EnableComboFit(FAutoCombo);
   FAutoCombo.Style := csDropDownList;
   FAutoCombo.SetBounds(112, 8, 176, 21);
-  MakeButton(FBottomBar, 'MIDI ...', 292, 54, MidiExportClick).Hint :=
-    'Gewähltes Stück als MIDI-Datei speichern (bei "Zufall": alle passenden Stücke in einen Ordner)';
+  MakeButton(FBottomBar, Tr('MIDI ...'), 292, 54, MidiExportClick).Hint :=
+    Tr('Gewähltes Stück als MIDI-Datei speichern (bei "Zufall": alle passenden Stücke in einen Ordner)');
   FAutoCombo.TabStop := False;
   FAutoCombo.DropDownCount := 20;
   FAutoCombo.OnChange := AutoComboChange;      // Auswahl startet das Stueck sofort
@@ -365,11 +366,11 @@ begin
   FAutoAllCheck.Parent := FBottomBar;
   FAutoAllCheck.SetBounds(350, 7, 22, 22);
   FAutoAllCheck.TabStop := False;
-  FAutoAllCheck.Hint := 'Alle Stücke anzeigen, nicht nur die zum Preset passenden';
+  FAutoAllCheck.Hint := Tr('Alle Stücke anzeigen, nicht nur die zum Preset passenden');
   FAutoAllCheck.ShowHint := True;
   FAutoAllCheck.OnClick := AutoAllClick;
-  MakeLabel(FBottomBar, 'alle', 375, 30);
-  MakeLabel(FBottomBar, 'Sidechain:', 404, 60);
+  MakeLabel(FBottomBar, Tr('alle'), 375, 30);
+  MakeLabel(FBottomBar, Tr('Sidechain:'), 404, 60);
   FScCombo := TComboBox.Create(Self);
   FScCombo.Parent := FBottomBar;
   EnableComboFit(FScCombo);
@@ -377,7 +378,7 @@ begin
   FScCombo.SetBounds(466, 8, 170, 21);
   FScCombo.TabStop := False;
   FScCombo.DropDownCount := 20;
-  FScCombo.Items.Add('Aus');
+  FScCombo.Items.Add(Tr('Aus'));
   for Dev in ListInputDevices do
     FScCombo.Items.Add(Dev);
   FScCombo.ItemIndex := 0;
@@ -391,7 +392,7 @@ begin
   FKeysCheck.Checked := False;
   FKeysCheck.TabStop := False;
   FKeysCheck.OnClick := KeysCheckClick;
-  MakeLabel(FBottomBar, 'Klaviatur', 823, 60);
+  MakeLabel(FBottomBar, Tr('Klaviatur'), 823, 60);
   FAutoLabel := MakeLabel(FBottomBar, '', 884, 300);
   FAutoLabel.Font.Color := COL_VAL;
 
@@ -497,7 +498,9 @@ begin
   SetLength(FInL, HOST_MAX_BLOCK);
   SetLength(FInR, HOST_MAX_BLOCK);
 
+  LangInit(ExtractFilePath(ParamStr(0)));   // gleiche Sprache wie das Plugin (Sprache.txt im Programmordner)
   BuildUI;
+  TranslateComponents(Self);
   LoadHostSettings;
 
   // Plugin: Kommandozeile > zuletzt benutzt > GranularSynth.dll neben der EXE
@@ -519,14 +522,14 @@ begin
             LoadPlugin(DefaultPath);
           except
             on E2: Exception do
-              FHintLabel.Caption := 'Plugin konnte nicht geladen werden: ' + E2.Message;
+              FHintLabel.Caption := Tr('Plugin konnte nicht geladen werden: ') + E2.Message;
           end
         else
-          FHintLabel.Caption := 'Plugin konnte nicht geladen werden: ' + E.Message;
+          FHintLabel.Caption := Tr('Plugin konnte nicht geladen werden: ') + E.Message;
       end;
     end
   else
-    FHintLabel.Caption := 'Kein Plugin geladen. "VST laden..." wählen (z.B. GranularSynth.dll).';
+    FHintLabel.Caption := Tr('Kein Plugin geladen. "VST laden..." wählen (z.B. GranularSynth.dll).');
 
   try
     FPlayer := TWaveOutPlayer.Create(FSampleRate, FBlockFrames, FBlockCount, Render);
@@ -598,7 +601,7 @@ begin
   // eigenes Protokoll: GranularSynth meldet, dass sein Editor mitwachsen kann
   FResizable := FPlugin.Dispatch(effCanDo, 0, 0, PAnsiChar('granularResizable'), 0) = 1;
   if not FPlugin.IsSynth then
-    FPluginLabel.Caption := FPlugin.Name + '  (Effekt)';
+    FPluginLabel.Caption := FPlugin.Name + Tr('  (Effekt)');
   ShowPluginEditor;
   StartLog('Editor offen');
 end;
@@ -633,7 +636,7 @@ begin
   finally
     FLock.Leave;
   end;
-  FPluginLabel.Caption := '(kein Plugin)';
+  FPluginLabel.Caption := Tr('(kein Plugin)');
   FEditorW := 0;
   FEditorH := 0;
 end;
@@ -652,7 +655,7 @@ begin
   begin
     FEditorW := 0;
     FEditorH := 0;
-    FHintLabel.Caption := FPlugin.Name + ' hat kein eigenes Fenster. Spielbar über Klaviatur/Autoplay.';
+    FHintLabel.Caption := FPlugin.Name + Tr(' hat kein eigenes Fenster. Spielbar über Klaviatur/Autoplay.');
     FHintLabel.Visible := True;
   end;
   AdjustWindowSize;
@@ -793,9 +796,9 @@ begin
   Dlg := TOpenDialog.Create(nil);
   try
     {$IFDEF WIN64}
-    Dlg.Title := 'VST2/VST3-Plugin laden (64 Bit)';
+    Dlg.Title := Tr('VST2/VST3-Plugin laden (64 Bit)');
     {$ELSE}
-    Dlg.Title := 'VST2/VST3-Plugin laden (32 Bit)';
+    Dlg.Title := Tr('VST2/VST3-Plugin laden (32 Bit)');
     {$ENDIF}
     Dlg.Filter := 'VST-Plugins (*.dll, *.vst3)|*.dll;*.vst3|VST2-Plugins (*.dll)|*.dll|VST3-Plugins (*.vst3)|*.vst3';
     Dlg.Options := Dlg.Options + [ofFileMustExist];
@@ -807,7 +810,7 @@ begin
     except
       on E: Exception do
       begin
-        FHintLabel.Caption := 'Plugin konnte nicht geladen werden: ' + E.Message;
+        FHintLabel.Caption := Tr('Plugin konnte nicht geladen werden: ') + E.Message;
         FHintLabel.Visible := True;
         MessageDlg(E.Message, mtError, [mbOK], 0);
       end;
@@ -823,8 +826,8 @@ var
 begin
   if not FPlugin.Loaded then
     Exit;
-  if MessageDlg('Gespeicherte Einstellungen von "' + FPlugin.Name + '" löschen und das Plugin ' +
-    'mit Standardwerten neu laden?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if MessageDlg(Tr('Gespeicherte Einstellungen von "') + FPlugin.Name + Tr('" löschen und das Plugin ' +
+    'mit Standardwerten neu laden?'), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Exit;
   Path := FPlugin.Path;
   F := FPlugin.StateFileName(PluginStateDir);
@@ -855,7 +858,7 @@ end;
 
 procedure TfrmMain.UpdateTempoLabel;
 begin
-  FTempoLabel.Caption := Format('%.0f BPM', [FTempo]);
+  FTempoLabel.Caption := Format(Tr('%.0f BPM'), [FTempo]);
 end;
 
 procedure TfrmMain.TempoChange(Sender: TObject);
@@ -873,7 +876,7 @@ begin
     FAuto.Start(FComboSongs[FAutoCombo.ItemIndex - 1])
   else
     FAuto.Start(-1);
-  FAutoButton.Caption := 'Autoplay Stop';
+  FAutoButton.Caption := Tr('Autoplay Stop');
 end;
 
 { Liste/Zufall: zum Preset passend oder (Haken 'alle') saemtliche Stuecke }
@@ -912,7 +915,7 @@ begin
   if FAuto.Playing then
   begin
     FAuto.Stop;
-    FAutoButton.Caption := 'Autoplay Start';
+    FAutoButton.Caption := Tr('Autoplay Start');
   end
   else
   begin
@@ -920,7 +923,7 @@ begin
       FAuto.Start(FComboSongs[FAutoCombo.ItemIndex - 1])
     else
       FAuto.Start(-1);   // Zufall aus den passenden Stuecken
-    FAutoButton.Caption := 'Autoplay Stop';
+    FAutoButton.Caption := Tr('Autoplay Stop');
   end;
 end;
 
@@ -1013,7 +1016,7 @@ begin
   if FAuto.Playing then
   begin
     // Titel ohne Klammerzusatz, damit er in die Leiste passt; voller Titel im Tooltip
-    FAutoLabel.Caption := 'spielt: ' + Trim(Copy(FAuto.CurrentTitle, 1,
+    FAutoLabel.Caption := Tr('spielt: ') + Trim(Copy(FAuto.CurrentTitle, 1,
       IfThen(Pos(' (', FAuto.CurrentTitle) > 0, Pos(' (', FAuto.CurrentTitle) - 1, MaxInt)));
     FAutoLabel.Hint := FAuto.CurrentTitle;
     FAutoLabel.ShowHint := True;
@@ -1067,7 +1070,7 @@ begin
     Fd := TFileOpenDialog.Create(Self);
     try
       Fd.Options := [fdoPickFolders];
-      Fd.Title := 'Ordner für die MIDI-Dateien wählen';
+      Fd.Title := Tr('Ordner für die MIDI-Dateien wählen');
       if not Fd.Execute then
         Exit;
       Dir := IncludeTrailingPathDelimiter(Fd.FileName);
@@ -1079,7 +1082,7 @@ begin
       Fn := Dir + SafeName(FAuto.Titles[FComboSongs[I]]) + '.mid';
       FAuto.ExportMidi(FComboSongs[I], Fn);
     end;
-    ShowMessage(Format('%d MIDI-Dateien gespeichert in %s', [Length(FComboSongs), Dir]));
+    ShowMessage(Format(Tr('%d MIDI-Dateien gespeichert in %s'), [Length(FComboSongs), Dir]));
   end;
 end;
 
@@ -1093,9 +1096,9 @@ begin
     FAutoCombo.Items.Clear;
     FComboSongs := nil;
     if Mask = SONG_ALL then
-      FAutoCombo.Items.Add('Zufall: alle Stücke, mit Variation')
+      FAutoCombo.Items.Add(Tr('Zufall: alle Stücke, mit Variation'))
     else
-      FAutoCombo.Items.Add('Zufall: zum Preset passende Stücke');
+      FAutoCombo.Items.Add(Tr('Zufall: zum Preset passende Stücke'));
     for I := 0 to FAuto.SongCount - 1 do
       if FAuto.Kinds[I] and Mask <> 0 then
       begin

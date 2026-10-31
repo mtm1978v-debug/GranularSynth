@@ -20,6 +20,7 @@ unit Granular.Spectrum;
 interface
 
 uses
+  Granular.Lang,
   System.Classes, System.SysUtils, System.Math, System.Types, Vcl.Graphics,
   GR32, GR32_Image,
   Granular.Engine, Granular.GfxAsm;
@@ -191,7 +192,7 @@ begin
       FGrid.VertLineS(X, 0, H - 14, $FF262A31);
       FGrid.Textout(Min(X + 2, W - 22), H - 13, LABELS[I]);
     end;
-    FGrid.Textout(4, 2, 'Spektrum (Ausgang)');
+    FGrid.Textout(4, 2, Tr('Spektrum (Ausgang)'));
   finally
     FGrid.EndUpdate;
   end;

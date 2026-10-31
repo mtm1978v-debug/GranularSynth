@@ -1,4 +1,4 @@
-"""Erzeugt Source/UI/Granular.Hints.pas: Tooltip-Texte fuer alle Regler und Knoepfe aus der
+﻿"""Erzeugt Source/UI/Granular.Hints.pas: Tooltip-Texte fuer alle Regler und Knoepfe aus der
 Reglertabelle der Hilfe (Tools/Hilfe_Reglertabelle.py) - so stehen in Hilfe und Oberflaeche
 dieselben Erklaerungen.
 
@@ -82,7 +82,7 @@ for tab, items in TABS:
 
 missing = [n for n in names if n not in param_hint and n not in ('Tempo',)]
 lines = []
-lines.append('﻿unit Granular.Hints;')
+lines.append('﻿' + '{ GranularSynth - Granular + FM Synthese\n  Copyright (C) 2026 Matthias Haberecht\n\n  This program is free software: you can redistribute it and/or modify it under the terms of the\n  GNU General Public License as published by the Free Software Foundation, either version 3 of the\n  License, or (at your option) any later version. This program is distributed in the hope that it\n  will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License (LICENSE.txt) for details. }\n\n' + 'unit Granular.Hints;')   # mit GPL-Kopf wie alle Quelltexte
 lines.append('')
 lines.append('{ ERZEUGT von Tools/make_hints.py aus der Reglertabelle der Hilfe - nicht von Hand aendern.')
 lines.append('  Tooltip-Texte je Regler (ueber den Parameternamen) und je Knopfbeschriftung. }')
