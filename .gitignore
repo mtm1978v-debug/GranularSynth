@@ -1,0 +1,31 @@
+# Build-Ausgaben und Zwischendateien
+bin/
+bin$out/
+dcu/
+*.dcu
+__history/
+__recovery/
+*.local
+*.identcache
+*.stat
+Version.res
+
+# Auslieferung und erzeugte Hoerproben (aus dem Quelltext reproduzierbar: deploy.bat / -renderdemos)
+Deploy/
+Demos/
+
+# Pruefstand-Ausgaben
+bench.txt
+presets.txt
+
+# Python-Zwischendateien der Werkzeuge
+__pycache__/
+*.pyc
+
+# Setup (wird von deploy.bat gebaut)
+Tools/Setup/Setup.exe
+Tools/Setup/Setup.res
+Tools/Setup/dcu/
+
+# lokale Einstellungen (z.B. GR32_DIR)
+build.local.bat

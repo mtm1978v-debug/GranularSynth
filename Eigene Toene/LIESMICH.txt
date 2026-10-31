@@ -1,0 +1,32 @@
+GranularSynth - Ordner "Eigene Toene"
+=====================================
+
+Hier liegen die eigenen Klaenge (WAV, MP3 usw.), die in eigenen Presets verwendet werden.
+Der Ordner ist bei der Auslieferung leer und fuellt sich von selbst.
+
+So funktioniert es
+------------------
+1. Mit "Audio laden..." eine beliebige Audiodatei laden - egal wo sie liegt
+   (WAV, MP3, M4A, AAC, WMA, FLAC, AIFF, OGG).
+2. Beim "Speichern..." eines Presets wird die Datei automatisch HIERHER KOPIERT,
+   wenn sie ausserhalb des Plugin-Ordners liegt. Das Preset merkt sich nur
+   "Eigene Toene\<Dateiname>" (relativer Pfad).
+   Das gilt auch fuer den Klang des Morph-Ziels B.
+3. Liegt die Datei schon im Plugin-Ordner (z.B. hier oder in "Beispieltoene"),
+   wird nichts kopiert - das Preset verweist direkt darauf.
+
+Gleicher Dateiname, aber andere Datei? Dann wird die Kopie durchnummeriert
+(z.B. "Gitarre_2.wav"). Dieselbe Datei wird nicht doppelt kopiert.
+
+Weitergeben und Umziehen
+------------------------
+Presets und Klaenge bleiben zusammen, solange dieser Ordner neben den Presets
+im Plugin-Ordner liegt. Beim Weitergeben also den Ordner "Presets" UND diesen
+Ordner "Eigene Toene" mitgeben. Wird der Plugin-Ordner verschoben, findet ein
+Preset seinen Klang ueber den Dateinamen hier oder in "Beispieltoene" wieder.
+
+Bitte keine Dateien umbenennen oder loeschen, die von Presets benutzt werden -
+sonst findet das Preset seinen Klang nicht mehr.
+
+Man darf eigene Dateien auch von Hand hier ablegen und dann mit "Audio laden..."
+von hier laden.

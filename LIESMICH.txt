@@ -1,0 +1,105 @@
+GranularSynth - Granular-Synthesizer (VST2 und VST3) mit Test-Host
+=========================================================
+
+Inhalt dieses Ordners
+---------------------
+  GranularSynth.dll   Das VST2-Plugin (Synthesizer, Stereo, 2 Sidechain-Eingaenge)
+  GranularSynth FX.dll  dasselbe als VST2-Effekt (fuer den Sidechain im FL-Mixer)
+  GranularSynth.vst3  Das VST3-Plugin: enthaelt "GranularSynth" (Instrument) und
+                      "GranularSynth FX" (Effekt). Im Banner steht hinter der Version, welche
+                      Variante laeuft (VST2, VST2 FX, VST3, VST3 FX).
+  GranularHost.exe    Kleiner VST2/VST3-Host zum Testen - laedt GranularSynth.dll und auch
+                      andere VST2- und VST3-Plugins (gleiche Bitbreite!)
+  Beispieltoene\      WAV-Dateien zum Ausprobieren (synthetisch erzeugt, frei verwendbar)
+
+32 oder 64 Bit?
+---------------
+  Win32: fuer aeltere Hosts wie altes FL Studio (32 Bit). Diese Version nutzt die
+         optimierten SSE-Assembler-Kerne (ab Pentium III / Athlon XP).
+  Win64: fuer 64-Bit-Hosts. Ein 64-Bit-Host laedt nur 64-Bit-Plugins und umgekehrt.
+
+Installation (empfohlen)
+------------------------
+  Setup.exe im Hauptordner der Auslieferung starten (Windows fragt nach Administratorrechten).
+  Im Fenster waehlen: 64 oder 32 Bit (passend zur DAW - altes FL Studio 11 meist 32 Bit),
+  VST2 (GranularSynth + FX), VST3 und auf Wunsch den Test-Host. Die Zielordner werden erkannt
+  (VST2: eingetragener VST-Ordner, VST3: Common Files\VST3) und lassen sich aendern.
+  In jedem Ziel entsteht ein Ordner "GranularSynth" mit Plugin, Presets, Beispieltoenen und Hilfe.
+  Eigene Presets und eigene Toene bleiben bei einer neuen Installation erhalten.
+  Danach in FL Studio: Options > Manage plugins > Find plugins.
+  Update: Setup.exe der neuen Version starten - es schlaegt die Auswahl von damals vor.
+  Entfernen: Windows-Einstellungen > Apps > "GranularSynth (64 Bit)" bzw. "(32 Bit)" > Deinstallieren;
+  auf Wunsch bleiben eigene Presets und eigene Toene erhalten.
+
+Installation von Hand in FL Studio
+----------------------------------
+  1. GranularSynth.dll in den VST-Plugin-Ordner kopieren (z.B. ...\VstPlugins).
+  2. In FL Studio: Plugins neu einlesen (Plugin-Manager / "Refresh"), dann als
+     Generator einfuegen.
+  3. Sidechain: einen Mixerkanal auf den Eingang des Plugins routen. Die Sidechain
+     wirkt ueber die Modulationsmatrix (Quelle "Sidechain" bzw. "SC-Tonhoehe")
+     und ueber "Auto-Pitch".
+  VST3: den ganzen Ordner (mit Presets\, Beispieltoene\, Hilfe\) liegen lassen und in FL
+     Studio unter Options > Manage plugins diesen Ordner als zusaetzlichen Suchpfad eintragen,
+     dann "Find plugins". Die .vst3-Datei sucht Presets und Toene in ihrem eigenen Ordner -
+     nicht allein nach "Common Files\VST3" kopieren.
+  Automation: jede Bewegung eines Reglers im Plugin wird FL gemeldet. Danach in FL
+     Tools > Last tweaked > Create automation clip (geht auch im alten FL 11, VST2).
+     VST3 in neuen FL-Versionen: Rechtsklick auf einen Regler zeigt direkt das FL-Menue
+     ("Create automation clip", "Link to controller ...") plus einen Eintrag fuer das
+     GranularSynth-Menue (Modulieren, MIDI-Learn, Standardwert).
+  Das Plugin speichert seinen kompletten Zustand im Projekt (inkl. Pfad der WAV-Datei).
+  Die WAV-Datei selbst wird nicht eingebettet - nicht verschieben oder mitkopieren.
+
+GranularHost (Test-Host)
+------------------------
+  - "VST laden..."      beliebiges VST2- oder VST3-Plugin laden; das zuletzt benutzte startet wieder
+  - "Zuruecksetzen"     gespeicherte Einstellungen des aktuellen Plugins loeschen und
+                        mit Standardwerten neu laden
+  - Tempo               Host-Tempo fuer Tempo-Sync (LFO, Echo); Autoplay setzt es je Stueck
+  - Klaviatur           Maus oder PC-Tastatur (A W S E D F T G Z/Y H U J K O L P,
+                        Oktave mit + / -). Abschaltbar ueber "Klaviatur".
+  - Autoplay            spielt Demostuecke (klassisch und elektronisch) mehrstimmig
+  - Sidechain           Aufnahmegeraet waehlen -> geht auf die Plugin-Eingaenge 1/2;
+                        IN/OUT zeigt die Pegel
+  Einstellungen je Plugin werden automatisch gespeichert unter
+      %APPDATA%\GranularSynth\vst\
+  Host-Einstellungen in %APPDATA%\GranularSynth\host.ini, dort auch:
+      [Audio] Puffer=6  Blockgroesse=512   (mehr Puffer = weniger Knacksen, mehr Latenz)
+
+Startoptionen von GranularHost.exe
+----------------------------------
+  <Pfad\Plugin.dll>   dieses Plugin laden
+  -autoplay           Autoplay sofort starten
+  -nosave             beim Beenden nichts speichern
+  -bench              Rechenleistung messen (Ergebnis in bench.txt neben der EXE)
+
+Bedienung GranularSynth (Kurzfassung)
+-------------------------------------
+  Presets:     Liste oben im Plugin (Beispiele aus Presets\), "Speichern..." legt eigene an.
+               Samples von ausserhalb des Plugin-Ordners werden dabei nach "Eigene Toene\"
+               kopiert und relativ gespeichert: Plugin-Ordner mitnehmen = Presets laufen ueberall.
+  Audio laden: WAV, MP3, MPEG-Audio, WMA, AAC/M4A, FLAC, AIFF ... (alles, was Windows abspielt;
+               ueber Windows Media Foundation, max. 4 Minuten je Datei).
+  Schnell:     6 Makros (Textur, Bewegung, Helligkeit, Raum, Streuung, Huellkurven-Laenge),
+               50 % = Preset unveraendert. Variieren (mit Sperren je Bereich), Rueckgaengig, A/B.
+               HQ-Modus (Hermite-Interpolation, sauberer) und Limiter (Schutz vor Uebersteuern).
+  Rechtsklick auf einen Regler: Modulation zuweisen (LFO, Sidechain, Velocity, Modrad ...),
+               Menge waehlen, Modulation entfernen, Standardwert.
+  Synth:       Wellenform - linke Maus zieht den Auswahlbereich, rechte Maus setzt die
+               Position. Grains, Klang, Huellkurve.
+  Modulation:  2 LFOs, Sidechain-Huellkurvenfolger, Auto-Pitch, Matrix mit 8 Slots:
+               Wirkwert = Grundwert + (Quelle x Faktor + Offset) x Menge.
+               Der rote Strich unter einem Regler zeigt den aktuellen Wirkwert.
+               Tonhoehe der Sidechain folgen: Quelle SC-Tonhoehe, Ziel Pitch,
+               Faktor x2,65 Ton, Offset -125 %, Menge 100 %.
+  Filter/Echo: Tiefpass/Bandpass/Hochpass mit eigener Huellkurve, Ping-Pong-Echo
+               (Zeit frei oder zum Tempo synchronisiert).
+
+Lizenz
+------
+  GranularSynth - Copyright (C) 2026 Matthias Haberecht
+  Freie Software: Sie darf unter den Bedingungen der GNU General Public License,
+  Version 3 oder (nach Wahl) jeder spaeteren Version, weitergegeben und veraendert werden.
+  Veraenderte Fassungen muessen ebenfalls unter der GPL stehen und auf das Original verweisen.
+  Ohne jede Gewaehrleistung. Der vollstaendige Lizenztext steht in LICENSE.txt.

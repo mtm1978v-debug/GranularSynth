@@ -1,0 +1,95 @@
+﻿# GranularSynth – Leitfaden für Entwickler und KI-Assistenten
+
+Diese Datei erklärt Aufbau, Werkzeuge und die festen Regeln des Projekts.
+Sie richtet sich an Menschen und an KI-Assistenten (Claude Code, Copilot, Cursor …). `AGENTS.md` verweist hierher.
+Oberfläche, Kommentare und Dokumentation sind **auf Deutsch**. Bitte dabei bleiben.
+
+## Überblick
+
+- **Plugin:** eine DLL für **VST2 und VST3**. Sie enthält Instrument und FX-Variante und wird zusätzlich als `GranularSynth.vst3` ausgeliefert.
+- **Plattformen:** Win32 und Win64.
+- **Sprache:** Delphi 12 (RAD Studio 23.0). Als Fremdbibliothek wird nur [Graphics32](https://github.com/graphics32/graphics32) für die Grafik gebraucht. Ihr Ordner steht in der Umgebungsvariablen `GR32_DIR`, lokal gesetzt in `build.local.bat`. Diese Datei gehört nicht ins Projektarchiv.
+- **Kein Steinberg-SDK:** Die VST2- und VST3-Schnittstellen sind von Hand deklariert, in `Source/Vst/Granular.Vst2.pas` und `Granular.Vst3.pas`.
+- **GranularHost.exe:** Test-Host für VST2 und VST3, Prüfstand (`-bench`), Preset-Erzeugung (`-makepresets`) und Hörproben (`-renderdemos`).
+
+## Verzeichnisse
+
+| Pfad | Inhalt |
+|---|---|
+| `Source/Engine` | Klangerzeugung ohne VCL. `Granular.Engine.pas` (TGranularEngine), `Params` (alle Parameter), `State` (Chunk/Preset-Format), `DSP` (SSE-Kerne + Pascal-Referenz), `Reverb`, `Eq`, `Pitch` (YIN), `Sample`, `AudioDecode` |
+| `Source/UI` | Oberfläche. `Granular.Editor.pas` (TGranularEditor, alle Reiter), Anzeigen (WaveView, ModViews, Spectrum, EqView, FreeLfoView, LoadView, InfoView), `Banner`, `Fader`, `Hints` (erzeugt) |
+| `Source/Vst` | Plugin-Hüllen: `VstPlugin` (VST2), `Vst3Plugin` (VST3), Schnittstellen `Vst2`/`Vst3` |
+| `Source/Host` | Test-Host: `MainForm`, `VstHost` (VST2) + `Vst3Host` (VST3), Audio-Ein/-Ausgang, `AutoPlay`, `Bench` (Prüfstand), `PresetGen` (alle mitgelieferten Presets), `DemoRender` |
+| `Presets/` | mitgelieferte Presets, **erzeugt** von `PresetGen` (`GranularHost.exe -makepresets <Projektordner>`) |
+| `Beispieltoene/` | Beispiel-Samples, größtenteils synthetisch erzeugt von `Tools/make_*.py` |
+| `Hilfe/Hilfe.rtf` | Hilfe. Kapitel 11 (Reglertabelle) wird von `Tools/Hilfe_Reglertabelle.py` erzeugt |
+| `Tools/` | `bump_version.py`, `Hilfe_Reglertabelle.py`, `make_hints.py`, `Install.ps1` + `Setup/` (Installer) |
+
+## Bauen und prüfen
+
+```bat
+build.bat Release Win32 Alle
+build.bat Release Win64 Alle
+bin\Win32\GranularHost.exe -bench
+bin\Win64\GranularHost.exe -bench
+```
+
+- `build.bat` heißt mit vollem Pfad aufrufen, wenn es aus einem anderen Ordner gestartet wird.
+- In `bin\<Plattform>\bench.txt` dürfen weder `FEHLER` noch `ABWEICHUNG` stehen. Die Zeile `Klang-Regression: … -> OK` muss erscheinen.
+- **Klang-Regression:** Alle Presets werden gerendert und Bit für Bit mit `Demos/regress_ref.txt` verglichen. Wer die Datei löscht, legt die Referenz neu an. Das ist nur erlaubt, wenn eine Klangänderung **gewollt** ist.
+- Neue Funktionen bekommen eine eigene `Check…`-Funktion in `Source/Host/Granular.Bench.pas`, die mit „-> OK“ oder „-> FEHLER“ endet.
+- **Auslieferung:**
+  1. `python Tools/bump_version.py` (Nebenversion +1)
+  2. beide Plattformen bauen und den Prüfstand laufen lassen
+  3. `deploy.bat` aufrufen. Es legt alles nach `Deploy\`, inklusive `Setup.exe`, `CHANGELOG.md` und `LICENSE.txt`.
+
+## Feste Regeln (Kompatibilität)
+
+Diese Regeln schützen DAW-Projekte und Presets der Nutzer. Verstöße fallen sonst erst beim Nutzer auf.
+
+1. **VST-Parameter:** Die Nummer eines Parameters in der DAW ergibt sich aus `VST_ORDER`, den Matrix-Zeilen und `VST_ADDED` (`Granular.Params.pas`).
+   - Neue Parameter kommen **nur hinten an `VST_ADDED`**. `VST_ADDED_COUNT` wird entsprechend erhöht.
+   - Parameter werden **nie gelöscht**. Ein nicht mehr gebrauchter Parameter bleibt als Platzhalter stehen, zum Beispiel `'(frei)'`.
+   - Der Prüfstand kontrolliert das mit der Zeile „VST-Nummern“.
+2. **Enum `TGranularParamId`:** Neue Einträge kommen vor `gpPerformance`. `gpTempo` bleibt der letzte. Die Reihenfolge darf sich ändern, weil Presets die Parameter über ihren **Namen** speichern. Deshalb dürfen Namen nicht umbenannt werden.
+3. **Modulationsquellen `TModSource`:** neue Quellen **nur ans Ende**, mit passendem Eintrag in `MOD_SOURCE_NAMES`. Presets speichern die Quelle als Klartext.
+4. **Presets nie umnummerieren oder umbenennen.** Neue Presets bekommen neue Nummern, Lern-Presets heißen `Lxx`.
+5. **Zufallszahlen:** LFOs und Grains teilen sich einen Zufallsgenerator. Ein zusätzlicher `Rand`-Aufruf verändert den Klang **aller** Presets, und die Regression schlägt fehl. Neue Zufallsquellen nur dort einbauen, wo sie den bestehenden Ablauf nicht berühren.
+6. **Chunk-/Preset-Format (`Granular.State.pas`):** neue Daten nur als **optionale Abschnitte am Ende** mit eigener Kennung (4 Zeichen). Ältere Versionen müssen neue Dateien weiter laden können, neue Versionen alte Dateien.
+
+## Regeln für Echtzeit und Leistung
+
+- **Audio-Thread** (`Process`, `Render…`, `Update…`): keine Speicheranforderungen, keine String-Operationen, keine wartenden Sperren, keine Ausnahmen.
+- **Heiße Schleifen:**
+  - laufen als SSE-Assembler (Win32) bzw. x64-Assembler.
+  - Daneben bleibt immer eine **Pascal-Referenz** erhalten.
+  - Der Prüfstand vergleicht beide und misst die Zeit.
+- **Ein Kern:** Das Audio wird auf einem Kern gerechnet. Ein Versuch mit einem zusätzlichen Thread war auf schwachen Laptops langsamer.
+- **Nur was gebraucht wird:** Teure Bausteine rechnen nur, wenn sie benutzt werden. Beispiele sind LFO 5–8 und die Tonhöhe von Sidechain 2 (siehe `UpdateLfoUsed`).
+- **Oberfläche:** schlicht und mit dem Touchpad bedienbar, geringe CPU-Last.
+
+## Konventionen
+
+- **Dateien:** Quelltexte sind **UTF-8 mit BOM**. Delphi liest Dateien ohne BOM als ANSI, dann gehen die Umlaute kaputt.
+- **Kommentare:** auf Deutsch. In Quelltexten werden Umlaute in Kommentaren meist umschrieben (ae, oe, ue), in Oberflächentexten echt geschrieben.
+- **Lizenzkopf:** Jede Quelldatei beginnt mit dem GPL-Kopf (siehe vorhandene Dateien).
+- **Neuer Regler, was alles dazugehört:**
+  1. Enum `TGranularParamId`
+  2. Zeile in `PARAM_INFO`
+  3. Eintrag in `VST_ADDED`
+  4. bei Stufen-Reglern: `StepName`
+  5. Wirkung in der Engine
+  6. Bedienelement im Editor (`AddParam`)
+  7. Hilfe-Zeile in `Tools/Hilfe_Reglertabelle.py`
+  8. danach `python Tools/Hilfe_Reglertabelle.py` und `python Tools/make_hints.py` ausführen
+  9. Prüfstand-Check
+  10. Eintrag in `CHANGELOG.md`
+- **Changelog:** Jede für Nutzer sichtbare Änderung kommt in `CHANGELOG.md` unter die kommende Version: *Neu*, *Geändert*, *Behoben*, *Entfernt* oder *Hinweis* (Folgen für Presets und Projekte).
+- **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE` und `GRANULAR_MATPAGE`.
+
+## Bekannte Eigenheiten
+
+- In Delphi kann `Format('%+d')` nicht verwendet werden. Für Vorzeichen gibt es den eigenen Helfer `SignedPct`.
+- Hat ein Delphi-Set mehr als 256 mögliche Werte (`PARAM_COUNT` > 256), wird `IdIn()` statt `in [...]` verwendet.
+- `PSingle` gibt es in `System` und in `Winapi.Windows`. In Units, die beides einbinden, wird `System.PSingle` geschrieben.
+- Strukturgrößen der VST3-Schnittstellen sind im Prüfstand festgeschrieben, zum Beispiel ParameterInfo 792 Byte und ProcessData 80/48 Byte. Felder dort nicht verschieben.

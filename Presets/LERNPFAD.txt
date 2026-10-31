@@ -1,0 +1,98 @@
+﻿GranularSynth - Lernpfad (Presets L01 bis L37)
+==============================================
+Jedes Preset zeigt ein Prinzip. Oeffnen, spielen, und im Reiter "Modulation"
+nachsehen, welche Matrix-Zeilen belegt sind. Der rote Strich unter einem Regler
+zeigt live, wie weit die Matrix ihn gerade verschiebt.
+Formel jeder Zeile: Wirkwert = Grundwert + (Quelle x Faktor + Offset) x Menge
+
+Teil 1 - Matrix-Grundlagen
+  L01  LFO -> Position. Eine lange Note halten: der Klang wandert langsam durch das
+       Chor-Sample. Menge in Zeile 1 aendern = wie weit er wandert.
+  L02  LFO 1 macht Vibrato, LFO 2 veraendert das Tempo von LFO 1. Das Vibrato atmet.
+       Ein LFO kann jeden Parameter steuern - auch einen anderen LFO.
+  L03  Velocity -> Cutoff und Graingroesse. Leise und laut spielen: laut wird heller
+       und knackiger. Negative Menge = Gegenrichtung.
+  L04  Notenhoehe -> Graingroesse und Echozeit. Tiefe Noten: grosse Grains, langes Echo.
+       Offset -50 % zentriert die Quelle um die Tastaturmitte.
+  L05  Modrad -> Filter + Makros "Bewegung" und "Raum". Modrad langsam hochdrehen:
+       ein Regler fuer den ganzen Ausdruck.
+  L06  Aftertouch faechert den Chor auf, Pitchbend verbiegt nur das Echo.
+
+Teil 2 - Huellkurven und Trigger
+  L07  Filter-Huellkurve -> Streuung: beim Anschlag explodieren die Grains und ziehen
+       sich zusammen. Huellkurven sind auch fuer Nicht-Filter-Ziele nutzbar.
+  L08  Grain-Huellkurve -> Echo-Mix mit negativer Menge: solange die Note klingt, bleibt
+       es trocken - beim Loslassen blueht das Echo auf.
+  L09  LFO-Trigger "Note an": die Saege startet mit jeder Note neu -> jede Note bekommt
+       denselben Filter-Sweep. Auf "frei" stellen und vergleichen.
+  L10  LFO-Trigger "Note aus": der Ausklang faellt in der Tonhoehe ab.
+  L11  Arpeggiator: Akkord halten - die Toene laufen nacheinander ueber 2 Oktaven.
+       Im Schrittmuster (Reiter Extras) sind Schritte aus = Pausen. Felder anklicken!
+  L12  Faktor x1/2 + Offset +50 % machen aus einem LFO (-1..+1) eine einseitige
+       Quelle (0..1): Rueckwaerts-Anteil und Breite schwanken nur nach oben.
+
+Teil 3 - Sidechain
+  Sidechain-Quelle waehlen: im GranularHost unten "Sidechain" (z.B. Mikrofon),
+  in FL Studio einen Mixerkanal auf den Plugin-Eingang routen. Der Monitor zeigt
+  orange das Sidechain-Signal, IN den Pegel, SC den Huellkurvenfolger.
+  L13  Ducking: Signal am Sidechain macht das Pad leiser - das klassische Pumpen.
+       Eine Kick auf den Sidechain legen.
+  L14  Auto-Wah: Lautstaerke der Stimme oeffnet den Bandpass. "Wah wah" sprechen.
+  L15  Echo Pitch per Modrad: unten = normale Echos, hoch = jede Wiederholung bis zu
+       einer Oktave hoeher. Beim Spielen langsam bewegen - die Treppe wird steiler.
+  L16  Der Pegel scrubbt durch die Vokale a-e-i-o-u: leise = a, laut = u.
+  L17  Dub-Echo: Rueckkopplung nur, solange Signal kommt - Echos auf Zuruf.
+  L18  SC-Tonhoehe -> Pitch ueber die Matrix (Faktor x2,65, Offset -125 %): der Chor
+       singt die Toene nach, die ins Mikrofon gesungen werden. Taste halten!
+       Ohne Stimme klingt der Chor normal; mit Stimme wird er lauter und folgt ihr.
+  L19  Dasselbe mit "Auto-Pitch" in Halbtoenen, eine Oktave hoeher, mit Vibrato.
+
+Finale
+  L20  Alles zusammen: wandernde Position, LFO-Kaskade, Filter-Huellkurve, steigendes
+       Pitch-Echo, Velocity, Modrad (Echo-Menge) und Sidechain (Tonhoehen-Streuung).
+       Lange Noten halten, Modrad bewegen, ins Mikrofon sprechen.
+
+Neue Funktionen
+  L21  Sidechain-Trigger (Pegel): lauter Zuruf ins Mikrofon startet einen Einmal-LFO,
+       der eine Melodie ueber die Pitch-Matrix spielt. Taste halten, dann rufen.
+  L22  Sidechain-Trigger (Ton): ein gesungener Ton laesst seinen Dur-Dreiklang
+       nacheinander erklingen (Auto-Pitch in Halbtoenen + freier LFO auf Pitch).
+  L23  Beide Bedingungen: nur ein lauter UND hoher Ton oeffnet den Filter einmal.
+       Leise hoch oder laut tief singen: nichts passiert.
+  L24  Glide (Portamento): jede Note gleitet 0,28 s von der vorigen her, der
+       Sinus-Oszillator gleitet mit. Glide-Zeit im Synth-Reiter aendern.
+  L25  Oszillator FM mit eigener FM-Huellkurve: der Anschlag klingt metallisch, die
+       Klangfarbe wird schnell weich, waehrend der Ton weiterklingt - eine Glocke.
+  L26  Filter je Note: jede Note hat ihr eigenes Filter mit eigener Filter-Huellkurve.
+       Akkordtoene nacheinander anschlagen (je 1 s Abstand) und halten: jeder Ton
+       oeffnet sich langsam fuer sich, die schon klingenden bleiben, wo sie sind.
+
+Teil 4 - Start, Stopp und Zeit (Reiter "LFO 1-4 / Trigger" und "Timing / Events")
+  Im Namen: "FM" = Oszillatoren klingen mit, "Grains" = Grains klingen mit.
+  Ein LFO mit Start-Ereignis laeuft, bis sein Stopp ihn anhaelt (dann keine Modulation).
+  L27  Stopp "Note aus": Vibrato je Note, beim Loslassen ist der Ausklang ruhig.
+       Stopp auf "nie" stellen: das Vibrato laeuft im Ausklang weiter.
+  L28  Stopp "nach Zeit" 1/2: der Wobble auf der FM-Menge laeuft nur eine halbe Note.
+       Tempo aendern - die Laenge folgt dem Takt.
+  L29  Verzoegerung + Stopp: das Tremolo setzt nach 1/4 ein (Timing / Events) und
+       haelt nach 1/1 an - die Laufzeit zaehlt ab dem verzoegerten Start.
+  L30  Stopp nach 120 ms: ein schneller Pitch-Fall nur im Anschlag. ms-Wert aendern.
+  L31  Drei Oszillatoren, jeder mit eigener Huellkurve (Reiter Osz 1-3): Sinus
+       schwillt langsam an, FM zupft kurz, gefiltertes Rauschen haucht.
+  L32  Osz2-Huellkurve als Matrix-Quelle: Osz 2 ist stumm, seine kurze Huellkurve
+       macht den FM-Anschlag von Osz 1 hell. Decay von Osz 2 aendern.
+  L33  Start "Note aus" + Stopp nach 1/1: beim Loslassen glitzern die Grains genau
+       einen Takt lang, dann klingt es ruhig aus.
+  L34  LFO-Kette ueber die Partner-Wahl (Feld unter "Einmal"): Note 3 Takte halten.
+       Takt 1: LFO 1 oeffnet das Filter. Takt 2: LFO 2 (Partner LFO 1) laesst die
+       FM-Menge an- und abschwellen. Takt 3: LFO 3 (Partner LFO 2) schwenkt durchs
+       Panorama. Alle drei stehen auf "Einmal" - nur ein Einmal-Ende loest den Partner aus.
+       LFO 2 und 3 haben Stopp "Note aus": so warten sie bis zu ihrem Start.
+
+Teil 5: freie Makros (Reiter Modulation, rechts neben der Matrix)
+  L35  Makro 1 mit S-Kurve: Note halten und Makro 1 langsam aufziehen - Filter, Grains,
+       Breite und Hall gehen gemeinsam auf. Die Ziele stehen unter dem Makro.
+  L36  Makro 2, Kurve "langsam ansteigend": erst passiert wenig, oben zerfaellt der Chor
+       (Streuung, Rueckwaerts, Tonhoehen-Zufall, Echo). Die Dichte hat eine negative Menge.
+  L37  Zwei Makros fuer die DAW: Makro 1 = Wobble schneller und heller, Makro 3 = Echo.
+       In FL: Rechtsklick auf den Makro-Regler > Automation in der DAW.
