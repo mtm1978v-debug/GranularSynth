@@ -15,7 +15,8 @@ Contents of this folder
 Language
 --------
   The interface language can be switched between Deutsch and English in the
-  Extras tab ("Sprache / Language"). The help is available in both languages.
+  Extras tab ("Sprache / Language") or by clicking the small flag at the right
+  end of the tab row. The help follows the chosen language.
 
 32 or 64 bit?
 -------------

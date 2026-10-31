@@ -3,7 +3,7 @@
 **Granular- und FM-Synthesizer als VST2- und VST3-Plugin für Windows (32 und 64 Bit)**, mit eigenem Test-Host.
 Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind von Hand in SSE-Assembler optimiert, damit die CPU-Last niedrig bleibt.
 
-*Granular and FM synthesizer plugin (VST2/VST3, Windows 32/64 bit) with its own test host. **English user interface and help** from version 2.3 (switch: Extras tab › „Sprache / Language“); see [README_EN.txt](README_EN.txt).*
+*Granular and FM synthesizer plugin (VST2/VST3, Windows 32/64 bit) with its own test host. **English user interface and help** from version 2.3 (switch: Extras tab › „Sprache / Language“ or the small flag in the tab row); see [README_EN.txt](README_EN.txt).*
 
 ![Reiter Grain](docs/screenshots/grain.png)
 
@@ -16,6 +16,7 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 - **Effekte**: zwei Filter, EQ, Echo, Hall, Gate, Crusher, Chorus, Phaser und Trance-Gate. Dazu ein Mischpult mit Pegelanzeigen.
 - **Sidechain**: Tonhöhe erkennen (Auto-Pitch), Trigger aus Pegel und Ton, Aufnahme.
 - **Morph**: zwischen zwei kompletten Klängen überblenden.
+- **Oberfläche auf Deutsch oder Englisch**, umschaltbar per Klick auf die Flagge.
 - **Bedienung**: MIDI-Learn, Rückgängig/Wiederholen, A/B-Vergleich, Variieren, Preset-Kategorien und Favoriten. Presets lassen sich mit eingebetteten Samples speichern.
 - **Mitgeliefert**: über 160 Presets, darunter ein **Lernpfad (L01–L37)**, der die Matrix Schritt für Schritt erklärt. Dazu Beispieltöne und eine ausführliche Hilfe.
 - **GranularHost**: ein kleiner Test-Host für VST2 und VST3 mit Klaviatur, Autoplay, Audio-Ein- und -Ausgang, Sidechain und einem Prüfstand (`-bench`).
@@ -23,6 +24,10 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 ![Modulationsmatrix und freie Makros](docs/screenshots/modulation.png)
 
 ![Mischpult](docs/screenshots/mischpult.png)
+
+*English interface / englische Oberfläche:*
+
+![English user interface](docs/screenshots/modulation_en.png)
 
 ## Installation
 

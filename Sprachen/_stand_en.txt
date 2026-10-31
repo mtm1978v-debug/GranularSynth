@@ -1,4 +1,4 @@
 Eigene Toene\LIESMICH.txt	70d7eb2ba499b90128a56ac4ce22daa0
-Hilfe\Hilfe.rtf	2ab0fb544c5286bc38c804fff2fe0f5e
-LIESMICH.txt	cb25983792916fe5e7606abac2b37a70
+Hilfe\Hilfe.rtf	dd79780b160c2a56985837999d02a0a8
+LIESMICH.txt	4ea9d471c309ff0dcee6dd09ac5ce8ee
 Presets\LERNPFAD.txt	680a5934350274c4ab671c1efd554171

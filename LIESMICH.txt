@@ -18,6 +18,11 @@ Inhalt dieses Ordners
          optimierten SSE-Assembler-Kerne (ab Pentium III / Athlon XP).
   Win64: fuer 64-Bit-Hosts. Ein 64-Bit-Host laedt nur 64-Bit-Plugins und umgekehrt.
 
+Sprache
+-------
+  Die Oberflaeche gibt es auf Deutsch und Englisch: Reiter Extras, Auswahl "Sprache / Language",
+  oder Klick auf die kleine Flagge rechts in der Reiterzeile. Die Hilfe folgt der gewaehlten Sprache.
+
 Installation (empfohlen)
 ------------------------
   Setup.exe im Hauptordner der Auslieferung starten (Windows fragt nach Administratorrechten).

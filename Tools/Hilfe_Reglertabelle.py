@@ -73,7 +73,7 @@ TABS = [
 ]),
 ("Reiter Modulation", [
  ("Freie Makros", "rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle \"Makro n\"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal für die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37."),
- ("Modulationsmatrix", "32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; \"Modulieren mit\" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede f\u00fcr sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'."),
+ ("Modulationsmatrix", "32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; \"Modulieren mit\" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede f\u00fcr sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'. Der Papierkorb am Zeilenende leert die Zeile (Strg+Z nimmt es zur\u00fcck)."),
  ("Glide / Zeit", "Portamento: T\u00f6ne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens."),
 ]),
 ("Reiter LFO 1-8 / Trigger", [
@@ -122,6 +122,7 @@ TABS = [
  ("Leuchten", "der Hintergrund zeigt den Ausgang: blau/wei\u00df nach Pegel, blauer wo der EQ absenkt, r\u00f6ter wo er anhebt."),
 ]),
 ("Reiter Extras", [
+ ("Sprache / Language", "Sprache der Oberfl\u00e4che (Deutsch, English, weitere als Datei im Ordner Sprachen). Schneller: Klick auf die kleine Flagge rechts in der Reiterzeile schaltet zur n\u00e4chsten Sprache."),
  ("Arpeggiator", "gehaltene Tasten nacheinander: Richtung, Oktaven, Notenwert, L\u00e4nge, Swing, Schritte und Schrittmuster (Klick = Schritt an/aus)."),
  ("Latch", "wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder \"Alle Noten aus\"."),
  ("Tonleiter / Grundton", "alle Tonh\u00f6hen rasten auf die T\u00f6ne der Tonleiter ein - nie ein falscher Ton."),
@@ -158,7 +159,7 @@ TABS = [
 ]),
 ]
 
-NO = {"Zonen 1-3", "Aufnahme", "Kategorie / Stern", "Wiederholen", "Lastliste", "Zeiger / Laufzeit", "Audio laden...", "Alle Noten aus", "Okt - / Okt +", "Preset w\u00e4hlen, < >", "Speichern...", "CLIP / MIDI",
+NO = {"Sprache / Language", "Zonen 1-3", "Aufnahme", "Kategorie / Stern", "Wiederholen", "Lastliste", "Zeiger / Laufzeit", "Audio laden...", "Alle Noten aus", "Okt - / Okt +", "Preset w\u00e4hlen, < >", "Speichern...", "CLIP / MIDI",
       "Info", "Hilfe", "Statuszeile", "Autoplay, Haken \u201ealle\u201c", "Variieren / St\u00e4rke / Gesperrt", "A/B", "Spektrum", "Kurve", "Leuchten",
       "Ziel B merken / laden / l\u00f6schen", "A <-> B tauschen"}
 PART = {"Bend / Mod": "MIDI", "Latch": "Arp Latch", "Arpeggiator": "ja (Muster: nein)", "LFO 1 bis 8: Rate, Form, Sync": "ja (freie Form: nein)",

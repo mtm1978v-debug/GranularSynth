@@ -5,7 +5,7 @@
 {\cf5\i FM \'b7 Synthese \'b7 HABI M \'b7 Version 2.5\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 freie Software unter der GNU GPL Version 3 oder neuer, ohne Gew\'e4hrleistung \'b7 Lizenztext: LICENSE.txt im Plugin-Ordner\par}\par
 {\cf3\b\fs26 Vorwort\par}
-GranularSynth ist ein hochoptimierter Granular-Synthesizer. Die rechenintensiven Teile (Grains, Oszillator, Hall, Equalizer, Anzeigen) sind in {\b Assembler} geschrieben (SSE, Win32 und Win64), jeweils mit einer Pascal-Fassung zur Kontrolle. Das Ergebnis: {\b sehr wenig Rechenlast} bei {\b hoher Klangqualit\'e4t} - auch auf \'e4lteren Rechnern und in alten Hosts.\par\par
+GranularSynth ist ein hochoptimierter Granular-Synthesizer. Die rechenintensiven Teile (Grains, Oszillator, Hall, Equalizer, Anzeigen) sind in {\b Assembler} geschrieben (SSE, Win32 und Win64), jeweils mit einer Pascal-Fassung zur Kontrolle. Das Ergebnis: {\b sehr wenig Rechenlast} bei {\b hoher Klangqualit\'e4t} - auch auf \'e4lteren Rechnern und in alten Hosts. Die Sprache der Oberfl\'e4che (Deutsch/English) w\'e4hlst du im Reiter Extras unter \'84Sprache / Language\'93 oder per Klick auf die kleine Flagge rechts in der Reiterzeile.\par\par
 {\cf3\b\fs26 1. Was ist Granular-Synthese?\par}
 Ein Klang (eine WAV-Datei) wird in viele winzige St\'fccke zerlegt, die {\b Grains} (K\'f6rner, meist 20 bis 300 ms). Diese werden st\'e4ndig neu abgespielt, \'fcberlagert, verschoben und in der Tonh\'f6he ver\'e4ndert. So entstehen aus einer kurzen Aufnahme Fl\'e4chen, Wolken, Rhythmen oder ganz neue Instrumente.\par\par
 {\cf3\b\fs26 2. Erste Schritte\par}
@@ -177,7 +177,7 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Freie Makros}\cell\pard\intbl{rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle "Makro n"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal f\'fcr die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37.}\cell\pard\intbl{\cf4 ja (Makro 1..4, Makro 1..4 Kurve)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Modulationsmatrix}\cell\pard\intbl{32 Zeilen auf vier Seiten (Kn\'f6pfe oben rechts, in Klammern: benutzte Zeilen; "Modulieren mit" im Rechtsklick-Men\'fc nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-H\'fcllkurve - jede f\'fcr sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte f\'fcr Grain-Regler, Tonh\'f6he, Lautst\'e4rke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note ver\'e4ndert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, S\'e4ttigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'.}\cell\pard\intbl{\cf4 ja (alle Zeilen; Mod1..Mod32 Quelle, Ziel, Menge, Faktor, Offset)}\cell\row
+\pard\intbl{\cf2 Modulationsmatrix}\cell\pard\intbl{32 Zeilen auf vier Seiten (Kn\'f6pfe oben rechts, in Klammern: benutzte Zeilen; "Modulieren mit" im Rechtsklick-Men\'fc nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-H\'fcllkurve - jede f\'fcr sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte f\'fcr Grain-Regler, Tonh\'f6he, Lautst\'e4rke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note ver\'e4ndert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, S\'e4ttigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'. Der Papierkorb am Zeilenende leert die Zeile (Strg+Z nimmt es zur\'fcck).}\cell\pard\intbl{\cf4 ja (alle Zeilen; Mod1..Mod32 Quelle, Ziel, Menge, Faktor, Offset)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Glide / Zeit}\cell\pard\intbl{Portamento: T\'f6ne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens.}\cell\pard\intbl{\cf4 ja (Glide, Glide-Zeit)}\cell\row
 \pard\par
@@ -275,26 +275,28 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Sprache / Language}\cell\pard\intbl{Sprache der Oberfl\'e4che (Deutsch, English, weitere als Datei im Ordner Sprachen). Schneller: Klick auf die kleine Flagge rechts in der Reiterzeile schaltet zur n\'e4chsten Sprache.}\cell\pard\intbl{\cf5 nein}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Arpeggiator}\cell\pard\intbl{gehaltene Tasten nacheinander: Richtung, Oktaven, Notenwert, L\'e4nge, Swing, Schritte und Schrittmuster (Klick = Schritt an/aus).}\cell\pard\intbl{\cf4 ja (Muster: nein; Arp an, Arp Richtung, Arp Oktaven, Arp Notenwert, Arp L\'e4nge, Arp Swing, Arp Schritte)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Latch}\cell\pard\intbl{wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedr\'fcckt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".}\cell\pard\intbl{\cf5 Arp Latch}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Tonleiter / Grundton}\cell\pard\intbl{alle Tonh\'f6hen rasten auf die T\'f6ne der Tonleiter ein - nie ein falscher Ton.}\cell\pard\intbl{\cf4 ja (Tonleiter, Grundton)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 S\'e4ttigung}\cell\pard\intbl{warme \'dcbersteuerung.}\cell\pard\intbl{\cf4 ja (S\'e4ttigung)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Freeze}\cell\pard\intbl{Leseposition steht still, der Klang friert ein.}\cell\pard\intbl{\cf4 ja (Freeze)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Stereobreite / Panorama}\cell\pard\intbl{Breite und Position der Summe im Stereobild.}\cell\pard\intbl{\cf4 ja (Summen-Breite, Summen-Panorama)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Morph, Morph-LFO}\cell\pard\intbl{blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik).}\cell\pard\intbl{\cf4 ja (freie Form: nein; Morph, Morph-LFO Form, Morph-LFO Rate, Morph-LFO Sync, Morph-LFO Tiefe)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Zwei Kl\'e4nge (Morph-Art)}\cell\pard\intbl{an (Standard): A und B sind zwei vollstaendig getrennte Kl\'e4nge - jeder mit eigenen Stimmen, Arpeggiator, LFOs, Matrix, Filtern und Effekten; Morph regelt nur, wie laut A und B sind. Aus: ein einziger Klang, dessen Reglerwerte stufenlos von A nach B wandern (Schalter springen bei 50 %). Aeltere Presets mit Ziel B laden mit 'aus'.}\cell\pard\intbl{\cf4 ja (Morph-Art)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Ziel B merken / laden / l\'f6schen}\cell\pard\intbl{aktuellen Klang oder ein anderes Preset als Ziel B festlegen.}\cell\pard\intbl{\cf5 nein}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 A <-> B tauschen}\cell\pard\intbl{Bearbeitungstausch: A und B tauschen die Pl\'e4tze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zur\'fcck.}\cell\pard\intbl{\cf5 nein}\cell\row
+\pard\intbl{\cf2 Ziel B merken / laden / l\'f6schen}\cell\pard\intbl{aktuellen Klang oder ein anderes Preset als Ziel B festlegen.}\cell\pard\intbl{\cf5 nein}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 A <-> B tauschen}\cell\pard\intbl{Bearbeitungstausch: A und B tauschen die Pl\'e4tze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zur\'fcck.}\cell\pard\intbl{\cf5 nein}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer}\cell\pard\intbl{wird 1, sobald eine beliebige Quelle die Schwelle \'fcberschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.}\cell\pard\intbl{\cf4 ja (Tor-Quelle, Tor-Schwelle, Ruhe-Dauer)}\cell\row
 \pard\par
 {\cf3\b\fs22 Reiter Osz 1 / Osz 2 / Osz 3\par}

@@ -5,7 +5,7 @@
 {\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.5\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 free software under the GNU GPL version 3 or later, without warranty \'b7 licence text: LICENSE.txt in the plugin folder\par}\par
 {\cf3\b\fs26 Foreword\par}
-GranularSynth is a highly optimised granular synthesizer. The CPU-heavy parts (grains, oscillator, reverb, equalizer, displays) are written in {\b assembler} (SSE, Win32 and Win64), each with a Pascal version for cross-checking. The result: {\b very low CPU load} with {\b high sound quality} - even on older computers and in old hosts. The interface language can be switched between Deutsch and English in the Extras tab ("Sprache / Language").\par\par
+GranularSynth is a highly optimised granular synthesizer. The CPU-heavy parts (grains, oscillator, reverb, equalizer, displays) are written in {\b assembler} (SSE, Win32 and Win64), each with a Pascal version for cross-checking. The result: {\b very low CPU load} with {\b high sound quality} - even on older computers and in old hosts. The interface language can be switched between Deutsch and English in the Extras tab ("Sprache / Language") or by clicking the small flag at the right end of the tab row.\par\par
 {\cf3\b\fs26 1. What is granular synthesis?\par}
 A sound (a WAV file) is chopped into many tiny pieces called {\b grains} (usually 20 to 300 ms long). These are played back over and over, layered, shifted and re-pitched. That way a short recording turns into pads, clouds, rhythms or completely new instruments.\par\par
 {\cf3\b\fs26 2. Getting started\par}
@@ -177,7 +177,7 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Free macros}\cell\pard\intbl{to the right of the matrix: four controls Macro 1-4, each moves any number of targets. Assign a target: right-click a control > Modulate with > Macro n (or a matrix row with source "Macro n"); amount, factor and offset per target. Curve per macro: Linear, Slow rise, Fast rise, S-curve. Each macro's targets are listed below it. Ideal for DAW automation: one lane moves many controls. Learning presets L35-L37.}\cell\pard\intbl{\cf4 yes (Macro 1..4, Macro 1..4 Curve)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Modulation matrix}\cell\pard\intbl{32 rows on four pages (buttons top right, in brackets: rows used; "Modulate with" in the right-click menu always takes the topmost free row). Each row: Source -> Target with Amount, Factor and Offset. The glowing display at the front pulses with the source. Note sources (Velocity, Note, Random per note, grain, filter and Osc1-3 envelope - each on its own -, LFOs with retrigger on note on/off) act per note: every voice has its own LFOs and its own values for grain controls, pitch, volume, oscillator, filter, all envelope times, Scan, filter contours and the LFO rates - a new note does not change the ones already sounding. Targets that exist only once (Echo, Reverb, EQ, Saturation, Width, master pan, Morph, Arp, Gate) follow the most recently played note; the row then shows 'global: last note'.}\cell\pard\intbl{\cf4 yes (all rows; Mod1..Mod32 Source, Target, Amount, Factor, Offset)}\cell\row
+\pard\intbl{\cf2 Modulation matrix}\cell\pard\intbl{32 rows on four pages (buttons top right, in brackets: rows used; "Modulate with" in the right-click menu always takes the topmost free row). Each row: Source -> Target with Amount, Factor and Offset. The glowing display at the front pulses with the source. Note sources (Velocity, Note, Random per note, grain, filter and Osc1-3 envelope - each on its own -, LFOs with retrigger on note on/off) act per note: every voice has its own LFOs and its own values for grain controls, pitch, volume, oscillator, filter, all envelope times, Scan, filter contours and the LFO rates - a new note does not change the ones already sounding. Targets that exist only once (Echo, Reverb, EQ, Saturation, Width, master pan, Morph, Arp, Gate) follow the most recently played note; the row then shows 'global: last note'. The trash can at the end of a row clears the row (Ctrl+Z undoes it).}\cell\pard\intbl{\cf4 yes (all rows; Mod1..Mod32 Source, Target, Amount, Factor, Offset)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Glide / Time}\cell\pard\intbl{Portamento: notes glide into each other (Off / Always / Legato only), Time = glide duration.}\cell\pard\intbl{\cf4 yes (Glide, Glide time)}\cell\row
 \pard\par
@@ -275,26 +275,28 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Control / Button}\cell\pard\intbl{\b What it does}\cell\pard\intbl{\b VST parameters}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Sprache / Language}\cell\pard\intbl{Interface language (Deutsch, English, more as a file in the Sprachen folder). Quicker: clicking the small flag at the right end of the tab row switches to the next language.}\cell\pard\intbl{\cf5 no}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Arpeggiator}\cell\pard\intbl{held keys one after another: direction, octaves, note value, length, swing, steps and step pattern (click = step on/off).}\cell\pard\intbl{\cf4 yes (Pattern: no; Arp on, Arp Direction, Arp Octaves, Arp Note value, Arp Length, Arp Swing, Arp Steps)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Latch}\cell\pard\intbl{as on the microKORG: released keys keep playing in the arp until new keys are struck - the new chord replaces the old one. While keys are held, further ones are added. To stop: Latch off or "All notes off".}\cell\pard\intbl{\cf5 Arp Latch}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Scale / Root}\cell\pard\intbl{all pitches snap to the notes of the scale - never a wrong note.}\cell\pard\intbl{\cf4 yes (Scale, Root)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Saturation}\cell\pard\intbl{warm overdrive.}\cell\pard\intbl{\cf4 yes (Saturation)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Freeze}\cell\pard\intbl{Read position stands still, the sound freezes.}\cell\pard\intbl{\cf4 yes (Freeze)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Stereo width / Pan}\cell\pard\intbl{Width and position of the sum in the stereo field.}\cell\pard\intbl{\cf4 yes (Master width, Master pan)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Morph, Morph LFO}\cell\pard\intbl{crossfades between sound A and target B; the Morph LFO moves it automatically (also hand-drawn, click the graphic).}\cell\pard\intbl{\cf4 yes (free shape: no; Morph, Morph LFO Shape, Morph LFO Rate, Morph LFO Sync, Morph LFO Depth)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Two sounds (Morph mode)}\cell\pard\intbl{on (default): A and B are two completely separate sounds - each with its own voices, arpeggiator, LFOs, matrix, filters and effects; Morph only sets how loud A and B are. Off: a single sound whose control values glide smoothly from A to B (switches jump at 50 %). Older presets with target B load with 'off'.}\cell\pard\intbl{\cf4 yes (Morph mode)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Store / load / clear target B}\cell\pard\intbl{set the current sound or another preset as target B.}\cell\pard\intbl{\cf5 no}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Swap A <-> B}\cell\pard\intbl{Edit swap: A and B swap places (controls, matrix, LFO shapes, Arp patterns, EQ, sample), Morph is mirrored - the sound stays the same, the controls now show Sound B. Click again = back.}\cell\pard\intbl{\cf5 no}\cell\row
+\pard\intbl{\cf2 Store / load / clear target B}\cell\pard\intbl{set the current sound or another preset as target B.}\cell\pard\intbl{\cf5 no}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Swap A <-> B}\cell\pard\intbl{Edit swap: A and B swap places (controls, matrix, LFO shapes, Arp patterns, EQ, sample), Morph is mirrored - the sound stays the same, the controls now show Sound B. Click again = back.}\cell\pard\intbl{\cf5 no}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Threshold gate: Source, Threshold, Silence duration}\cell\pard\intbl{becomes 1 as soon as any source exceeds the threshold (switch/trigger); Silence = event after that much quiet.}\cell\pard\intbl{\cf4 yes (Gate source, Gate threshold, Silence)}\cell\row
 \pard\par
 {\cf3\b\fs22 Osc 1 / Osc 2 / Osc 3 tab\par}
