@@ -6,6 +6,13 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.4 – 31.10.2026
+
+### Neu
+- **Sprachflagge** klein am rechten Ende der Reiterzeile: Sie zeigt die aktuelle Sprache. Ein Klick schaltet zur nächsten Sprache der Liste. Eine neue Sprache kann ihre Flagge als *Sprachen/<Kürzel>.png* mitbringen.
+
+---
+
 ## Version 2.3 – 31.10.2026
 
 ### Neu

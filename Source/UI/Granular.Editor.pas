@@ -21,7 +21,7 @@ interface
 uses
   Granular.Lang,
   Winapi.Windows, Winapi.Messages, Winapi.ShellAPI, System.Classes, System.SysUtils, System.StrUtils, System.Math, System.IOUtils,
-  Vcl.Controls, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Dialogs, Vcl.Graphics, Vcl.Forms, Vcl.Menus,
+  Vcl.Controls, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Dialogs, Vcl.Graphics, Vcl.Forms, Vcl.Menus, Vcl.Imaging.pngimage,
   Granular.Params, Granular.Sample, Granular.Engine, Granular.WaveView, Granular.Keyboard,
   Granular.ModViews, Granular.State, Granular.AudioDecode, Granular.Banner, Granular.Prof, Granular.Spectrum, Granular.ComboFit, Granular.FreeLfoView, Granular.InfoView, Granular.EqView, Granular.Eq,
   Granular.LoadView, Granular.Hints,
@@ -204,7 +204,9 @@ type
     FOnHostMenu: THostMenuEvent;
     FOnLanguageChange: TNotifyEvent;   // Sprache gewechselt: die Huelle baut die Oberflaeche neu auf
     FLangCombo: TComboBox;
-    FLangCodes: TStringList;
+    FLangCodes, FLangNames: TStringList;
+    FLangFlag: TPaintBox;              // Flagge in der Reiterzeile: Klick = naechste Sprache
+    FLangFlagHost: TPanel;             // Fenster-Traeger: liegt ueber der Reiterleiste (TPaintBox allein waere verdeckt)
     FHostEditParam: Integer;      // Regler, dessen Bewegung der DAW gerade gemeldet wird (-1 = keiner)
     FHostEditTick: Cardinal;
     FHostItem: TMenuItem;
@@ -299,6 +301,10 @@ type
     procedure InfoClick(Sender: TObject);
     procedure HelpClick(Sender: TObject);
     procedure LangComboChange(Sender: TObject);
+    procedure LangFlagPaint(Sender: TObject);
+    procedure LangFlagClick(Sender: TObject);
+    procedure SwitchLanguage(const Code: string);
+    procedure EnsureLangList;
     procedure ComboCloseUp(Sender: TObject);
     procedure WMEditorDefocus(var Msg: TMessage); message WM_EDITOR_DEFOCUS;
     procedure SortDestCombo(var B: TParamBinding);
@@ -543,6 +549,12 @@ var
 begin
   for I := 0 to High(FStretch) do
     PanelResize(FStretch[I].Ctrl.Parent);
+  // Sprachflagge ueber dem freien Ende der Reiterzeile
+  if (FLangFlagHost <> nil) and (FPages <> nil) then
+  begin
+    FLangFlagHost.SetBounds(ClientWidth - 30, FPages.Top + 5, 21, 14);
+    FLangFlagHost.BringToFront;
+  end;
 end;
 
 function TGranularEditor.AddParam(AParent: TWinControl; Index, X, Y, NameW, ValueW: Integer;
@@ -816,6 +828,26 @@ begin
   FMidiLed.ShowHint := True;
   MakeButton(Tr('Info'), 930, 44, InfoClick).Hint := Tr('Klartext-Übersicht: was passiert bei einem Tastendruck (live)');
   MakeButton(Tr('Hilfe'), 978, 48, HelpClick).Hint := Tr('Bedienung in einfachen Worten (Kapitel)');
+  // Sprachflagge (klein, gedaempft): rechts in der Reiterzeile, Klick schaltet zur naechsten Sprache
+  EnsureLangList;
+  FLangFlagHost := TPanel.Create(Self);
+  FLangFlagHost.Parent := Self;
+  FLangFlagHost.BevelOuter := bvNone;
+  FLangFlagHost.ParentBackground := False;
+  FLangFlagHost.Color := BG_MAIN;
+  FLangFlagHost.Caption := '';
+  FLangFlag := TPaintBox.Create(Self);
+  FLangFlag.Parent := FLangFlagHost;
+  FLangFlag.Align := alClient;
+  FLangFlag.Cursor := crHandPoint;
+  FLangFlag.ShowHint := True;
+  FLangFlag.OnPaint := LangFlagPaint;
+  FLangFlag.OnClick := LangFlagClick;
+  if FLangCodes.Count > 1 then
+    FLangFlag.Hint := Format(Tr('Sprache wechseln (nächste: %s)'),
+      [FLangNames[(Max(0, FLangCodes.IndexOf(LangCode)) + 1) mod FLangCodes.Count]])
+  else
+    FLangFlag.Hint := Tr('Sprache wechseln');
   FStatus.SetBounds(1034, 11, 800, 16);
   FStatus.Hint := Tr('PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave');
   FStatus.ShowHint := True;
@@ -865,6 +897,7 @@ begin
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
+  FLangFlagHost.Anchors := [akTop, akRight];   // Lage setzt RelayoutAll (nach dem Ausrichten)
   FPages.TabStop := False;
   FPages.OnChange := RelayoutAll;
   FTabQuick := TTabSheet.Create(Self);
@@ -1488,13 +1521,13 @@ begin
   L.Caption := 'Sprache / Language';
   L.Font.Color := COL_NAME;
   L.Transparent := True;
-  FLangCodes := TStringList.Create;
+  EnsureLangList;
   FLangCombo := TComboBox.Create(Self);
   FLangCombo.Parent := PH;
   FLangCombo.Style := csDropDownList;
   FLangCombo.SetBounds(130, 24 + 2 * ROW_H + 6 + 58, 150, 21);
   FLangCombo.TabStop := False;
-  LangList(FLangCodes, FLangCombo.Items);
+  FLangCombo.Items.Assign(FLangNames);
   FLangCombo.ItemIndex := Max(0, FLangCodes.IndexOf(LangCode));
   FLangCombo.OnChange := LangComboChange;
 
@@ -1701,13 +1734,123 @@ begin
   end;
 end;
 
-procedure TGranularEditor.LangComboChange(Sender: TObject);
-var
-  Code: string;
+procedure TGranularEditor.EnsureLangList;
 begin
-  if (FLangCombo.ItemIndex < 0) or (FLangCombo.ItemIndex >= FLangCodes.Count) then
+  if FLangCodes <> nil then
     Exit;
-  Code := FLangCodes[FLangCombo.ItemIndex];
+  FLangCodes := TStringList.Create;
+  FLangNames := TStringList.Create;
+  LangList(FLangCodes, FLangNames);
+end;
+
+procedure TGranularEditor.LangComboChange(Sender: TObject);
+begin
+  if (FLangCombo.ItemIndex >= 0) and (FLangCombo.ItemIndex < FLangCodes.Count) then
+    SwitchLanguage(FLangCodes[FLangCombo.ItemIndex]);
+end;
+
+procedure TGranularEditor.LangFlagClick(Sender: TObject);
+begin
+  if FLangCodes.Count > 1 then
+    SwitchLanguage(FLangCodes[(Max(0, FLangCodes.IndexOf(LangCode)) + 1) mod FLangCodes.Count]);
+end;
+
+{ Flagge der aktuellen Sprache: Sprachen\<Kuerzel>.png, falls vorhanden (jede neue Sprache kann ihre
+  eigene mitbringen); sonst eingebaut fuer Deutsch und Englisch; sonst das Kuerzel auf grauem Grund }
+function Muted(Col: TColor): TColor;
+const
+  BG = $00302C2A;   // ungefaehr der Hintergrund der Reiterzeile
+  K = 0.55;         // Anteil der Flaggenfarbe
+begin
+  Col := ColorToRGB(Col);
+  Result := RGB(Round(GetRValue(Col) * K + GetRValue(BG) * (1 - K)),
+                Round(GetGValue(Col) * K + GetGValue(BG) * (1 - K)),
+                Round(GetBValue(Col) * K + GetBValue(BG) * (1 - K)));
+end;
+
+procedure TGranularEditor.LangFlagPaint(Sender: TObject);
+var
+  C: TCanvas;
+  W, H, I: Integer;
+  F: string;
+  Png: TPngImage;
+begin
+  C := FLangFlag.Canvas;
+  W := FLangFlag.Width;
+  H := FLangFlag.Height;
+  F := IncludeTrailingPathDelimiter(FBaseDir) + LANG_DIR + PathDelim + LangCode + '.png';
+  if (FBaseDir <> '') and FileExists(F) then
+  begin
+    Png := TPngImage.Create;
+    try
+      try
+        Png.LoadFromFile(F);
+        C.StretchDraw(Rect(0, 0, W, H), Png);
+        Exit;
+      except
+      end;
+    finally
+      Png.Free;
+    end;
+  end;
+  C.Pen.Style := psClear;
+  if LangCode = 'de' then
+  begin
+    for I := 0 to 2 do
+    begin
+      case I of
+        0: C.Brush.Color := Muted(clBlack);
+        1: C.Brush.Color := Muted($000000DD);     // Rot (BGR)
+      else
+        C.Brush.Color := Muted($0000CEFF);        // Gold
+      end;
+      C.FillRect(Rect(0, I * H div 3, W, (I + 1) * H div 3));
+    end;
+  end
+  else if LangCode = 'en' then
+  begin
+    // Union Jack, vereinfacht: blau, weisse und rote Diagonalen, weisses und rotes Kreuz
+    C.Brush.Color := Muted($007D2401);
+    C.FillRect(Rect(0, 0, W, H));
+    C.Pen.Style := psSolid;
+    C.Pen.Color := Muted(clWhite);
+    C.Pen.Width := 3;
+    C.MoveTo(0, 0); C.LineTo(W, H);
+    C.MoveTo(W, 0); C.LineTo(0, H);
+    C.Pen.Color := Muted($002E10C8);
+    C.Pen.Width := 1;
+    C.MoveTo(0, 0); C.LineTo(W, H);
+    C.MoveTo(W, 0); C.LineTo(0, H);
+    C.Pen.Style := psClear;
+    C.Brush.Color := Muted(clWhite);
+    C.FillRect(Rect(W div 2 - 2, 0, W div 2 + 2, H));
+    C.FillRect(Rect(0, H div 2 - 2, W, H div 2 + 2));
+    C.Brush.Color := Muted($002E10C8);
+    C.FillRect(Rect(W div 2 - 1, 0, W div 2 + 1, H));
+    C.FillRect(Rect(0, H div 2 - 1, W, H div 2 + 1));
+  end
+  else
+  begin
+    C.Brush.Color := $00606060;
+    C.FillRect(Rect(0, 0, W, H));
+    C.Font.Color := clWhite;
+    C.Font.Style := [fsBold];
+    C.Font.Size := 6;
+    C.Brush.Style := bsClear;
+    C.TextOut((W - C.TextWidth(UpperCase(LangCode))) div 2, (H - C.TextHeight('X')) div 2, UpperCase(LangCode));
+    C.Brush.Style := bsSolid;
+  end;
+  // feiner Rahmen
+  C.Pen.Style := psSolid;
+  C.Pen.Width := 1;
+  C.Pen.Color := $00404040;
+  C.Brush.Style := bsClear;
+  C.Rectangle(0, 0, W, H);
+  C.Brush.Style := bsSolid;
+end;
+
+procedure TGranularEditor.SwitchLanguage(const Code: string);
+begin
   if Code = LangCode then
     Exit;
   LangSet(Code);
@@ -1722,6 +1865,7 @@ end;
 destructor TGranularEditor.Destroy;
 begin
   FLangCodes.Free;
+  FLangNames.Free;
   inherited;
 end;
 

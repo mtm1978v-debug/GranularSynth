@@ -68,6 +68,7 @@ Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüsse
 - **Sprachdateien:** `Sprachen/<Kürzel>.txt`.
   - Format: erste Zeile `#Name=English`, danach je Zeile `Deutsch<TAB>Übersetzung`, ein Zeilenumbruch im Text steht als `\n`.
   - **Eine neue Sprache ist nur eine neue Datei.** Sie erscheint automatisch in der Auswahl „Sprache / Language“ im Reiter Extras.
+  - Die kleine Flagge am rechten Ende der Reiterzeile schaltet per Klick zur nächsten Sprache. Eigene Flagge: `Sprachen/<Kürzel>.png`. Eingebaut sind Deutsch und Englisch, sonst erscheint das Kürzel.
 - **Gemerkte Wahl:** `Sprache.txt` im Plugin-Ordner. Fehlt sie, gilt Deutsch auf deutschem Windows, sonst Englisch.
 - **Umschalten:** Der Editor meldet `OnLanguageChange`. Die Plugin-Hülle baut den Editor per Fensternachricht neu auf.
 

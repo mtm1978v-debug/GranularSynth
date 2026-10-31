@@ -1571,3 +1571,5 @@ zwischen zwei Fassungen hin- und herschalten und vergleichen.	switch back and fo
 über	above
 überschreitet	exceeds
 ★ Favoriten	★ Favorites
+Sprache wechseln	Change language
+Sprache wechseln (nächste: %s)	Change language (next: %s)
