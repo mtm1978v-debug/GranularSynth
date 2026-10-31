@@ -22,6 +22,7 @@ uses
   Granular.Lang,
   Winapi.Windows, Winapi.Messages, Winapi.ShellAPI, System.Classes, System.SysUtils, System.StrUtils, System.Math, System.IOUtils,
   Vcl.Controls, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Dialogs, Vcl.Graphics, Vcl.Forms, Vcl.Menus, Vcl.Imaging.pngimage,
+  Granular.Update,
   Granular.Params, Granular.Sample, Granular.Engine, Granular.WaveView, Granular.Keyboard,
   Granular.ModViews, Granular.State, Granular.AudioDecode, Granular.Banner, Granular.Prof, Granular.Spectrum, Granular.ComboFit, Granular.FreeLfoView, Granular.InfoView, Granular.EqView, Granular.Eq,
   Granular.LoadView, Granular.Hints,
@@ -207,6 +208,9 @@ type
     FLangCodes, FLangNames: TStringList;
     FLangFlag: TPaintBox;              // Flagge in der Reiterzeile: Klick = naechste Sprache
     FLangFlagHost: TPanel;             // Fenster-Traeger: liegt ueber der Reiterleiste (TPaintBox allein waere verdeckt)
+    FUpdHost: TPanel;                  // Hinweis "neue Version" links neben der Flagge (erst sichtbar, wenn es eine gibt)
+    FUpdIcon: TPaintBox;
+    FUpdVersion, FUpdPage: string;
     FHostEditParam: Integer;      // Regler, dessen Bewegung der DAW gerade gemeldet wird (-1 = keiner)
     FHostEditTick: Cardinal;
     FHostItem: TMenuItem;
@@ -302,6 +306,8 @@ type
     procedure HelpClick(Sender: TObject);
     procedure LangComboChange(Sender: TObject);
     procedure LangFlagPaint(Sender: TObject);
+    procedure UpdIconPaint(Sender: TObject);
+    procedure UpdIconClick(Sender: TObject);
     procedure LangFlagClick(Sender: TObject);
     procedure SwitchLanguage(const Code: string);
     procedure EnsureLangList;
@@ -558,6 +564,11 @@ begin
   begin
     FLangFlagHost.SetBounds(ClientWidth - 30, FPages.Top + 5, 21, 14);
     FLangFlagHost.BringToFront;
+    if FUpdHost <> nil then
+    begin
+      FUpdHost.SetBounds(ClientWidth - 52, FPages.Top + 4, 16, 16);
+      FUpdHost.BringToFront;
+    end;
   end;
 end;
 
@@ -847,6 +858,23 @@ begin
   FLangFlag.ShowHint := True;
   FLangFlag.OnPaint := LangFlagPaint;
   FLangFlag.OnClick := LangFlagClick;
+  // Update-Hinweis: Pruefung im Hintergrund (hoechstens einmal am Tag), Symbol erst bei neuer Version
+  FUpdHost := TPanel.Create(Self);
+  FUpdHost.Parent := Self;
+  FUpdHost.BevelOuter := bvNone;
+  FUpdHost.ParentBackground := False;
+  FUpdHost.Color := BG_MAIN;
+  FUpdHost.Caption := '';
+  FUpdHost.Visible := False;
+  FUpdHost.Anchors := [akTop, akRight];
+  FUpdIcon := TPaintBox.Create(Self);
+  FUpdIcon.Parent := FUpdHost;
+  FUpdIcon.Align := alClient;
+  FUpdIcon.Cursor := crHandPoint;
+  FUpdIcon.ShowHint := True;
+  FUpdIcon.OnPaint := UpdIconPaint;
+  FUpdIcon.OnClick := UpdIconClick;
+  UpdateCheckStart(APP_VERSION);
   if FLangCodes.Count > 1 then
     FLangFlag.Hint := Format(Tr('Sprache wechseln (nächste: %s)'),
       [FLangNames[(Max(0, FLangCodes.IndexOf(LangCode)) + 1) mod FLangCodes.Count]])
@@ -1855,6 +1883,45 @@ begin
   C.Brush.Style := bsClear;
   C.Rectangle(0, 0, W, H);
   C.Brush.Style := bsSolid;
+end;
+
+{ Update-Symbol: bernsteinfarbener Kreis mit Pfeil nach oben (gedaempft wie die Flagge) }
+procedure TGranularEditor.UpdIconPaint(Sender: TObject);
+var
+  C: TCanvas;
+  W, H, Cx: Integer;
+begin
+  C := FUpdIcon.Canvas;
+  W := FUpdIcon.Width;
+  H := FUpdIcon.Height;
+  C.Brush.Color := BG_MAIN;
+  C.FillRect(Rect(0, 0, W, H));
+  C.Pen.Color := $0040A8E0;
+  C.Brush.Color := $00284C66;
+  C.Ellipse(0, 0, W, H);
+  Cx := W div 2;
+  C.Pen.Color := $0070D0F8;
+  C.Pen.Width := 2;
+  C.MoveTo(Cx, H - 4); C.LineTo(Cx, 4);
+  C.MoveTo(Cx - 3, 7); C.LineTo(Cx, 4); C.LineTo(Cx + 3, 7);
+  C.Pen.Width := 1;
+end;
+
+{ Klick: Setup starten (Online-Update), sonst die Release-Seite im Browser }
+procedure TGranularEditor.UpdIconClick(Sender: TObject);
+var
+  Setup: string;
+begin
+  Setup := UpdateSetupPath;
+  if Setup <> '' then
+  begin
+    if MessageDlg(Format(Tr('Version %s ist verfügbar. Jetzt das Setup starten?'), [FUpdVersion]) + sLineBreak + sLineBreak +
+      Tr('Dort aktualisiert der Knopf "Online-Update" alles. Bitte vorher die DAW speichern und schließen.'),
+      mtInformation, [mbYes, mbNo], 0) = mrYes then
+      ShellExecute(0, 'open', PChar(Setup), '-StartUpdate', nil, SW_SHOWNORMAL);   // Setup fragt gleich nach dem Update
+  end
+  else
+    ShellExecute(0, 'open', PChar(FUpdPage), nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TGranularEditor.SwitchLanguage(const Code: string);
@@ -4997,6 +5064,17 @@ begin
   if FAnimPaused then
     Exit;                                      // minimiert/unsichtbar: nichts zeichnen
   Inc(FMainTick);
+  if (FUpdHost <> nil) and not FUpdHost.Visible and UpdateAvailable(FUpdVersion, FUpdPage) then
+  begin
+    if UpdateSetupPath <> '' then
+      FUpdIcon.Hint := Format(Tr('Neue Version %s verfügbar (installiert: %s). Klick: Setup starten - dort "Online-Update".'),
+        [FUpdVersion, APP_VERSION])
+    else
+      FUpdIcon.Hint := Format(Tr('Neue Version %s verfügbar (installiert: %s). Klick: Download-Seite öffnen.'),
+        [FUpdVersion, APP_VERSION]);
+    FUpdHost.Visible := True;
+    FUpdHost.BringToFront;
+  end;
   if (FHostEditParam >= 0) and (GetTickCount - FHostEditTick > 400) and (GetCapture = 0) then
     EndHostEdit;
   if FLearnBinding >= 0 then

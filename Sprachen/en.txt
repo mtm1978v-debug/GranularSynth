@@ -1577,3 +1577,7 @@ Sprache wechseln (nächste: %s)	Change language (next: %s)
 Sprache der Oberfläche (Deutsch, English, weitere als Datei im Ordner Sprachen). Schneller: Klick auf die kleine Flagge rechts in der Reiterzeile schaltet zur nächsten Sprache.	Interface language (Deutsch, English, more as a file in the Sprachen folder). Quicker: clicking the small flag at the right end of the tab row switches to the next language.
 Änderungen (Changelog)	Changes (changelog)
 Changelog nicht gefunden	Changelog not found
+Version %s ist verfügbar. Jetzt das Setup starten?	Version %s is available. Start the setup now?
+Dort aktualisiert der Knopf "Online-Update" alles. Bitte vorher die DAW speichern und schließen.	There, the "Online-Update" button updates everything. Please save and close your DAW first.
+Neue Version %s verfügbar (installiert: %s). Klick: Setup starten - dort "Online-Update".	New version %s available (installed: %s). Click: start the setup - then "Online-Update".
+Neue Version %s verfügbar (installiert: %s). Klick: Download-Seite öffnen.	New version %s available (installed: %s). Click: open the download page.

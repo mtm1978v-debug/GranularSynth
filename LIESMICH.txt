@@ -35,6 +35,9 @@ Installation (empfohlen)
   Update: Setup.exe der neuen Version starten - es schlaegt die Auswahl von damals vor.
   Online-Update: Setup.exe (oder Windows-Einstellungen > Apps > GranularSynth > Aendern) zeigt, ob es
   auf GitHub eine neuere Version gibt; der Knopf "Online-Update" laedt und installiert sie.
+  Update-Hinweis: Das Plugin fragt hoechstens einmal am Tag bei GitHub nach. Gibt es eine neue Version,
+  erscheint ein kleiner Pfeil am Ende der Reiterzeile; Klick startet das Setup. Gesendet wird nur die
+  uebliche Web-Anfrage, keine Daten ueber dich oder deine Projekte.
   Entfernen: Windows-Einstellungen > Apps > "GranularSynth (64 Bit)" bzw. "(32 Bit)" > Deinstallieren;
   auf Wunsch bleiben eigene Presets und eigene Toene erhalten.
 

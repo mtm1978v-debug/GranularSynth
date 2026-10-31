@@ -39,7 +39,8 @@ param(
   [switch]$NoRegister,      # Test: nichts in die Programmliste eintragen
   [switch]$CheckOnline,     # nur nachsehen, ob es auf GitHub eine neuere Version gibt
   [switch]$OnlineUpdate,    # neueste Version von GitHub laden und installieren
-  [string]$DownloadOnly = ''  # Test: ZIP laden, pruefen und hierhin entpacken, nichts installieren
+  [string]$DownloadOnly = '', # Test: ZIP laden, pruefen und hierhin entpacken, nichts installieren
+  [switch]$StartUpdate      # vom Plugin aus gestartet: Fenster oeffnen und gleich das Online-Update anbieten
 )
 
 $ErrorActionPreference = 'Stop'
@@ -364,7 +365,9 @@ if ($Auto) {
 # ---------- Fenster ----------
 if (-not $Preview -and -not (Test-Admin)) {
   # Programme-Ordner brauchen Administratorrechte: Windows fragt (UAC)
-  Start-Process powershell.exe -Verb RunAs -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$($MyInvocation.MyCommand.Path)`"")
+  $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$($MyInvocation.MyCommand.Path)`"")
+  if ($StartUpdate) { $a += '-StartUpdate' }
+  Start-Process powershell.exe -Verb RunAs -ArgumentList $a
   exit 0
 }
 
@@ -438,6 +441,7 @@ $f.Add_Shown({
       $onl.Text = "Neue Version $($script:Latest.Version) verfuegbar" + $(if ($inst) { " (installiert: $inst)" } else { '' })
       $upd.Enabled = [bool]$inst
       if (-not $inst) { $onl.Text += ' - erst einmal normal installieren' }
+      elseif ($StartUpdate) { $upd.PerformClick() }      # Klick auf den Hinweis im Plugin: gleich fragen
     } else {
       $onl.Text = "Aktuell: Version $inst ist die neueste."
     }

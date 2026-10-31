@@ -6,6 +6,16 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.7 – 31.10.2026
+
+### Neu
+- **Update-Hinweis im Plugin:** Das Plugin fragt höchstens einmal am Tag bei GitHub nach, ob es eine neuere Version gibt. Wenn ja, erscheint ein kleiner bernsteinfarbener Pfeil am Ende der Reiterzeile, links neben der Sprachflagge. Der Tooltip nennt die neue Version, ein Klick startet das Setup mit dem *Online-Update* (oder öffnet die Download-Seite, wenn das Setup nicht installiert ist).
+
+### Hinweis
+- Die Abfrage läuft im Hintergrund und berührt den Klang nicht. Gesendet wird nur die übliche Web-Anfrage an GitHub, keine Daten über dich oder deine Projekte. Ohne Internet erscheint einfach kein Hinweis.
+
+---
+
 ## Version 2.6 – 31.10.2026
 
 ### Neu

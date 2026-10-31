@@ -36,6 +36,9 @@ Installation (recommended)
   Update: run Setup.exe of the new version - it suggests your previous selection.
   Online update: Setup.exe (or Windows Settings > Apps > GranularSynth > Modify) shows whether a newer
   version is available on GitHub; the "Online-Update" button downloads and installs it.
+  Update notice: the plugin checks GitHub at most once a day. If a new version exists, a small arrow
+  appears at the end of the tab row; clicking it starts the setup. Only the usual web request is sent,
+  no data about you or your projects.
   Uninstall: Windows Settings > Apps > "GranularSynth (64 Bit)" or "(32 Bit)" > Uninstall;
   your own presets and own sounds can be kept if you wish.
 
