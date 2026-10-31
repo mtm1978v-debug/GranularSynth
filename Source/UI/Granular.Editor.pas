@@ -374,6 +374,8 @@ type
     property OnLanguageChange: TNotifyEvent read FOnLanguageChange write FOnLanguageChange;
     destructor Destroy; override;
     function PageIndex: Integer;
+    { Hilfefenster oeffnen; Changelog = gleich die Aenderungsliste zeigen }
+    procedure ShowHelp(Changelog: Boolean);
     { 'VST2', 'VST3', 'VST2 FX', 'VST3 FX': steht im Banner hinter der Version }
     property FormatName: string write SetFormatName;
     { eigenes Rechtsklick-Menue fuer einen Regler zeigen (aus dem DAW-Menue heraus) }
@@ -1878,6 +1880,11 @@ end;
 function TGranularEditor.PageIndex: Integer;
 begin
   Result := FPages.ActivePageIndex;
+end;
+
+procedure TGranularEditor.ShowHelp(Changelog: Boolean);
+begin
+  ShowHelpWindow(Self, LangHelpFile(FBaseDir), Changelog);
 end;
 
 procedure TGranularEditor.HelpClick(Sender: TObject);

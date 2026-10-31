@@ -33,6 +33,8 @@ Installation (empfohlen)
   Eigene Presets und eigene Toene bleiben bei einer neuen Installation erhalten.
   Danach in FL Studio: Options > Manage plugins > Find plugins.
   Update: Setup.exe der neuen Version starten - es schlaegt die Auswahl von damals vor.
+  Online-Update: Setup.exe (oder Windows-Einstellungen > Apps > GranularSynth > Aendern) zeigt, ob es
+  auf GitHub eine neuere Version gibt; der Knopf "Online-Update" laedt und installiert sie.
   Entfernen: Windows-Einstellungen > Apps > "GranularSynth (64 Bit)" bzw. "(32 Bit)" > Deinstallieren;
   auf Wunsch bleiben eigene Presets und eigene Toene erhalten.
 

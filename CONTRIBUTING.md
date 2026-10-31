@@ -37,3 +37,44 @@ Die technischen Regeln stehen ausführlich in [CLAUDE.md](CLAUDE.md). Am wichtig
 ## Lizenz der Beiträge
 
 Mit einem Beitrag stimmst du zu, dass er unter der **GNU GPL v3 oder neuer** veröffentlicht wird, wie das ganze Projekt.
+
+---
+
+# Contributing to GranularSynth (English)
+
+Thanks for your interest! GranularSynth is a small project with a single maintainer. To keep it manageable, these rules apply.
+
+## Reporting bugs and requesting features
+
+Use the **Issues** – all of them are welcome:
+
+- **Bug:** template *Fehler melden / Report a bug*. Please state version, 32/64 bit, VST2/VST3, your DAW and the steps to reproduce.
+- **Feature request:** template *Feature-Wunsch / Feature request*. Describe what you want to achieve musically, not only which control is missing.
+- **Presets:** see the discussion *Presets gesucht! / Looking for presets!* or the template *Preset einreichen / Submit a preset*. Only your own presets and samples (or public domain) – no copyrighted WAV files or sound sources.
+- **Questions and ideas:** in the **Discussions**.
+
+## Contributing code: by arrangement only
+
+Pull requests are accepted **only after prior agreement**:
+
+1. Open an issue and describe what you want to change and why.
+2. Wait for a "yes, please" in the issue – only then is the work worthwhile.
+3. Reference the issue in your pull request.
+
+Pull requests without prior agreement will be closed with a friendly pointer to this process.
+
+## What a contribution must meet
+
+The technical rules are described in detail in [CLAUDE.md](CLAUDE.md) (German). The most important ones:
+
+- **Do not change existing presets.** The test bench (`GranularHost.exe -bench`) compares all presets bit by bit with a reference; the line `Klang-Regression` must report `OK`.
+- **Stay compatible:** new VST parameters are only appended to `VST_ADDED`, never deleted or renumbered; new modulation sources only at the end of `TModSource`; preset numbers stay as they are.
+- **Audio thread:** no memory allocation, no string operations, no blocking locks.
+- **Both platforms:** Win32 and Win64 must build, and the test bench must run without `FEHLER` on both.
+- **Translations:** every visible text goes through `Tr(...)`; `python Tools/lang_check.py` must report no missing texts, and the test bench checks that texts fit their controls in every language.
+- **Source files** are UTF-8 with BOM; comments and the user interface are written in German (the English interface comes from `Sprachen/en.txt`).
+- **CHANGELOG.md:** add your change under *Neu*, *Geändert* or *Behoben*.
+
+## Licence of contributions
+
+By contributing you agree that your contribution is published under the **GNU GPL v3 or later**, like the whole project.

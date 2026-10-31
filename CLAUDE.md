@@ -124,6 +124,7 @@ Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüsse
   9. Prüfstand-Check
   10. Übersetzungen ergänzen: `python Tools/lang_check.py`, dann die fehlenden Texte in `Sprachen/*.txt` eintragen
   11. Eintrag in `CHANGELOG.md`
+- **Dokumentation mitziehen:** Bei sichtbaren Änderungen auch die Hilfe (`Hilfe/Hilfe.rtf` bzw. die Reglertabelle), `LIESMICH.txt`, `README.md` und die Bildschirmfotos in `docs/screenshots/` anpassen. Die englischen Fassungen meldet `lang_check.py` dann als veraltet.
 - **Changelog:** Jede für Nutzer sichtbare Änderung kommt in `CHANGELOG.md` unter die kommende Version: *Neu*, *Geändert*, *Behoben*, *Entfernt* oder *Hinweis* (Folgen für Presets und Projekte).
 - **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE` und `GRANULAR_MATPAGE`.
 

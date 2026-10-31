@@ -19,9 +19,9 @@ interface
 
 uses
   Granular.Lang,
-  Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, System.Math, System.Types,
+  Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, System.Math, System.Types, System.IOUtils,
   Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.ExtCtrls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ComCtrls,
-  Granular.Params, Granular.Engine;
+  Granular.Fader, Granular.Params, Granular.Engine;
 
 type
   TInfoRow = record
@@ -53,7 +53,7 @@ type
 
 { Hilfe-Fenster (nicht modal, nur eines): zeigt die RTF-Datei Hilfe\Hilfe.rtf neben dem Plugin -
   Text ohne Neukompilieren aenderbar (z.B. mit WordPad) }
-procedure ShowHelpWindow(AOwner: TComponent; const FileName: string);
+procedure ShowHelpWindow(AOwner: TComponent; const FileName: string; Changelog: Boolean = False);
 
 { die Beschreibung selbst (auch ohne Fenster nutzbar) }
 function BuildInfo(E: TGranularEngine): TArray<TInfoRow>;
@@ -70,7 +70,13 @@ const
 type
   THelpForm = class(TForm)
   private
+    FEd: TRichEdit;
+    FHelpFile, FChangeFile: string;
+    FBtnHelp, FBtnChange: TButton;
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure BtnClick(Sender: TObject);
+    { False = Hilfe (RTF), True = Changelog (CHANGELOG.md, fuer die Anzeige in RTF umgesetzt) }
+    procedure ShowDoc(Changelog: Boolean);
   public
     destructor Destroy; override;
   end;
@@ -90,12 +96,158 @@ begin
     Close;
 end;
 
-procedure ShowHelpWindow(AOwner: TComponent; const FileName: string);
+{ Markdown des Changelogs (Ueberschriften #/##/###, Aufzaehlungen -, Fett **, Kursiv *, Code `, Trenner ---)
+  in einfaches RTF in den Farben der Hilfe umsetzen }
+function MarkdownToRtf(const Md: string): string;
+var
+  Lines: TStringList;
+  I, K, Ind: Integer;
+  L, T, Out: string;
+  Bold, Ital: Boolean;
+
+  function Esc(const S: string): string;
+  var
+    C: Char;
+  begin
+    Result := '';
+    for C in S do
+      case C of
+        '\', '{', '}': Result := Result + '\' + C;
+      else
+        if Ord(C) > 127 then
+          Result := Result + '\u' + IntToStr(SmallInt(Ord(C))) + '?'
+        else
+          Result := Result + C;
+      end;
+  end;
+
+  { Inline: **fett**, *kursiv*, `code` }
+  function InlineMd(const S: string): string;
+  var
+    J: Integer;
+  begin
+    Result := '';
+    J := 1;
+    while J <= Length(S) do
+    begin
+      if (S[J] = '*') and (J < Length(S)) and (S[J + 1] = '*') then
+      begin
+        Bold := not Bold;
+        if Bold then Result := Result + '\b ' else Result := Result + '\b0 ';
+        Inc(J, 2);
+        Continue;
+      end;
+      if S[J] = '*' then
+      begin
+        Ital := not Ital;
+        if Ital then Result := Result + '\i ' else Result := Result + '\i0 ';
+        Inc(J);
+        Continue;
+      end;
+      if S[J] = '`' then
+      begin
+        Inc(J);
+        Continue;
+      end;
+      Result := Result + Esc(S[J]);
+      Inc(J);
+    end;
+    if Bold then Result := Result + '\b0 ';
+    if Ital then Result := Result + '\i0 ';
+    Bold := False;
+    Ital := False;
+  end;
+
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Text := Md;
+    Out := '{\rtf1\ansi\deff0{\fonttbl{\f0 Segoe UI;}}' +
+      '{\colortbl;\red220\green220\blue220;\red224\green168\blue64;\red150\green150\blue150;}' +
+      '\f0\fs19\cf1 ';
+    Bold := False;
+    Ital := False;
+    for I := 0 to Lines.Count - 1 do
+    begin
+      L := Lines[I];
+      T := TrimLeft(L);
+      if T = '' then
+        Continue;
+      if T.StartsWith('### ') then
+        Out := Out + '\pard\sb120{\b\fs21\cf1 ' + InlineMd(Copy(T, 5, MaxInt)) + '}\par' + sLineBreak
+      else if T.StartsWith('## ') then
+        Out := Out + '\pard\sb240\sa60{\b\fs25\cf2 ' + InlineMd(Copy(T, 4, MaxInt)) + '}\par' + sLineBreak
+      else if T.StartsWith('# ') then
+        Out := Out + '\pard\sa120{\b\fs30\cf2 ' + InlineMd(Copy(T, 3, MaxInt)) + '}\par' + sLineBreak
+      else if T = '---' then
+        Out := Out + '\pard\sb60{\cf3 ' + StringOfChar('_', 60) + '}\par' + sLineBreak
+      else if T.StartsWith('- ') then
+      begin
+        Ind := 0;
+        K := 1;
+        while (K <= Length(L)) and (L[K] = ' ') do Inc(K);
+        Ind := (K - 1) div 2;                     // zwei Leerzeichen je Ebene
+        Out := Out + Format('\pard\li%d\fi-200\sa30 \bullet  ', [300 + Ind * 320]) +
+          InlineMd(Copy(T, 3, MaxInt)) + '\par' + sLineBreak;
+      end
+      else
+        Out := Out + '\pard\sa60 ' + InlineMd(T) + '\par' + sLineBreak;
+    end;
+    Result := Out + '}';
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure THelpForm.ShowDoc(Changelog: Boolean);
+var
+  Md: string;
+  St: TStringStream;
+begin
+  FEd.Lines.BeginUpdate;
+  try
+    if Changelog then
+    begin
+      if FileExists(FChangeFile) then
+      begin
+        Md := TFile.ReadAllText(FChangeFile, TEncoding.UTF8);
+        St := TStringStream.Create(MarkdownToRtf(Md), TEncoding.ASCII);
+        try
+          FEd.PlainText := False;
+          FEd.Lines.LoadFromStream(St);
+        finally
+          St.Free;
+        end;
+      end
+      else
+        FEd.Lines.Text := Tr('Changelog nicht gefunden: ') + FChangeFile;
+    end
+    else if FileExists(FHelpFile) then
+      FEd.Lines.LoadFromFile(FHelpFile)
+    else
+      FEd.Lines.Text := Tr('Hilfedatei nicht gefunden: ') + FHelpFile;
+  finally
+    FEd.Lines.EndUpdate;
+  end;
+  FEd.SelStart := 0;
+  FEd.Perform(EM_SCROLLCARET, 0, 0);
+  FBtnHelp.Active := not Changelog;
+  FBtnChange.Active := Changelog;
+end;
+
+procedure THelpForm.BtnClick(Sender: TObject);
+begin
+  ShowDoc(Sender = FBtnChange);
+end;
+
+procedure ShowHelpWindow(AOwner: TComponent; const FileName: string; Changelog: Boolean);
 var
   Ed: TRichEdit;
+  Bar: TPanel;
 begin
   if HelpForm <> nil then
   begin
+    HelpForm.ShowDoc(Changelog);
     HelpForm.Show;
     HelpForm.BringToFront;
     Exit;
@@ -110,6 +262,26 @@ begin
   HelpForm.Color := COL_BG;
   HelpForm.KeyPreview := True;
   HelpForm.OnKeyDown := HelpForm.FormKeyDown;
+  // Umschalter oben: Hilfe / Changelog
+  Bar := TPanel.Create(HelpForm);
+  Bar.Parent := HelpForm;
+  Bar.Align := alTop;
+  Bar.Height := 34;
+  Bar.BevelOuter := bvNone;
+  Bar.ParentBackground := False;
+  Bar.Color := COL_BG;
+  HelpForm.FBtnHelp := TButton.Create(HelpForm);
+  HelpForm.FBtnHelp.Parent := Bar;
+  HelpForm.FBtnHelp.SetBounds(12, 6, 110, 24);
+  HelpForm.FBtnHelp.Caption := Tr('Hilfe');
+  HelpForm.FBtnHelp.TabStop := False;
+  HelpForm.FBtnHelp.OnClick := HelpForm.BtnClick;
+  HelpForm.FBtnChange := TButton.Create(HelpForm);
+  HelpForm.FBtnChange.Parent := Bar;
+  HelpForm.FBtnChange.SetBounds(128, 6, 170, 24);
+  HelpForm.FBtnChange.Caption := Tr('Änderungen (Changelog)');
+  HelpForm.FBtnChange.TabStop := False;
+  HelpForm.FBtnChange.OnClick := HelpForm.BtnClick;
   Ed := TRichEdit.Create(HelpForm);
   Ed.Parent := HelpForm;
   Ed.Align := alClient;
@@ -120,11 +292,11 @@ begin
   Ed.ScrollBars := ssVertical;
   Ed.Color := COL_BG;
   Ed.PlainText := False;
-  if FileExists(FileName) then
-    Ed.Lines.LoadFromFile(FileName)
-  else
-    Ed.Lines.Text := Tr('Hilfedatei nicht gefunden: ') + FileName;
-  Ed.SelStart := 0;
+  HelpForm.FEd := Ed;
+  HelpForm.FHelpFile := FileName;
+  // CHANGELOG.md liegt im Plugin-Ordner, die Hilfe darunter im Ordner Hilfe
+  HelpForm.FChangeFile := ExpandFileName(ExtractFilePath(FileName) + '..' + PathDelim + 'CHANGELOG.md');
+  HelpForm.ShowDoc(Changelog);
   HelpForm.Show;
 end;
 

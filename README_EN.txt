@@ -34,6 +34,8 @@ Installation (recommended)
   Your own presets and own sounds are kept when installing a new version.
   Then in FL Studio: Options > Manage plugins > Find plugins.
   Update: run Setup.exe of the new version - it suggests your previous selection.
+  Online update: Setup.exe (or Windows Settings > Apps > GranularSynth > Modify) shows whether a newer
+  version is available on GitHub; the "Online-Update" button downloads and installs it.
   Uninstall: Windows Settings > Apps > "GranularSynth (64 Bit)" or "(32 Bit)" > Uninstall;
   your own presets and own sounds can be kept if you wish.
 

@@ -295,6 +295,9 @@ begin
   // Testhilfe: GRANULAR_FREEEDIT=1|2 oeffnet das Fenster 'freie Form' des LFOs
   if StrToIntDef(GetEnvironmentVariable('GRANULAR_FREEEDIT'), 0) in [1, 2] then
     FEditor.OpenFreeEditor(StrToInt(GetEnvironmentVariable('GRANULAR_FREEEDIT')) - 1);
+  // Testhilfe: GRANULAR_HELP=1 oeffnet die Hilfe, =2 gleich den Changelog
+  if GetEnvironmentVariable('GRANULAR_HELP') <> '' then
+    FEditor.ShowHelp(GetEnvironmentVariable('GRANULAR_HELP') = '2');
   // Testhilfe: GRANULAR_LANGTEST=<Kuerzel> schaltet nach dem Oeffnen die Sprache um (wie die Auswahl im Reiter Extras)
   if GetEnvironmentVariable('GRANULAR_LANGTEST') <> '' then
   begin

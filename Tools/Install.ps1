@@ -17,6 +17,12 @@
   Aufruf ohne Fenster (Test / Skript):
     Install.ps1 -Auto -Platform Win64 -Vst2 -Vst3 [-Host] [-Vst2Dir <Pfad>] [-Vst3Dir <Pfad>]
     Install.ps1 -Uninstall -Platform Win64 [-Auto [-RemoveUserData]]
+    Install.ps1 -CheckOnline                  (neueste Version auf GitHub anzeigen, nichts aendern)
+    Install.ps1 -OnlineUpdate -Auto           (neueste Version laden und die installierten Plattformen aktualisieren)
+
+  Online-Update: fragt https://api.github.com/repos/mtm1978v-debug/GranularSynth/releases/latest ab, laedt das
+  Release-ZIP in den Temp-Ordner, prueft die SHA-256-Pruefsumme, die GitHub zum ZIP angibt, entpackt es und
+  startet dessen Install.ps1 mit der gemerkten Auswahl je installierter Plattform (Programmliste).
 #>
 param(
   [switch]$Auto,
@@ -30,7 +36,10 @@ param(
   [switch]$Uninstall,       # aus der Windows-Programmliste: diese Plattform entfernen
   [switch]$RemoveUserData,  # mit -Uninstall -Auto: auch eigene Presets/Toene loeschen
   [switch]$FromTemp,        # intern: Deinstallation laeuft aus einer Kopie im Temp-Ordner
-  [switch]$NoRegister       # Test: nichts in die Programmliste eintragen
+  [switch]$NoRegister,      # Test: nichts in die Programmliste eintragen
+  [switch]$CheckOnline,     # nur nachsehen, ob es auf GitHub eine neuere Version gibt
+  [switch]$OnlineUpdate,    # neueste Version von GitHub laden und installieren
+  [string]$DownloadOnly = ''  # Test: ZIP laden, pruefen und hierhin entpacken, nichts installieren
 )
 
 $ErrorActionPreference = 'Stop'
@@ -82,6 +91,77 @@ function Copy-Data([string]$From, [string]$To, [System.Collections.Generic.List[
     $s = Join-Path $From $f
     if (Test-Path $s) { Copy-Item $s $To -Force }
   }
+}
+
+# ---------- Online-Update (GitHub-Releases) ----------
+$RepoApi = 'https://api.github.com/repos/mtm1978v-debug/GranularSynth/releases/latest'
+
+function Get-LatestRelease {
+  # Windows PowerShell 5.1: TLS 1.2 fuer GitHub einschalten
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+  $r = Invoke-RestMethod -Uri $RepoApi -Headers @{ 'User-Agent' = 'GranularSynth-Setup' } -TimeoutSec 15
+  $zip = $r.assets | Where-Object { $_.name -like 'GranularSynth-*.zip' } | Select-Object -First 1
+  if (-not $zip) { throw 'Im neuesten Release ist kein GranularSynth-ZIP.' }
+  $digest = ''
+  if ($zip.PSObject.Properties.Name -contains 'digest' -and $zip.digest -like 'sha256:*') { $digest = $zip.digest.Substring(7) }
+  [pscustomobject]@{ Version = $r.tag_name.TrimStart('v'); Url = $zip.browser_download_url; Size = $zip.size
+                     Sha256 = $digest; Notes = $r.body; Page = $r.html_url }
+}
+
+function Test-Newer([string]$Online, [string]$Local) {
+  if (-not $Local) { return $true }
+  try { return ([version]$Online) -gt ([version]$Local) } catch { return $Online -ne $Local }
+}
+
+# installierte Version: die hoechste der Programmlisten-Eintraege
+function Get-InstalledVersion {
+  $v = ''
+  foreach ($p in @('Win64', 'Win32')) {
+    $e = Get-Installed $p
+    if ($e -and $e.DisplayVersion -and (Test-Newer $e.DisplayVersion $v)) { $v = $e.DisplayVersion }
+  }
+  return $v
+}
+
+# ZIP laden, Pruefsumme kontrollieren, entpacken; liefert den Ordner mit Install.ps1
+function Get-ReleaseFiles($Rel, [string]$Target) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+  if (Test-Path $Target) { Remove-Item -LiteralPath $Target -Recurse -Force }
+  New-Item -ItemType Directory -Force -Path $Target | Out-Null
+  $zipPath = Join-Path $Target 'GranularSynth.zip'
+  $ProgressPreference = 'SilentlyContinue'      # Fortschrittsbalken bremst den Download stark
+  Invoke-WebRequest -Uri $Rel.Url -OutFile $zipPath -Headers @{ 'User-Agent' = 'GranularSynth-Setup' } -UseBasicParsing
+  if ($Rel.Size -and (Get-Item $zipPath).Length -ne $Rel.Size) { throw 'Download unvollstaendig (Groesse stimmt nicht).' }
+  if ($Rel.Sha256) {
+    $h = (Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath).Hash
+    if ($h -ne $Rel.Sha256.ToUpper()) { throw 'Pruefsumme des Downloads stimmt nicht - Update abgebrochen.' }
+  }
+  Expand-Archive -LiteralPath $zipPath -DestinationPath $Target -Force
+  $inst = Get-ChildItem -LiteralPath $Target -Recurse -Filter 'Install.ps1' | Select-Object -First 1
+  if (-not $inst) { throw 'Im Download fehlt Install.ps1.' }
+  return $inst.DirectoryName
+}
+
+# neue Version mit der gemerkten Auswahl je installierter Plattform installieren (Skript der neuen Version)
+function Invoke-OnlineUpdate($Rel) {
+  $dir = Get-ReleaseFiles $Rel (Join-Path $env:TEMP 'GranularSynth-Update')
+  $script = Join-Path $dir 'Install.ps1'
+  $log = New-Object System.Collections.Generic.List[string]
+  $any = $false
+  foreach ($p in @('Win64', 'Win32')) {
+    $e = Get-Installed $p
+    if (-not $e) { continue }
+    $any = $true
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script, '-Auto', '-Platform', $p)
+    if ($e.Vst2 -eq 1) { $a += @('-Vst2', '-Vst2Dir', $e.Vst2Dir) }
+    if ($e.Vst3 -eq 1) { $a += @('-Vst3', '-Vst3Dir', $e.Vst3Dir) }
+    if ($e.TestHost -eq 1) { $a += '-TestHost' }
+    $out = & powershell.exe @a 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Installation ($p) fehlgeschlagen: $out" }
+    $log.Add("$p aktualisiert")
+  }
+  if (-not $any) { throw 'Es ist noch keine Installation eingetragen - bitte einmal normal installieren.' }
+  return $log
 }
 
 # ---------- Programmliste (Uninstall-Eintrag) ----------
@@ -258,6 +338,19 @@ if ($Uninstall) {
   exit 0
 }
 
+# ---------- Online ohne Fenster ----------
+if ($CheckOnline -or $DownloadOnly) {
+  $rel = Get-LatestRelease
+  "Neueste Version auf GitHub: $($rel.Version)  ($([math]::Round($rel.Size / 1MB)) MB, Pruefsumme: $(if ($rel.Sha256) { 'ja' } else { 'nein' }))"
+  "Installiert: $(Get-InstalledVersion)"
+  if ($DownloadOnly) { "Entpackt nach: $(Get-ReleaseFiles $rel $DownloadOnly)" }
+  exit 0
+}
+if ($OnlineUpdate -and $Auto) {
+  Invoke-OnlineUpdate (Get-LatestRelease) | ForEach-Object { Write-Output $_ }
+  exit 0
+}
+
 # ---------- ohne Fenster ----------
 if ($Auto) {
   if (-not $Platform) { $Platform = if ([Environment]::Is64BitOperatingSystem) { 'Win64' } else { 'Win32' } }
@@ -281,7 +374,7 @@ Add-Type -AssemblyName System.Drawing
 
 $f = New-Object System.Windows.Forms.Form
 $f.Text = 'GranularSynth installieren'
-$f.ClientSize = New-Object System.Drawing.Size(640, 360)
+$f.ClientSize = New-Object System.Drawing.Size(640, 400)
 $f.StartPosition = 'CenterScreen'
 $f.FormBorderStyle = 'FixedDialog'
 $f.MaximizeBox = $false
@@ -325,9 +418,50 @@ $hint = Add-Label $HintNew 16 244
 $hint.Size = New-Object System.Drawing.Size(608, 44)
 
 $go = New-Object System.Windows.Forms.Button
-$go.Text = 'Installieren'; $go.Location = New-Object System.Drawing.Point(408, 310); $go.Size = New-Object System.Drawing.Size(110, 32)
+$go.Text = 'Installieren'; $go.Location = New-Object System.Drawing.Point(408, 350); $go.Size = New-Object System.Drawing.Size(110, 32)
 $cancel = New-Object System.Windows.Forms.Button
-$cancel.Text = 'Abbrechen'; $cancel.Location = New-Object System.Drawing.Point(526, 310); $cancel.Size = New-Object System.Drawing.Size(98, 32)
+$cancel.Text = 'Abbrechen'; $cancel.Location = New-Object System.Drawing.Point(526, 350); $cancel.Size = New-Object System.Drawing.Size(98, 32)
+
+# Online-Update: neueste Version auf GitHub
+$onl = Add-Label 'Online: wird geprueft ...' 16 300 380
+$upd = New-Object System.Windows.Forms.Button
+$upd.Text = 'Online-Update'; $upd.Location = New-Object System.Drawing.Point(408, 296); $upd.Size = New-Object System.Drawing.Size(216, 30)
+$upd.Enabled = $false
+$f.Controls.Add($upd)
+$script:Latest = $null
+$f.Add_Shown({
+  $f.Refresh()
+  try {
+    $script:Latest = Get-LatestRelease
+    $inst = Get-InstalledVersion
+    if (Test-Newer $script:Latest.Version $inst) {
+      $onl.Text = "Neue Version $($script:Latest.Version) verfuegbar" + $(if ($inst) { " (installiert: $inst)" } else { '' })
+      $upd.Enabled = [bool]$inst
+      if (-not $inst) { $onl.Text += ' - erst einmal normal installieren' }
+    } else {
+      $onl.Text = "Aktuell: Version $inst ist die neueste."
+    }
+  } catch {
+    $onl.Text = 'Online-Pruefung nicht moeglich (keine Verbindung?)'
+  }
+})
+$upd.Add_Click({
+  if (-not $script:Latest) { return }
+  $msg = "Version $($script:Latest.Version) von GitHub laden und installieren?`r`n`r`n" +
+    "Die installierten Plattformen werden mit derselben Auswahl aktualisiert. Eigene Presets und Toene bleiben erhalten.`r`n`r`n" +
+    "Bitte die DAW vorher schliessen."
+  if ([System.Windows.Forms.MessageBox]::Show($msg, 'GranularSynth Online-Update', 'YesNo', 'Question') -ne 'Yes') { return }
+  $f.Cursor = 'WaitCursor'; $upd.Enabled = $false; $onl.Text = 'Lade und installiere ...'; $f.Refresh()
+  try {
+    $log = Invoke-OnlineUpdate $script:Latest
+    [System.Windows.Forms.MessageBox]::Show("Update auf Version $($script:Latest.Version) fertig:`r`n`r`n" + ($log -join "`r`n") +
+      "`r`n`r`nIn der DAW danach neu nach Plugins suchen.", 'GranularSynth') | Out-Null
+    $f.Close()
+  } catch {
+    $f.Cursor = 'Default'; $upd.Enabled = $true; $onl.Text = 'Update fehlgeschlagen.'
+    [System.Windows.Forms.MessageBox]::Show("Fehler: $($_.Exception.Message)", 'GranularSynth', 'OK', 'Error') | Out-Null
+  }
+})
 $f.Controls.AddRange(@($c2, $t2, $b2, $c3, $t3, $b3, $ch, $go, $cancel))
 
 function Update-Defaults {

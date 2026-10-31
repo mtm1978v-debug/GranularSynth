@@ -6,6 +6,17 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.6 – 31.10.2026
+
+### Neu
+- **Changelog im Hilfefenster:** Oben im Hilfefenster schalten zwei Knöpfe zwischen *Hilfe* und *Änderungen (Changelog)* um. So ist aus dem Plugin heraus sichtbar, was sich in welcher Version geändert hat.
+- **Online-Update im Setup:** Das Setup prüft beim Start, ob es auf GitHub eine neuere Version gibt. Mit *Online-Update* lädt es sie herunter, prüft die Prüfsumme und installiert sie mit derselben Auswahl wie bisher, für jede installierte Plattform. Das funktioniert auch über *Windows-Einstellungen › Apps › GranularSynth › Ändern*.
+
+### Hinweis
+- Das Online-Update setzt eine Installation mit dem Setup ab Version 2.2 voraus (Eintrag in der Programmliste). Ältere Installationen einmal normal mit dem neuen Setup überinstallieren.
+
+---
+
 ## Version 2.5 – 31.10.2026
 
 ### Behoben

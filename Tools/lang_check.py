@@ -80,7 +80,9 @@ for lf in sorted(glob.glob(os.path.join(LANG, '[!_]*.txt'))):
         ln = ln.rstrip('\r')
         if ln and not ln.startswith('#') and '\t' in ln:
             have.add(ln.split('\t', 1)[0].replace('\\n', '\n'))
-    miss = sorted(k for k in keys if esc(k).replace('\\n', '\n') not in have and k not in have)
+    # umbrochene Fassungen (Tooltips per WrapText) zaehlen wie der Text ohne Umbrueche
+    have_norm = {' '.join(h.split()) for h in have}
+    miss = sorted(k for k in keys if k not in have and ' '.join(k.split()) not in have_norm)
     out = os.path.join(LANG, '_fehlend_%s.txt' % code)
     if miss:
         with open(out, 'w', encoding='utf-8') as f:
