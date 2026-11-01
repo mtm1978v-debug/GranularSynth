@@ -151,6 +151,39 @@ type
 procedure OscBlockPas(Args: POscArgs);
 procedure OscBlockSSE(Args: POscArgs);
 
+const
+  { 2x-Oversampling (HQ): Halbband-FIR, 71 Taps, Kaiser beta 9.9. Durchlass bis 0.204 fs (18 kHz bei
+    44,1 kHz, Welligkeit < 0.001 dB), Sperrbereich ab 0.296 fs mit -98 dB. Halbband: jeder zweite Tap ist 0,
+    die Mitte ist 0.5, uebrig bleiben 18 symmetrische Paare. Laufzeit: 17,5 Samples je Richtung (1x). }
+  HB_PAIRS = 18;
+  HB_CENTER = 0.5;
+  HB_COEF: array[0..HB_PAIRS - 1] of Single = (
+    3.1709224099e-01, -1.0250110361e-01, 5.7820710782e-02, -3.7622097114e-02, 2.5803055745e-02, -1.7997620298e-02,
+    1.2529103597e-02, -8.6017102024e-03, 5.7713455965e-03, -3.7541832321e-03, 2.3482626878e-03, -1.3991763525e-03,
+    7.8459184537e-04, -4.0705123099e-04, 1.9021596996e-04, -7.6273172237e-05, 2.3486292349e-05, -3.5512258218e-06
+  );
+  HB_HIST = 2 * HB_PAIRS;   // Vorlauf in Frames: Abwaerts 2*36 (2x), Aufwaerts 36 (1x)
+
+type
+  { Symmetrischer FIR auf Stereo-Frames (interleaved L/R), je Ausgabe-Frame i:
+      y = C4[0] * PC[i] + Summe k=1..HB_PAIRS  C4[k] * (PD[i] - (k-1)*Tap  +  PA[i] + (k-1)*Tap)
+    PD/PA/PC ruecken je Ausgabe um InStep Bytes vor, Out um OutStep Bytes, Tap in Bytes.
+    Abwaerts (2x -> 1x): InStep = Tap = 2 Frames. Aufwaerts (gerade Ausgaben): InStep = Tap = 1 Frame,
+    OutStep = 2 Frames. Die Zeiger im Record stehen danach hinter dem letzten Frame. }
+  PHbArgs = ^THbArgs;
+  THbArgs = record
+    Out, PD, PA, PC: PByte;
+    Count, Pairs: Integer;        // Pairs: Arbeitszaehler des SSE-Kerns
+    InStep, TapStep, OutStep: Integer;
+    C4: array[0..HB_PAIRS, 0..3] of Single;
+  end;
+  THbProc = procedure(Args: PHbArgs);
+
+procedure HbFirPas(Args: PHbArgs);
+procedure HbFirSSE(Args: PHbArgs);
+{ Koeffizienten setzen: Scale 1 = Abwaerts, 2 = Aufwaerts (Nullen eingefuegt -> Pegel x2) }
+procedure HbInitArgs(var A: THbArgs; Scale, Center: Single);
+
 type
   { Kammfilter (Filtertyp 'Kamm'), Stereo interleaved in-place:
       d = Verzoegerung (DInt + Frac Frames, linear interpoliert),  y = x + Fb * d,
@@ -228,6 +261,7 @@ var
   RenderComb: TCombProc = CombBlockPas;
   RenderPhaser: TPhaserProc = PhaserBlockPas;
   RenderChorus: TChorusProc = ChorusBlockPas;
+  RenderHbFir: THbProc = HbFirPas;
   DSPPathName: string = 'Pascal';
 
 implementation
@@ -2337,6 +2371,175 @@ begin
 end;
 {$IFEND}
 
+{ ---------- 2x-Oversampling: Halbband-FIR ---------- }
+
+procedure HbInitArgs(var A: THbArgs; Scale, Center: Single);
+var
+  K, J: Integer;
+begin
+  for J := 0 to 3 do
+  begin
+    A.C4[0, J] := Center;
+    for K := 1 to HB_PAIRS do
+      A.C4[K, J] := HB_COEF[K - 1] * Scale;
+  end;
+end;
+
+procedure HbFirPas(Args: PHbArgs);
+var
+  I, K: Integer;
+  D, Aa: PByte;
+  L, R: Single;
+begin
+  with Args^ do
+    for I := 0 to Count - 1 do
+    begin
+      L := C4[0, 0] * PSingle(PC)^;
+      R := C4[0, 1] * PSingle(PC + 4)^;
+      D := PD;
+      Aa := PA;
+      for K := 1 to HB_PAIRS do
+      begin
+        L := L + (PSingle(D)^ + PSingle(Aa)^) * C4[K, 0];
+        R := R + (PSingle(D + 4)^ + PSingle(Aa + 4)^) * C4[K, 1];
+        Dec(D, TapStep);
+        Inc(Aa, TapStep);
+      end;
+      PSingle(Out)^ := L;
+      PSingle(Out + 4)^ := R;
+      Inc(Out, OutStep);
+      Inc(PD, InStep);
+      Inc(PA, InStep);
+      Inc(PC, InStep);
+    end;
+end;
+
+{ SSE: zwei Ausgabe-Frames je Durchlauf in den vier Spuren [L0 R0 L1 R1] (movlps/movhps), gleiche
+  Rechenreihenfolge wie die Pascal-Referenz. Nur xmm0-xmm3 (unter x64 fluechtig). }
+{$IF Defined(CPUX86)}
+procedure HbFirKernel(Args: PHbArgs);
+asm
+        push    ebx
+        push    esi
+        push    edi
+        push    ebp
+        mov     ecx, [eax].THbArgs.Count
+        shr     ecx, 1
+        jz      @Done
+        mov     [eax].THbArgs.Pairs, ecx
+        mov     ebp, [eax].THbArgs.InStep
+@Outer:
+        mov     esi, [eax].THbArgs.PD
+        mov     edi, [eax].THbArgs.PA
+        mov     edx, [eax].THbArgs.PC
+        movlps  xmm0, [edx]
+        movhps  xmm0, [edx+ebp]
+        movups  xmm3, [eax + THbArgs.C4]
+        mulps   xmm0, xmm3
+        lea     ebx, [eax + THbArgs.C4]
+        add     ebx, 16
+        mov     ecx, HB_PAIRS
+        mov     edx, [eax].THbArgs.TapStep
+@Inner:
+        movlps  xmm1, [esi]
+        movhps  xmm1, [esi+ebp]
+        movlps  xmm2, [edi]
+        movhps  xmm2, [edi+ebp]
+        addps   xmm1, xmm2
+        movups  xmm3, [ebx]
+        mulps   xmm1, xmm3
+        addps   xmm0, xmm1
+        sub     esi, edx
+        add     edi, edx
+        add     ebx, 16
+        dec     ecx
+        jnz     @Inner
+        mov     edx, [eax].THbArgs.Out
+        mov     ecx, [eax].THbArgs.OutStep
+        movlps  [edx], xmm0
+        movhps  [edx+ecx], xmm0
+        lea     edx, [edx+ecx*2]
+        mov     [eax].THbArgs.Out, edx
+        lea     ecx, [ebp+ebp]
+        add     [eax].THbArgs.PD, ecx
+        add     [eax].THbArgs.PA, ecx
+        add     [eax].THbArgs.PC, ecx
+        dec     dword ptr [eax].THbArgs.Pairs
+        jnz     @Outer
+@Done:
+        pop     ebp
+        pop     edi
+        pop     esi
+        pop     ebx
+end;
+{$ELSEIF Defined(CPUX64)}
+procedure HbFirKernel(Args: PHbArgs);
+asm
+        mov     eax, [rcx].THbArgs.Count
+        shr     eax, 1
+        jz      @Done
+        mov     [rcx].THbArgs.Pairs, eax
+        movsxd  r10, dword ptr [rcx].THbArgs.InStep
+        movsxd  r11, dword ptr [rcx].THbArgs.TapStep
+@Outer:
+        mov     rax, [rcx].THbArgs.PD
+        mov     r8, [rcx].THbArgs.PA
+        mov     rdx, [rcx].THbArgs.PC
+        movlps  xmm0, [rdx]
+        movhps  xmm0, [rdx+r10]
+        movups  xmm3, [rcx + THbArgs.C4]
+        mulps   xmm0, xmm3
+        lea     rdx, [rcx + THbArgs.C4]
+        add     rdx, 16
+        mov     r9d, HB_PAIRS
+@Inner:
+        movlps  xmm1, [rax]
+        movhps  xmm1, [rax+r10]
+        movlps  xmm2, [r8]
+        movhps  xmm2, [r8+r10]
+        addps   xmm1, xmm2
+        movups  xmm3, [rdx]
+        mulps   xmm1, xmm3
+        addps   xmm0, xmm1
+        sub     rax, r11
+        add     r8, r11
+        add     rdx, 16
+        dec     r9d
+        jnz     @Inner
+        mov     rdx, [rcx].THbArgs.Out
+        movsxd  r9, dword ptr [rcx].THbArgs.OutStep
+        movlps  [rdx], xmm0
+        movhps  [rdx+r9], xmm0
+        lea     rdx, [rdx+r9*2]
+        mov     [rcx].THbArgs.Out, rdx
+        lea     rax, [r10+r10]
+        add     [rcx].THbArgs.PD, rax
+        add     [rcx].THbArgs.PA, rax
+        add     [rcx].THbArgs.PC, rax
+        dec     dword ptr [rcx].THbArgs.Pairs
+        jnz     @Outer
+@Done:
+end;
+{$ELSE}
+procedure HbFirKernel(Args: PHbArgs);
+begin
+  HbFirPas(Args);
+end;
+{$IFEND}
+
+procedure HbFirSSE(Args: PHbArgs);
+var
+  Odd: Boolean;
+begin
+  Odd := (Args.Count and 1) <> 0;
+  HbFirKernel(Args);                // gerade Anzahl, Zeiger stehen danach dahinter
+  if Odd then
+  begin
+    Args.Count := 1;
+    HbFirPas(Args);
+  end;
+end;
+
 function CpuHasSSE: Boolean;
 {$IFDEF CPUX86}
 var
@@ -2408,6 +2611,7 @@ begin
     RenderComb := CombBlockSSE;
     RenderPhaser := PhaserBlockSSE;
     RenderChorus := ChorusBlockSSE;
+    RenderHbFir := HbFirSSE;
     {$IFDEF CPUX64}
     DSPPathName := 'SSE x64';
     {$ELSE}
@@ -2425,6 +2629,7 @@ begin
     RenderComb := CombBlockPas;
     RenderPhaser := PhaserBlockPas;
     RenderChorus := ChorusBlockPas;
+    RenderHbFir := HbFirPas;
     DSPPathName := 'Pascal';
   end;
 end;

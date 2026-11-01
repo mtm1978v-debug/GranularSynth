@@ -2433,10 +2433,188 @@ end;
 
 { Echte Presets (Doppel/Flaeche): Akkord halten, Rechenzeit in % eines Kerns - zum Vergleich vor/nach
   Optimierungen. Presets aus dem Projektordner (..\..\Presets relativ zur exe). }
+{ Oversampling (HQ): Halbband-Kern SIMD gegen Pascal, Spiegelfrequenzen mit/ohne Oversampling
+  (FM-Oszillator und Saettigung bei hohem Ton), Rechenzeit. Spiegelanteil = Energie neben den
+  Obertoenen (dort liegt bei einem periodischen Klang nichts ausser Spiegelungen) relativ zum Grundton. }
+function OsAliasDb(OsOn: Boolean; Wave, Note: Integer; Drive: Double; Ratio: Double = 1): Double;
+const
+  WIN = 8192;
+var
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  X: array of Double;
+  B, I, Got: Integer;
+  F0, F, Re, Im, W, PA, P0: Double;
+
+  function Pow(Fr: Double): Double;
+  var
+    K: Integer;
+    C, S, CosD, SinD, T: Double;
+  begin
+    Re := 0; Im := 0;
+    C := 1; S := 0;
+    CosD := Cos(2 * Pi * Fr / SR); SinD := Sin(2 * Pi * Fr / SR);
+    for K := 0 to WIN - 1 do
+    begin
+      Re := Re + X[K] * C;
+      Im := Im + X[K] * S;
+      T := C * CosD - S * SinD;              // Drehung statt Sin/Cos je Sample
+      S := S * CosD + C * SinD;
+      C := T;
+    end;
+    Result := Re * Re + Im * Im;
+  end;
+
+begin
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+    E.SetParamById(gpFltOn, StepToParam(Ord(gpFltOn), 0));
+    E.SetParamById(gpEchoOn, StepToParam(Ord(gpEchoOn), 0));
+    E.SetParamById(gpRevOn, StepToParam(Ord(gpRevOn), 0));
+    E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+    E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+    E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), Wave));
+    E.SetParamById(gpOscFmRatio, PlainToParam(gpOscFmRatio, Ratio));
+    E.SetParamById(gpOscFmAmt, PlainToParam(gpOscFmAmt, 100));
+    E.SetParamById(gpOscSustain, PlainToParam(gpOscSustain, 100));
+    E.SetParamById(gpDrive, PlainToParam(gpDrive, Drive));
+    E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
+    E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(OsOn)));
+    E.SetParamById(gpOscLevel, PlainToParam(gpOscLevel, 100));   // laut genug, dass die Saettigung hart begrenzt
+    E.NoteOn(Note, 1);
+    SetLength(X, WIN);
+    Got := 0;
+    for B := 0 to 40 do
+    begin
+      E.Process(nil, nil, @L[0], @R[0], 512);
+      if B >= 8 then
+        for I := 0 to 511 do
+          if Got < WIN then
+          begin
+            W := Got / (WIN - 1) * 2 * Pi;                   // Blackman-Harris (Nebenkeulen -92 dB)
+            W := 0.35875 - 0.48829 * Cos(W) + 0.14128 * Cos(2 * W) - 0.01168 * Cos(3 * W);
+            X[Got] := L[I] * W;
+            Inc(Got);
+          end;
+    end;
+  finally
+    E.Free;
+  end;
+  F0 := 440 * Power(2, (Note - 69) / 12);
+  P0 := Pow(F0);
+  // alles ausserhalb der Obertoene k*F0 (+-40 Hz, Hauptkeule des Fensters) bis 20 kHz ist Spiegelung
+  PA := 0;
+  F := 40;
+  while F < 20000 do
+  begin
+    if Abs(F - Round(F / F0) * F0) > 40 then
+      PA := PA + Pow(F);
+    F := F + 2.7;                       // ~ halbe Bin-Breite (5,4 Hz): kein Spiegelton faellt durch
+  end;
+  Result := 10 * Log10(Max(PA, 1E-30) / Max(P0, 1E-30));
+end;
+
+function CheckOversample: string;
+var
+  A, B: THbArgs;
+  Src: array[0..599] of Single;
+  OA, OB: array[0..599] of Single;
+  I, Mode: Integer;
+  D: Double;
+  FmOff, FmOn, SawOff, SawOn, DrOff, DrOn, DrBase: Double;
+  T0, T1, Fq: Int64;
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  K, N: Integer;
+  Ms: array[Boolean] of Double;
+  On: Boolean;
+begin
+  RandSeed := 77;
+  for I := 0 to High(Src) do
+    Src[I] := Random * 2 - 1;
+  D := 0;
+  for Mode := 0 to 1 do
+  begin
+    if Mode = 0 then HbInitArgs(A, 1, HB_CENTER) else HbInitArgs(A, 2, 0);
+    A.Count := 37;
+    if Mode = 0 then
+    begin
+      A.InStep := 16; A.TapStep := 16; A.OutStep := 8;
+      A.PC := PByte(@Src[80]); A.PD := PByte(@Src[78]); A.PA := PByte(@Src[82]);
+    end
+    else
+    begin
+      A.InStep := 8; A.TapStep := 8; A.OutStep := 16;
+      A.PC := PByte(@Src[80]); A.PD := PByte(@Src[80]); A.PA := PByte(@Src[82]);
+    end;
+    FillChar(OA, SizeOf(OA), 0);
+    FillChar(OB, SizeOf(OB), 0);
+    B := A;
+    A.Out := PByte(@OA[0]);
+    B.Out := PByte(@OB[0]);
+    RenderHbFir(@A);
+    HbFirPas(@B);
+    for I := 0 to High(OA) do
+      D := Max(D, Abs(OA[I] - OB[I]));
+    if A.PD <> B.PD then D := 1;
+  end;
+  FmOff := OsAliasDb(False, 4, 96, 0, 2);
+  FmOn := OsAliasDb(True, 4, 96, 0, 2);
+  SawOff := OsAliasDb(False, 2, 100, 0);
+  SawOn := OsAliasDb(True, 2, 100, 0);
+  DrOff := OsAliasDb(False, 0, 98, 100);
+  DrOn := OsAliasDb(True, 0, 98, 100);
+  DrBase := OsAliasDb(False, 0, 98, 0);
+  // Rechenzeit: 8 Stimmen, drei FM-Oszillatoren mit Unison 3, Drive (ohne Grains)
+  QueryPerformanceFrequency(Fq);
+  for On := False to True do
+  begin
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+      E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
+      E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(On)));
+      E.SetParamById(gpDrive, PlainToParam(gpDrive, 50));
+      E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+      E.SetParamById(gpOsc2On, StepToParam(Ord(gpOsc2On), 1));
+      E.SetParamById(gpOsc3On, StepToParam(Ord(gpOsc3On), 1));
+      E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), 4));
+      E.SetParamById(gpOsc2Wave, StepToParam(Ord(gpOsc2Wave), 2));
+      E.SetParamById(gpOsc3Wave, StepToParam(Ord(gpOsc3Wave), 3));
+      E.SetParamById(gpOscUnison, PlainToParam(gpOscUnison, 3));
+      E.SetParamById(gpOsc2Unison, PlainToParam(gpOsc2Unison, 3));
+      E.SetParamById(gpOsc3Unison, PlainToParam(gpOsc3Unison, 3));
+      for K := 0 to 7 do
+        E.NoteOn(48 + K * 4, 0.7);
+      QueryPerformanceCounter(T0);
+      for N := 0 to 430 do               // 5 s
+        E.Process(nil, nil, @L[0], @R[0], 512);
+      QueryPerformanceCounter(T1);
+      Ms[On] := (T1 - T0) * 1000 / Fq;
+    finally
+      E.Free;
+    end;
+  end;
+  Result := Format('Oversampling: Kern SIMD gegen Pascal max. %.1e%s | Spiegelanteil (dB rel. Grundton) ' +
+    'FM C7 %.1f -> %.1f, Saegezahn E7 %.1f -> %.1f, Drive-Sinus D7 %.1f -> %.1f (ohne Drive %.1f) | Rechenzeit 5 s, 8 Stimmen, ' +
+    '3 Osz. x Unison 3 + Drive: %.0f ms -> %.0f ms (%.2fx)',
+    [D, IfThen(D < 1E-5, '', ' ABWEICHUNG!'), FmOff, FmOn, SawOff, SawOn, DrOff, DrOn, DrBase, Ms[False], Ms[True],
+     Ms[True] / Max(Ms[False], 0.001)]);
+  if (D >= 1E-5) or (FmOn > FmOff - 10) or (DrOn > DrOff - 10) then
+    Result := Result + ' -> FEHLER'
+  else
+    Result := Result + ' -> OK';
+end;
+
 { Klang-Regression: jedes Preset spielt einen Akkord (1,5 s halten, 1 s Ausklang); Summe und Spitze des
   Ausgangs je Preset werden mit Demos\regress_ref.txt verglichen. Fehlt die Datei, wird sie angelegt
   (Referenz VOR einem Umbau erzeugen, danach muss jedes Preset gleich klingen). }
-function CheckRegression: string;
+function CheckRegression(OsOn: Boolean = False): string;
 const
   CHORD: array[0..3] of Integer = (48, 55, 60, 64);
 var
@@ -2452,7 +2630,8 @@ var
 begin
   FS := TFormatSettings.Invariant;
   Dir := IncludeTrailingPathDelimiter(ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..'));
-  RefFile := Dir + 'Demos' + PathDelim + 'regress_ref.txt';
+  // ohne Oversampling: Referenz von vor dem Oversampling (Nov. 2026); mit: eigene Referenz
+  RefFile := Dir + 'Demos' + PathDelim + IfThen(OsOn, 'regress_ref_os.txt', 'regress_ref.txt');
   Names := TStringList.Create;
   Ref := TStringList.Create;
   Outp := TStringList.Create;
@@ -2483,6 +2662,7 @@ begin
           E.LoadSample(CreateDemoSample(SR));
         LoadMorphSample(E, Dir);
         LoadZoneSamples(E, Dir);
+        E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(OsOn)));
         for K := 0 to High(CHORD) do
           E.NoteOn(CHORD[K], 0.8);
         Sum := 0; Peak := 0;
@@ -2529,12 +2709,12 @@ begin
     begin
       ForceDirectories(ExtractFilePath(RefFile));
       Outp.SaveToFile(RefFile, TEncoding.UTF8);
-      Result := Format('Klang-Regression: Referenz fuer %d Presets angelegt (%s)', [Cnt, RefFile]);
+      Result := IfThen(OsOn, '[Oversampling] ', '') + Format('Klang-Regression: Referenz fuer %d Presets angelegt (%s)', [Cnt, RefFile]);
     end
     else if NBad = 0 then
-      Result := Format('Klang-Regression: %d Presets wie die Referenz -> OK', [Cnt])
+      Result := IfThen(OsOn, '[Oversampling] ', '') + Format('Klang-Regression: %d Presets wie die Referenz -> OK', [Cnt])
     else
-      Result := Format('Klang-Regression: FEHLER %d von %d Presets weichen ab:%s', [NBad, Cnt, Bad]);
+      Result := IfThen(OsOn, '[Oversampling] ', '') + Format('Klang-Regression: FEHLER %d von %d Presets weichen ab:%s', [NBad, Cnt, Bad]);
   finally
     Names.Free;
     Ref.Free;
@@ -2801,7 +2981,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckOversample + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;
 

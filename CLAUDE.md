@@ -6,6 +6,8 @@ Oberfläche, Kommentare und Dokumentation sind **auf Deutsch**. Bitte dabei blei
 
 ## Überblick
 
+**Ziel und Prioritäten:** professioneller Klang auf dem Niveau kommerzieller Digital-Synthesizer. Bei Zielkonflikten gilt: 1. Klangqualität, 2. möglichst niedrige Systemlast, 3. eine gute, einfach bedienbare Oberfläche (ebenfalls sehr wichtig).
+
 - **Plugin:** eine DLL für **VST2 und VST3**. Sie enthält Instrument und FX-Variante und wird zusätzlich als `GranularSynth.vst3` ausgeliefert.
 - **Plattformen:** Win32 und Win64.
 - **Sprache:** Delphi 12 (RAD Studio 23.0). Als Fremdbibliothek wird nur [Graphics32](https://github.com/graphics32/graphics32) für die Grafik gebraucht. Ihr Ordner steht in der Umgebungsvariablen `GR32_DIR`, lokal gesetzt in `build.local.bat`. Diese Datei gehört nicht ins Projektarchiv.
@@ -126,6 +128,7 @@ Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüsse
   11. Eintrag in `CHANGELOG.md`
 - **Dokumentation mitziehen:** Bei sichtbaren Änderungen auch die Hilfe (`Hilfe/Hilfe.rtf` bzw. die Reglertabelle), `LIESMICH.txt`, `README.md` und die Bildschirmfotos in `docs/screenshots/` anpassen. Die englischen Fassungen meldet `lang_check.py` dann als veraltet.
 - **Changelog:** Jede für Nutzer sichtbare Änderung kommt in `CHANGELOG.md` unter die kommende Version: *Neu*, *Geändert*, *Behoben*, *Entfernt* oder *Hinweis* (Folgen für Presets und Projekte).
+- **Projekteinschätzung:** `docs/Projekteinschaetzung.md` ist eine Einschätzung des Projekts von außen. Hin und wieder (etwa bei größeren Versionen, nicht bei jedem Deploy) prüfen, ob sie noch stimmt, und den Stand oben in der Datei anpassen.
 - **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE` und `GRANULAR_MATPAGE`.
 
 ## Bekannte Eigenheiten

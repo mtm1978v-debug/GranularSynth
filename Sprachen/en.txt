@@ -1240,7 +1240,7 @@ Stoppzeit	Stop time
 Stoppzeit Takt	Stop time sync
 Streuung	Scatter
 Stufen	Steps
-Summe	Master
+Summe	Sum
 Summen-Breite	Master width
 Summen-Panorama	Master pan
 Sustain	Sustain
@@ -1581,3 +1581,34 @@ Version %s ist verfügbar. Jetzt das Setup starten?	Version %s is available. Sta
 Dort aktualisiert der Knopf "Online-Update" alles. Bitte vorher die DAW speichern und schließen.	There, the "Online-Update" button updates everything. Please save and close your DAW first.
 Neue Version %s verfügbar (installiert: %s). Klick: Setup starten - dort "Online-Update".	New version %s available (installed: %s). Click: start the setup - then "Online-Update".
 Neue Version %s verfügbar (installiert: %s). Klick: Download-Seite öffnen.	New version %s available (installed: %s). Click: open the download page.
+2x bei HQ	2x with HQ
+An (Standard): Oszillatoren und Sättigung rechnen intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet etwas mehr Rechenzeit.	On (default): oscillators and saturation run internally at twice the sample rate. Harsh FM, sync and drive sounds stay clean, without metallic aliasing. Costs a little more CPU time.
+Bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und Sättigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).	Better grain interpolation and - with oversampling (Performance tab, on by default) - clean oscillators and saturation without aliasing (slightly more CPU load).
+HQ-Modus: Bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und Sättigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).	HQ mode: Better grain interpolation and - with oversampling (Performance tab, on by default) - clean oscillators and saturation without aliasing (slightly more CPU load).
+Oversampling	Oversampling
+Oversampling 2x (bei HQ)	Oversampling 2x (with HQ)
+Oversampling 2x (bei HQ): Standard an: Bei HQ rechnen Oszillatoren und Sättigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Klängen bis etwa die doppelte Rechenzeit der Oszillatoren. Gehört zum Rechner, nicht zum Preset.	Oversampling 2x (with HQ): On by default: with HQ, oscillators and saturation run internally at twice the sample rate. Harsh FM, sync and drive sounds stay clean, without metallic aliasing. For oscillator-heavy sounds the oscillators need up to about twice the CPU time. Belongs to the computer, not to the preset.
+Standard an: Bei HQ rechnen Oszillatoren und Sättigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Klängen bis etwa die doppelte Rechenzeit der Oszillatoren. Gehört zum Rechner, nicht zum Preset.	On by default: with HQ, oscillators and saturation run internally at twice the sample rate. Harsh FM, sync and drive sounds stay clean, without metallic aliasing. For oscillator-heavy sounds the oscillators need up to about twice the CPU time. Belongs to the computer, not to the preset.
+bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und Sättigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).	better grain interpolation and - with oversampling (Performance tab, on by default) - clean oscillators and saturation without aliasing (slightly more CPU load).
+Beide Filter wirken je Note: jede Stimme hat ihre eigenen Filter und ihre eigene Filter-Hüllkurve. Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Die Filter-Hüllkurve verschiebt den Cutoff um bis zu +-6 Oktaven; Filter 2 folgt ihr mit eigener Menge.	Both filters work per note: every voice has its own filters and its own filter envelope. Contour = how strongly the filter acts (dry <-> filtered). The filter envelope shifts the cutoff by up to +-6 octaves; filter 2 follows it with its own amount.
+Echo / Hall	Delay / Reverb
+Echo und Hall wirken auf den Gesamtklang (alle Noten zusammen). Echo-Zeit mit Sync = Notenwert zum Tempo. Echo Pitch transponiert jede Wiederholung um den eingestellten Wert (+5 = jede Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.	Delay and reverb act on the overall sound (all notes together). Delay time with sync = note value in tempo. Echo pitch transposes every repeat by the set amount (+5 = each repeat a fourth higher). All controls are also targets of the modulation matrix.
+Filter 1	Filter 1
+Freeze: die Leseposition steht still, der Klang friert ein; mit Hall klingt er lange aus. Sättigung, Breite und Panorama: Reiter Summe.	Freeze: the read position stands still, the sound freezes; with reverb it rings out for a long time. Saturation, width and panorama: Sum tab.
+Halten	Hold
+Hier endet der Signalweg: alles wirkt auf den Gesamtklang. Reihenfolge: Echo/Hall -> Sättigung -> EQ -> Stereo -> Limiter. Sättigung: warme Übersteuerung (mit HQ und Oversampling ohne Spiegelfrequenzen). Breite: 0 % mono, 200 % extra breit; Panorama per LFO = Auto-Pan.	The signal path ends here: everything acts on the overall sound. Order: delay/reverb -> saturation -> EQ -> stereo -> limiter. Saturation: warm overdrive (without aliasing with HQ and oversampling). Width: 0 % mono, 200 % extra wide; panorama via LFO = auto-pan.
+In Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter bekommen das Signal, ihre Ausgänge werden gemischt (z.B. zwei Bandpässe = Vokal-Formanten).	In series: filter 1 -> filter 2 (e.g. high-pass + low-pass = bandwidth). Parallel: both filters get the signal and their outputs are mixed (e.g. two band-passes = vowel formants).
+Oszillatoren mit eigenem Filter (Reiter Osz) laufen an diesen Filtern vorbei. Alle Regler sind auch Ziele der Modulationsmatrix.	Oscillators with their own filter (Osc tab) bypass these filters. All controls are also targets of the modulation matrix.
+So wirken die Filter	How the filters work
+Sättigung, Stereo, Ausgang	Saturation, stereo, output
+Dieselben Regler wie im Reiter Schnell, hier am Ende des Signalwegs: Spitzenbegrenzung, Qualität und Gesamtlautstärke.	The same controls as in the Quick tab, here at the end of the signal path: peak limiting, quality and overall volume.
+Limiter / HQ-Modus / Master	Limiter / HQ mode / Master
+Reiter Echo / Hall	Delay / Reverb tab
+Reiter Filter	Filter tab
+Reiter Summe	Sum tab
+dieselben Regler wie im Reiter Schnell, hier am Ende des Signalwegs: Spitzenbegrenzung, Qualität und Gesamtlautstärke.	the same controls as in the Quick tab, here at the end of the signal path: peak limiting, quality and overall volume.
+Beide Filter wirken je Note: jede Stimme hat ihre eigenen Filter und ihre eigene Filter-Hüllkurve. Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Die Filter-Hüllkurve verschiebt den Cutoff um bis zu +-6 Oktaven; Filter 2 folgt ihr mit eigener Menge.\n\nIn Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter bekommen das Signal, ihre Ausgänge werden gemischt (z.B. zwei Bandpässe = Vokal-Formanten).\n\nOszillatoren mit eigenem Filter (Reiter Osz) laufen an diesen Filtern vorbei. Alle Regler sind auch Ziele der Modulationsmatrix.	Both filters work per note: every voice has its own filters and its own filter envelope. Contour = how strongly the filter acts (dry <-> filtered). The filter envelope shifts the cutoff by up to +-6 octaves; filter 2 follows it with its own amount.
+
+In series: filter 1 -> filter 2 (e.g. high-pass + low-pass = bandwidth). Parallel: both filters get the signal and their outputs are mixed (e.g. two band-passes = vowel formants).
+
+Oscillators with their own filter (Osc tab) bypass these filters. All controls are also targets of the modulation matrix.

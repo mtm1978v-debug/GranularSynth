@@ -2,10 +2,11 @@
 {\colortbl;\red230\green230\blue230;\red255\green200\blue90;\red110\green200\blue255;\red150\green230\blue150;\red180\green180\blue180;\red40\green46\blue60;\red34\green34\blue38;\red40\green42\blue48;}
 \f0\fs20\cf1
 {\cf2\b\fs34 GRANULAR - Hilfe\par}
-{\cf5\i FM \'b7 Synthese \'b7 HABI M \'b7 Version 2.7\par}\par
+{\cf5\i FM \'b7 Synthese \'b7 HABI M \'b7 Version 2.8\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 freie Software unter der GNU GPL Version 3 oder neuer, ohne Gew\'e4hrleistung \'b7 Lizenztext: LICENSE.txt im Plugin-Ordner\par}\par
 {\cf3\b\fs26 Vorwort\par}
-GranularSynth ist ein hochoptimierter Granular-Synthesizer. Die rechenintensiven Teile (Grains, Oszillator, Hall, Equalizer, Anzeigen) sind in {\b Assembler} geschrieben (SSE, Win32 und Win64), jeweils mit einer Pascal-Fassung zur Kontrolle. Das Ergebnis: {\b sehr wenig Rechenlast} bei {\b hoher Klangqualit\'e4t} - auch auf \'e4lteren Rechnern und in alten Hosts. Die Sprache der Oberfl\'e4che (Deutsch/English) w\'e4hlst du im Reiter Extras unter \'84Sprache / Language\'93 oder per Klick auf die kleine Flagge rechts in der Reiterzeile.\par\par
+GranularSynth ist ein hochoptimierter Granular-Synthesizer mit einem klaren Ziel: {\b professioneller Klang} auf dem Niveau kommerzieller Digital-Synthesizer. Danach kommen niedrige Rechenlast und einfache Bedienung. Mit HQ rechnen Oszillatoren und S\'e4ttigung mit {\b 2x-Oversampling}, so bleiben auch harte FM- und Drive-Kl\'e4nge frei von metallischen Spiegelfrequenzen (abschaltbar im Reiter Leistung). Die rechenintensiven Teile (Grains, Oszillator, Hall, Equalizer, Anzeigen) sind in {\b Assembler} geschrieben (SSE, Win32 und Win64), jeweils mit einer Pascal-Fassung zur Kontrolle. Das Ergebnis: {\b sehr wenig Rechenlast} bei {\b hoher Klangqualit\'e4t} - auch auf \'e4lteren Rechnern und in alten Hosts. Die Sprache der Oberfl\'e4che (Deutsch/English) w\'e4hlst du im Reiter Extras unter \'84Sprache / Language\'93 oder per Klick auf die kleine Flagge rechts in der Reiterzeile.\par\par
+Die {\b Reiter folgen dem Weg des Signals} von links nach rechts: Klang erzeugen (Grain, Samples, Osz 1-3) \'b7 je Note formen (Filter) \'b7 Bewegung (Modulation, LFO, Timing) \'b7 Gesamtklang (Effekte, Echo / Hall, Summe) \'b7 Spielhilfen (Extras) \'b7 Werkzeuge (Mischpult, Leistung).\par\par
 {\cf3\b\fs26 1. Was ist Granular-Synthese?\par}
 Ein Klang (eine WAV-Datei) wird in viele winzige St\'fccke zerlegt, die {\b Grains} (K\'f6rner, meist 20 bis 300 ms). Diese werden st\'e4ndig neu abgespielt, \'fcberlagert, verschoben und in der Tonh\'f6he ver\'e4ndert. So entstehen aus einer kurzen Aufnahme Fl\'e4chen, Wolken, Rhythmen oder ganz neue Instrumente.\par\par
 {\cf3\b\fs26 2. Erste Schritte\par}
@@ -113,7 +114,7 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 A/B}\cell\pard\intbl{zwischen zwei Fassungen hin- und herschalten und vergleichen.}\cell\pard\intbl{\cf5 nein}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 HQ-Modus}\cell\pard\intbl{bessere Interpolation der Grains (etwas mehr Rechenlast).}\cell\pard\intbl{\cf4 ja (HQ-Modus)}\cell\row
+\pard\intbl{\cf2 HQ-Modus}\cell\pard\intbl{bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und S\'e4ttigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).}\cell\pard\intbl{\cf4 ja (HQ-Modus)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Limiter}\cell\pard\intbl{f\'e4ngt Spitzen am Ausgang ab, damit nichts verzerrt.}\cell\pard\intbl{\cf4 ja (Limiter)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
@@ -171,6 +172,58 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Attack / Decay / Sustain / Release}\cell\pard\intbl{wie jede Note einschwillt, auf den Haltepegel abf\'e4llt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note.}\cell\pard\intbl{\cf4 ja (Attack, Decay, Sustain, Release)}\cell\row
 \pard\par
+{\cf3\b\fs22 Reiter Grain - Anlauf / Schleife\par}
+\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
+\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Anlauf / Anlauf-Start}\cell\pard\intbl{Note beginnt vor der Auswahl beim Anlauf-Start und l\'e4uft einmal in die Auswahl hinein.}\cell\pard\intbl{\cf4 ja (Anlauf an, Anlauf-Start)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Schleife hin und her}\cell\pard\intbl{Scan kehrt am Ende der Auswahl um statt an den Anfang zu springen.}\cell\pard\intbl{\cf4 ja (Schleife)}\cell\row
+\pard\par
+{\cf3\b\fs22 Reiter Samples\par}
+\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
+\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Zonen 1-3}\cell\pard\intbl{weitere Samples je Tastenbereich (ab Starttaste); Laden, Leeren, Datei auf die Zeile ziehen.}\cell\pard\intbl{\cf5 nein}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Aufnahme}\cell\pard\intbl{nimmt den Sidechain-Eingang auf (bis 60 s) und l\'e4dt ihn als Hauptsample (WAV in Eigene Toene).}\cell\pard\intbl{\cf5 nein}\cell\row
+\pard\par
+{\cf3\b\fs22 Reiter Osz 1 / Osz 2 / Osz 3\par}
+\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
+\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Oszillator an}\cell\pard\intbl{drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte S\'e4gez\'e4hne + Sub-Sinus).}\cell\pard\intbl{\cf4 ja (Osz an / Osz2 an / Osz3 an)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Welle}\cell\pard\intbl{Sinus, Dreieck, S\'e4ge, Rechteck, FM (zwei Sinus), Rauschen.}\cell\pard\intbl{\cf4 ja (Osz Welle (Osz2, Osz3 entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Sync (Obert\'f6ne)}\cell\pard\intbl{Hard Sync: 0 = saubere Welle, h\'f6her = immer mehr Obert\'f6ne, schneidend (nicht bei Rauschen).}\cell\pard\intbl{\cf4 ja (Osz Sync (Osz2, Osz3 entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Oktave / Feinstimmung / Pegel / Panorama}\cell\pard\intbl{Tonlage, Feinabstimmung in Cent, Lautst\'e4rke (bis 200 %) und Position.}\cell\pard\intbl{\cf4 ja (Osz Oktave, Osz Fein, Osz-Pegel, Osz Panorama (Osz2, Osz3 entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 FM-Verh\'e4ltnis / FM-Menge}\cell\pard\intbl{nur bei Welle FM: Frequenz des Modulators und St\'e4rke - Glocken, E-Piano, Bass.}\cell\pard\intbl{\cf4 ja (Osz FM-Verh., Osz FM-Menge (Osz2, Osz3 entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 FM-Klangfarbe}\cell\pard\intbl{eigene H\'fcllkurve f\'fcr die FM-Menge (nicht die Lautst\'e4rke): hell im Anschlag, dann weich.}\cell\pard\intbl{\cf4 ja (FM-H\'fcllk. eigen, FM Attack, FM Decay, FM Sustain, FM Release (Osz2, Osz3 entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Lautst\'e4rke-H\'fcllkurve}\cell\pard\intbl{ADSR des Oszillators, mit Grafik.}\cell\pard\intbl{\cf4 ja (Osz Attack, Osz Decay, Osz Sustain, Osz Release (Osz2, Osz3 entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Eigener Filter}\cell\pard\intbl{Filter nur f\'fcr diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).}\cell\pard\intbl{\cf4 ja (Osz-Filter an, Osz-Filter Typ, Osz-Filter Cutoff, Osz-Filter Resonanz, Osz-Filter Kontur, Osz-Filter H\'fcllk. (Osz2-Filter, Osz3-Filter entsprechend))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Unison / Verstimmung / Breite}\cell\pard\intbl{2 bis 7 verstimmte Stimmen je Note, im Stereobild verteilt (fette Pads und Leads).}\cell\pard\intbl{\cf4 ja (Osz Unison, Osz Unison Verstimmung, Osz Unison Breite (Osz2, Osz3 entsprechend))}\cell\row
+\pard\par
+{\cf3\b\fs22 Reiter Filter\par}
+\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
+\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Filter an, Typ}\cell\pard\intbl{Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, steil), Kamm (metallisch, Cutoff = Tonh\'f6he), Formant (Vokale A-E-I-O-U \'fcber den Cutoff).}\cell\pard\intbl{\cf4 ja (Filter an, Filtertyp)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Cutoff / Resonanz}\cell\pard\intbl{Eckfrequenz und Betonung an der Eckfrequenz.}\cell\pard\intbl{\cf4 ja (Cutoff, Resonanz)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Kontur}\cell\pard\intbl{wie steil das Filter wirkt (sanft bis scharf).}\cell\pard\intbl{\cf4 ja (Kontur)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 H\'fcllkurve (Menge) + Filter-H\'fcllkurve}\cell\pard\intbl{eigene ADSR, die mit jeder Note das Filter \'f6ffnet und schlie\'dft.}\cell\pard\intbl{\cf4 ja (Filter-H\'fcllk., F-Attack, F-Decay, F-Sustain, F-Release)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Filter 2}\cell\pard\intbl{zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).}\cell\pard\intbl{\cf4 ja (Filter2 an, Filter-Verschaltung, Filter2 Typ, Filter2 Cutoff, Filter2 Resonanz, Filter2 Kontur, Filter2 H\'fcllk.)}\cell\row
+\pard\par
 {\cf3\b\fs22 Reiter Modulation\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
@@ -207,44 +260,6 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Verz\'f6gerung je Ereignis}\cell\pard\intbl{jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verz\'f6gert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).}\cell\pard\intbl{\cf4 ja (Verz. Note an, Verz. Note an Takt, Verz. Note aus ... Verz. Ausgang Takt)}\cell\row
 \pard\par
-{\cf3\b\fs22 Reiter Filter / Echo / Hall\par}
-\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
-\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Filter an, Typ}\cell\pard\intbl{Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, steil), Kamm (metallisch, Cutoff = Tonh\'f6he), Formant (Vokale A-E-I-O-U \'fcber den Cutoff).}\cell\pard\intbl{\cf4 ja (Filter an, Filtertyp)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Cutoff / Resonanz}\cell\pard\intbl{Eckfrequenz und Betonung an der Eckfrequenz.}\cell\pard\intbl{\cf4 ja (Cutoff, Resonanz)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Kontur}\cell\pard\intbl{wie steil das Filter wirkt (sanft bis scharf).}\cell\pard\intbl{\cf4 ja (Kontur)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 H\'fcllkurve (Menge) + Filter-H\'fcllkurve}\cell\pard\intbl{eigene ADSR, die mit jeder Note das Filter \'f6ffnet und schlie\'dft.}\cell\pard\intbl{\cf4 ja (Filter-H\'fcllk., F-Attack, F-Decay, F-Sustain, F-Release)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Echo: Zeit / Sync / R\'fcckkopplung / D\'e4mpfung / Mix}\cell\pard\intbl{Verz\'f6gerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.}\cell\pard\intbl{\cf4 ja (Echo an, Echo Zeit, Echo Sync, Feedback, D\'e4mpfung, Echo Mix)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Echo Pitch}\cell\pard\intbl{jede Wiederholung wird um diese Halbt\'f6ne verschoben - steigende oder fallende Treppen.}\cell\pard\intbl{\cf4 ja (Echo Pitch)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Ping-Pong}\cell\pard\intbl{Echos springen zwischen links und rechts.}\cell\pard\intbl{\cf4 ja (Ping-Pong)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Hall: Raum, Gr\'f6\'dfe, Nachhall, D\'e4mpfung, Vorverz\'f6gerung, Breite, Mix}\cell\pard\intbl{Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).}\cell\pard\intbl{\cf4 ja (Hall an, Hall Raum, Hall Gr\'f6\'dfe, Hall Zeit, Hall D\'e4mpfung, Hall Predelay, Hall Breite, Hall Mix)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Bass-Schnitt / H\'f6hen-Schnitt}\cell\pard\intbl{filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dr\'f6hnen, H\'f6hen-Schnitt f\'fcr einen dunklen Raum.}\cell\pard\intbl{\cf4 ja (Hall Bass-Schnitt, Hall H\'f6hen-Schnitt)}\cell\row
-\pard\par
-{\cf3\b\fs22 Reiter Grain - Anlauf / Schleife\par}
-\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
-\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Anlauf / Anlauf-Start}\cell\pard\intbl{Note beginnt vor der Auswahl beim Anlauf-Start und l\'e4uft einmal in die Auswahl hinein.}\cell\pard\intbl{\cf4 ja (Anlauf an, Anlauf-Start)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Schleife hin und her}\cell\pard\intbl{Scan kehrt am Ende der Auswahl um statt an den Anfang zu springen.}\cell\pard\intbl{\cf4 ja (Schleife)}\cell\row
-\pard\par
-{\cf3\b\fs22 Reiter Samples\par}
-\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
-\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Zonen 1-3}\cell\pard\intbl{weitere Samples je Tastenbereich (ab Starttaste); Laden, Leeren, Datei auf die Zeile ziehen.}\cell\pard\intbl{\cf5 nein}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Aufnahme}\cell\pard\intbl{nimmt den Sidechain-Eingang auf (bis 60 s) und l\'e4dt ihn als Hauptsample (WAV in Eigene Toene).}\cell\pard\intbl{\cf5 nein}\cell\row
-\pard\par
 {\cf3\b\fs22 Reiter Effekte\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
@@ -257,19 +272,37 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Trance-Gate}\cell\pard\intbl{16 Schritte zum Anklicken, Notenwert, Schritte, Tiefe, Gl\'e4ttung - zerhackt den Klang im Songtempo.}\cell\pard\intbl{\cf4 ja (Muster: nein; Trance-Gate an, Notenwert, Schritte, Tiefe, Gl\'e4ttung; Trance-Gate an, Trance-Gate Notenwert, Trance-Gate Schritte, Trance-Gate Tiefe, Trance-Gate Gl\'e4ttung)}\cell\row
 \pard\par
-{\cf3\b\fs22 Reiter Filter 2 / EQ\par}
+{\cf3\b\fs22 Reiter Echo / Hall\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Filter 2}\cell\pard\intbl{zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).}\cell\pard\intbl{\cf4 ja (Filter2 an, Filter-Verschaltung, Filter2 Typ, Filter2 Cutoff, Filter2 Resonanz, Filter2 Kontur, Filter2 H\'fcllk.)}\cell\row
+\pard\intbl{\cf2 Echo: Zeit / Sync / R\'fcckkopplung / D\'e4mpfung / Mix}\cell\pard\intbl{Verz\'f6gerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.}\cell\pard\intbl{\cf4 ja (Echo an, Echo Zeit, Echo Sync, Feedback, D\'e4mpfung, Echo Mix)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Echo Pitch}\cell\pard\intbl{jede Wiederholung wird um diese Halbt\'f6ne verschoben - steigende oder fallende Treppen.}\cell\pard\intbl{\cf4 ja (Echo Pitch)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Ping-Pong}\cell\pard\intbl{Echos springen zwischen links und rechts.}\cell\pard\intbl{\cf4 ja (Ping-Pong)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Hall: Raum, Gr\'f6\'dfe, Nachhall, D\'e4mpfung, Vorverz\'f6gerung, Breite, Mix}\cell\pard\intbl{Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).}\cell\pard\intbl{\cf4 ja (Hall an, Hall Raum, Hall Gr\'f6\'dfe, Hall Zeit, Hall D\'e4mpfung, Hall Predelay, Hall Breite, Hall Mix)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Bass-Schnitt / H\'f6hen-Schnitt}\cell\pard\intbl{filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dr\'f6hnen, H\'f6hen-Schnitt f\'fcr einen dunklen Raum.}\cell\pard\intbl{\cf4 ja (Hall Bass-Schnitt, Hall H\'f6hen-Schnitt)}\cell\row
+\pard\par
+{\cf3\b\fs22 Reiter Summe\par}
+\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
+\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 EQ an, B\'e4sse, H\'f6hen}\cell\pard\intbl{Klangregelung am Ende der Kette.}\cell\pard\intbl{\cf4 ja (EQ an, EQ B\'e4sse, EQ H\'f6hen)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 S\'e4ttigung}\cell\pard\intbl{warme \'dcbersteuerung.}\cell\pard\intbl{\cf4 ja (S\'e4ttigung)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Band A / B}\cell\pard\intbl{zwei frei setzbare B\'e4nder (Frequenz und Pegel), auch per Matrix steuerbar.}\cell\pard\intbl{\cf4 ja (EQ Band A Freq, EQ Band A Pegel, EQ Band B Freq, EQ Band B Pegel)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Kurve}\cell\pard\intbl{mit der Maus zeichnen, rechte Taste = 0 dB; Linear, W\'e4rmer, Heller ... sind fertige Kurven.}\cell\pard\intbl{\cf5 nein}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Leuchten}\cell\pard\intbl{der Hintergrund zeigt den Ausgang: blau/wei\'df nach Pegel, blauer wo der EQ absenkt, r\'f6ter wo er anhebt.}\cell\pard\intbl{\cf5 nein}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Stereobreite / Panorama}\cell\pard\intbl{Breite und Position der Summe im Stereobild.}\cell\pard\intbl{\cf4 ja (Summen-Breite, Summen-Panorama)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Limiter / HQ-Modus / Master}\cell\pard\intbl{dieselben Regler wie im Reiter Schnell, hier am Ende des Signalwegs: Spitzenbegrenzung, Qualit\'e4t und Gesamtlautst\'e4rke.}\cell\pard\intbl{\cf4 ja (Limiter, HQ-Modus, Master)}\cell\row
 \pard\par
 {\cf3\b\fs22 Reiter Extras\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
@@ -283,11 +316,7 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Tonleiter / Grundton}\cell\pard\intbl{alle Tonh\'f6hen rasten auf die T\'f6ne der Tonleiter ein - nie ein falscher Ton.}\cell\pard\intbl{\cf4 ja (Tonleiter, Grundton)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 S\'e4ttigung}\cell\pard\intbl{warme \'dcbersteuerung.}\cell\pard\intbl{\cf4 ja (S\'e4ttigung)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Freeze}\cell\pard\intbl{Leseposition steht still, der Klang friert ein.}\cell\pard\intbl{\cf4 ja (Freeze)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Stereobreite / Panorama}\cell\pard\intbl{Breite und Position der Summe im Stereobild.}\cell\pard\intbl{\cf4 ja (Summen-Breite, Summen-Panorama)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Morph, Morph-LFO}\cell\pard\intbl{blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik).}\cell\pard\intbl{\cf4 ja (freie Form: nein; Morph, Morph-LFO Form, Morph-LFO Rate, Morph-LFO Sync, Morph-LFO Tiefe)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
@@ -298,28 +327,6 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \pard\intbl{\cf2 A <-> B tauschen}\cell\pard\intbl{Bearbeitungstausch: A und B tauschen die Pl\'e4tze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zur\'fcck.}\cell\pard\intbl{\cf5 nein}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer}\cell\pard\intbl{wird 1, sobald eine beliebige Quelle die Schwelle \'fcberschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.}\cell\pard\intbl{\cf4 ja (Tor-Quelle, Tor-Schwelle, Ruhe-Dauer)}\cell\row
-\pard\par
-{\cf3\b\fs22 Reiter Osz 1 / Osz 2 / Osz 3\par}
-\trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
-\pard\intbl{\b \cf2 Regler / Knopf}\cell\pard\intbl{\b Was er bewirkt}\cell\pard\intbl{\b VST-Parameter}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Oszillator an}\cell\pard\intbl{drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte S\'e4gez\'e4hne + Sub-Sinus).}\cell\pard\intbl{\cf4 ja (Osz an / Osz2 an / Osz3 an)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Welle}\cell\pard\intbl{Sinus, Dreieck, S\'e4ge, Rechteck, FM (zwei Sinus), Rauschen.}\cell\pard\intbl{\cf4 ja (Osz Welle (Osz2, Osz3 entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Sync (Obert\'f6ne)}\cell\pard\intbl{Hard Sync: 0 = saubere Welle, h\'f6her = immer mehr Obert\'f6ne, schneidend (nicht bei Rauschen).}\cell\pard\intbl{\cf4 ja (Osz Sync (Osz2, Osz3 entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Oktave / Feinstimmung / Pegel / Panorama}\cell\pard\intbl{Tonlage, Feinabstimmung in Cent, Lautst\'e4rke (bis 200 %) und Position.}\cell\pard\intbl{\cf4 ja (Osz Oktave, Osz Fein, Osz-Pegel, Osz Panorama (Osz2, Osz3 entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 FM-Verh\'e4ltnis / FM-Menge}\cell\pard\intbl{nur bei Welle FM: Frequenz des Modulators und St\'e4rke - Glocken, E-Piano, Bass.}\cell\pard\intbl{\cf4 ja (Osz FM-Verh., Osz FM-Menge (Osz2, Osz3 entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 FM-Klangfarbe}\cell\pard\intbl{eigene H\'fcllkurve f\'fcr die FM-Menge (nicht die Lautst\'e4rke): hell im Anschlag, dann weich.}\cell\pard\intbl{\cf4 ja (FM-H\'fcllk. eigen, FM Attack, FM Decay, FM Sustain, FM Release (Osz2, Osz3 entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Lautst\'e4rke-H\'fcllkurve}\cell\pard\intbl{ADSR des Oszillators, mit Grafik.}\cell\pard\intbl{\cf4 ja (Osz Attack, Osz Decay, Osz Sustain, Osz Release (Osz2, Osz3 entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Eigener Filter}\cell\pard\intbl{Filter nur f\'fcr diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).}\cell\pard\intbl{\cf4 ja (Osz-Filter an, Osz-Filter Typ, Osz-Filter Cutoff, Osz-Filter Resonanz, Osz-Filter Kontur, Osz-Filter H\'fcllk. (Osz2-Filter, Osz3-Filter entsprechend))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Unison / Verstimmung / Breite}\cell\pard\intbl{2 bis 7 verstimmte Stimmen je Note, im Stereobild verteilt (fette Pads und Leads).}\cell\pard\intbl{\cf4 ja (Osz Unison, Osz Unison Verstimmung, Osz Unison Breite (Osz2, Osz3 entsprechend))}\cell\row
 \pard\par
 {\cf3\b\fs22 Reiter Mischpult\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
@@ -339,8 +346,10 @@ Was jeder Regler und Knopf bewirkt - Reiter f\'fcr Reiter. Spalte {\b VST-Parame
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Rendern in H\'f6chstqualit\'e4t}\cell\pard\intbl{beim Export der DAW immer HQ und volle Stimmenzahl.}\cell\pard\intbl{\cf4 ja (Rendern in H\'f6chstqualit\'e4t)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Lastliste}\cell\pard\intbl{welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall ...).}\cell\pard\intbl{\cf5 nein}\cell\row
+\pard\intbl{\cf2 Oversampling 2x (bei HQ)}\cell\pard\intbl{Standard an: Bei HQ rechnen Oszillatoren und S\'e4ttigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Kl\'e4nge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Kl\'e4ngen bis etwa die doppelte Rechenzeit der Oszillatoren. Geh\'f6rt zum Rechner, nicht zum Preset.}\cell\pard\intbl{\cf4 ja (Oversampling)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Lastliste}\cell\pard\intbl{welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall ...).}\cell\pard\intbl{\cf5 nein}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Zeiger / Laufzeit}\cell\pard\intbl{gesch\'e4tzte Gesamtlast und gemessene Rechenzeit im Host (Aufrufe/s, Anteil am Puffer, Spitzenwert).}\cell\pard\intbl{\cf5 nein}\cell\row
 \pard\par
 }

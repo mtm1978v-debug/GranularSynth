@@ -1,4 +1,4 @@
-﻿GranularSynth - Granular synthesizer (VST2 and VST3) with test host
+﻿﻿GranularSynth - Granular synthesizer (VST2 and VST3) with test host
 ==================================================================
 
 Contents of this folder
@@ -11,6 +11,12 @@ Contents of this folder
   GranularHost.exe    Small VST2/VST3 host for testing - loads GranularSynth.dll and also
                       other VST2 and VST3 plugins (same bitness!)
   Beispieltoene\      WAV files to try out (synthetically generated, free to use)
+
+Goal
+----
+  Professional sound on the level of commercial digital synthesizers. Priorities:
+  1. sound quality (including 2x oversampling for oscillators and saturation with HQ),
+  2. low CPU load, 3. easy operation.
 
 Language
 --------

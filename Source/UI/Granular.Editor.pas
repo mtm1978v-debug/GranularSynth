@@ -131,6 +131,7 @@ type
     FPages: TPageControl;
     FTabQuick, FTabSynth, FTabMod, FTabMod2, FTabFx, FTabExtra, FTabEq, FTabMix, FTabTiming, FTabPerf: TTabSheet;
     FTabFx2: TTabSheet;           // Effekte: Chorus, Phaser, Bitcrusher, Trance-Gate
+    FTabFlt: TTabSheet;           // Filter 1 + 2 (je Note)
     FTabSamples: TTabSheet;       // Zonen und Aufnahme
     FRecButton: TButton;
     FRecLabel: TLabel;
@@ -231,6 +232,7 @@ type
     procedure BuildSynthTab;
     procedure BuildModTab;
     procedure BuildFxTab;
+    procedure BuildFilterTab;
     procedure BuildQuickTab;
     procedure FreeTimerTick(Sender: TObject);
     procedure LfoViewClick(Sender: TObject);
@@ -935,6 +937,7 @@ begin
   FLangFlagHost.Anchors := [akTop, akRight];   // Lage setzt RelayoutAll (nach dem Ausrichten)
   FPages.TabStop := False;
   FPages.OnChange := RelayoutAll;
+  // Reihenfolge = Weg des Signals: Klang erzeugen -> je Note formen -> Bewegung -> Gesamtklang -> Spielhilfen
   FTabQuick := TTabSheet.Create(Self);
   FTabQuick.PageControl := FPages;
   FTabQuick.Caption := Tr('   Schnell   ');
@@ -944,6 +947,15 @@ begin
   FTabSamples := TTabSheet.Create(Self);
   FTabSamples.PageControl := FPages;
   FTabSamples.Caption := Tr('   Samples   ');
+  for var OI := 0 to OSC_COUNT - 1 do
+  begin
+    FTabOsc[OI] := TTabSheet.Create(Self);
+    FTabOsc[OI].PageControl := FPages;
+    FTabOsc[OI].Caption := Format(Tr('  Osz %d  '), [OI + 1]);
+  end;
+  FTabFlt := TTabSheet.Create(Self);
+  FTabFlt.PageControl := FPages;
+  FTabFlt.Caption := Tr('   Filter   ');
   FTabMod := TTabSheet.Create(Self);
   FTabMod.PageControl := FPages;
   FTabMod.Caption := Tr('   Modulation   ');
@@ -953,24 +965,18 @@ begin
   FTabTiming := TTabSheet.Create(Self);
   FTabTiming.PageControl := FPages;
   FTabTiming.Caption := Tr('   Timing / Events   ');
-  FTabFx := TTabSheet.Create(Self);
-  FTabFx.PageControl := FPages;
-  FTabFx.Caption := Tr('   Filter / Echo / Hall   ');
-  FTabEq := TTabSheet.Create(Self);
-  FTabEq.PageControl := FPages;
-  FTabEq.Caption := Tr('   Filter 2 / EQ   ');
   FTabFx2 := TTabSheet.Create(Self);
   FTabFx2.PageControl := FPages;
   FTabFx2.Caption := Tr('   Effekte   ');
+  FTabFx := TTabSheet.Create(Self);
+  FTabFx.PageControl := FPages;
+  FTabFx.Caption := Tr('   Echo / Hall   ');
+  FTabEq := TTabSheet.Create(Self);
+  FTabEq.PageControl := FPages;
+  FTabEq.Caption := Tr('   Summe   ');
   FTabExtra := TTabSheet.Create(Self);
   FTabExtra.PageControl := FPages;
   FTabExtra.Caption := Tr('   Extras   ');
-  for var OI := 0 to OSC_COUNT - 1 do
-  begin
-    FTabOsc[OI] := TTabSheet.Create(Self);
-    FTabOsc[OI].PageControl := FPages;
-    FTabOsc[OI].Caption := Format(Tr('  Osz %d  '), [OI + 1]);
-  end;
   FTabMix := TTabSheet.Create(Self);
   FTabMix.PageControl := FPages;
   FTabMix.Caption := Tr('  Mischpult  ');
@@ -1006,6 +1012,7 @@ begin
   BuildTimingTab;
   StartMark('BuildTimingTab');
   BuildFxTab;
+  BuildFilterTab;
   StartMark('BuildFxTab');
   BuildExtraTab;
   StartMark('BuildExtraTab');
@@ -1323,34 +1330,33 @@ begin
   AddStretch(L, 10);
 end;
 
-procedure TGranularEditor.BuildFxTab;
+{ --- Reiter Filter: Filter 1 und 2 wirken je Note (jede Stimme hat eigene Filter und Huellkurve) --- }
+
+procedure TGranularEditor.BuildFilterTab;
 const
   FLT: array[0..5] of TGranularParamId = (gpFltOn, gpFltType, gpFltCutoff, gpFltReso, gpFltContour, gpFltEnvAmt);
   FENV: array[0..3] of TGranularParamId = (gpFltAttack, gpFltDecay, gpFltSustain, gpFltRelease);
-  ECHO: array[0..7] of TGranularParamId =
-    (gpEchoOn, gpEchoTime, gpEchoSync, gpEchoFeedback, gpEchoDamp, gpEchoPitch, gpEchoPingPong, gpEchoMix);
-  REV: array[0..6] of TGranularParamId =
-    (gpRevOn, gpRevSize, gpRevDecay, gpRevDamp, gpRevPreDelay, gpRevWidth, gpRevMix);
-  REV_CAP: array[0..6] of string = ('Hall an', 'Größe', 'Zeit', 'Dämpfung', 'Predelay', 'Breite', 'Mix');
+  FLT2: array[0..6] of TGranularParamId =
+    (gpFlt2On, gpFltRouting, gpFlt2Type, gpFlt2Cutoff, gpFlt2Reso, gpFlt2Contour, gpFlt2EnvAmt);
+  FLT2_CAP: array[0..6] of string = ('Filter 2 an', 'Parallel (aus = Reihe)', 'Typ', 'Cutoff', 'Resonanz', 'Kontur', 'Hüllkurve');
 var
-  Area, PF, PE, PR: TPanel;
+  Area, PF, F2, PInfo: TPanel;
   I: Integer;
   L: TLabel;
 begin
   Area := TPanel.Create(Self);
-  Area.Parent := FTabFx;
+  Area.Parent := FTabFlt;
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-
-  // Reihenfolge links -> rechts: Filter | Echo | Hall (Signalweg)
-  PF := MakePanel(Area, alLeft, Tr('Filter'));
+  // Filter 1 | Filter 2 | Erklaerung
+  PF := MakePanel(Area, alLeft, Tr('Filter 1'));
   PF.Width := 360;
-  PE := MakePanel(Area, alLeft, Tr('Echo (Ping-Pong)'));
-  PE.Width := 310;
-  PE.Left := PF.Left + PF.Width + 1;
-  PR := MakePanel(Area, alClient, Tr('Hall'));
+  F2 := MakePanel(Area, alLeft, Tr('Filter 2'));
+  F2.Width := 360;
+  F2.Left := PF.Left + PF.Width + 1;
+  PInfo := MakePanel(Area, alClient, Tr('So wirken die Filter'));
 
   for I := 0 to High(FLT) do
     AddParam(PF, Ord(FLT[I]), 8, 24 + I * ROW_H, 100, 70, 130);
@@ -1368,6 +1374,54 @@ begin
   for I := 0 to High(FENV) do
     AddParam(PF, Ord(FENV[I]), 8, 24 + 7 * ROW_H + 82 + I * ROW_H, 100, 70);
 
+  // gleiches Raster wie Filter 1: Haken oben, darunter Typ und Regler
+  AddParam(F2, Ord(gpFlt2On), 8, 24, 100, 0, 0, Tr('Filter 2 an'));
+  AddParam(F2, Ord(gpFltRouting), 8, 24 + 6 * ROW_H, 100, 0, 0, Tr('Parallel statt Reihe'));
+  for I := 2 to High(FLT2) do
+    AddParam(F2, Ord(FLT2[I]), 8, 24 + (I - 1) * ROW_H, 100, 70, 130, FLT2_CAP[I]);
+
+  L := TLabel.Create(Self);
+  L.Parent := PInfo;
+  L.SetBounds(8, 24, 290, 330);
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Font.Color := $00A0A0A0;
+  L.Transparent := True;
+  L.Caption :=
+    Tr('Beide Filter wirken je Note: jede Stimme hat ihre eigenen Filter und ihre eigene Filter-Hüllkurve. ' +
+    'Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Die Filter-Hüllkurve verschiebt den Cutoff um ' +
+    'bis zu +-6 Oktaven; Filter 2 folgt ihr mit eigener Menge.') + sLineBreak + sLineBreak +
+    Tr('In Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter ' +
+    'bekommen das Signal, ihre Ausgänge werden gemischt (z.B. zwei Bandpässe = Vokal-Formanten).') + sLineBreak + sLineBreak +
+    Tr('Oszillatoren mit eigenem Filter (Reiter Osz) laufen an diesen Filtern vorbei. ' +
+    'Alle Regler sind auch Ziele der Modulationsmatrix.');
+  AddStretch(L, 10);
+end;
+
+procedure TGranularEditor.BuildFxTab;
+const
+  ECHO: array[0..7] of TGranularParamId =
+    (gpEchoOn, gpEchoTime, gpEchoSync, gpEchoFeedback, gpEchoDamp, gpEchoPitch, gpEchoPingPong, gpEchoMix);
+  REV: array[0..6] of TGranularParamId =
+    (gpRevOn, gpRevSize, gpRevDecay, gpRevDamp, gpRevPreDelay, gpRevWidth, gpRevMix);
+  REV_CAP: array[0..6] of string = ('Hall an', 'Größe', 'Zeit', 'Dämpfung', 'Predelay', 'Breite', 'Mix');
+var
+  Area, PE, PR: TPanel;
+  I: Integer;
+  L: TLabel;
+begin
+  Area := TPanel.Create(Self);
+  Area.Parent := FTabFx;
+  Area.Align := alClient;
+  Area.BevelOuter := bvNone;
+  Area.ParentBackground := False;
+  Area.Color := BG_MAIN;
+
+  // Gesamtklang: Echo | Hall (Signalweg)
+  PE := MakePanel(Area, alLeft, Tr('Echo (Ping-Pong)'));
+  PE.Width := 360;
+  PR := MakePanel(Area, alClient, Tr('Hall'));
+
   for I := 0 to High(ECHO) do
     AddParam(PE, Ord(ECHO[I]), 8, 24 + I * ROW_H, 92, 62);
   for I := 0 to High(REV) do
@@ -1383,8 +1437,7 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    Tr('Kontur = wie stark der Filter wirkt (trocken <-> gefiltert). Filter-Hüllkurve verschiebt den ' +
-    'Cutoff um bis zu +-6 Oktaven. Echo-Zeit mit Sync = Notenwert zum Tempo. ' +
+    Tr('Echo und Hall wirken auf den Gesamtklang (alle Noten zusammen). Echo-Zeit mit Sync = Notenwert zum Tempo. ' +
     'Echo Pitch transponiert jede Wiederholung um den eingestellten Wert (+5 = jede ' +
     'Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.');
   L := TLabel.Create(Self);
@@ -1467,7 +1520,7 @@ begin
   end;
 end;
 
-{ --- Reiter Extras: Harmonie, Morph, Klangfarbe/Halten --- }
+{ --- Reiter Extras: Arpeggiator, Harmonie, Halten, Morph (Spielhilfen) --- }
 
 procedure TGranularEditor.BuildExtraTab;
 const
@@ -1518,8 +1571,8 @@ begin
   PH.Left := PA.Left + PA.Width + 1;
   PM := MakePanel(Area, alClient, Tr('Morph (A -> B)'));
   // oben verankert direkt unter der Harmonie-Erklaerung (nicht unten: sonst wandert der Block mit der Fensterhoehe)
-  PK := MakePanel(PH, alNone, Tr('Klangfarbe und Halten'));
-  PK.SetBounds(0, 24 + 2 * ROW_H + 6 + 90 + 8, PH.Width, 214);
+  PK := MakePanel(PH, alNone, Tr('Halten'));
+  PK.SetBounds(0, 24 + 2 * ROW_H + 6 + 90 + 8, PH.Width, 110);
   PK.Anchors := [akLeft, akTop, akRight];
 
   for I := 0 to High(ARP) do
@@ -1567,13 +1620,10 @@ begin
   FLangCombo.ItemIndex := Max(0, FLangCodes.IndexOf(LangCode));
   FLangCombo.OnChange := LangComboChange;
 
-  AddParam(PK, Ord(gpDrive), 8, 24, 90, 52);
-  AddParam(PK, Ord(gpFreeze), 8, 24 + ROW_H, 90, 0);
-  AddParam(PK, Ord(gpWidth), 8, 24 + 2 * ROW_H, 90, 52, 0, Tr('Stereobreite'));
-  AddParam(PK, Ord(gpPan), 8, 24 + 3 * ROW_H, 90, 52, 0, Tr('Panorama'));
-  Hint(PK, 24 + 4 * ROW_H + 2, 70,
-    Tr('Sättigung: warme Übersteuerung. Freeze: Position steht, Hall klingt lange. Breite: 0 % mono, ' +
-    '200 % extra breit. Panorama per LFO über die Matrix bewegen = Auto-Pan.'));
+  AddParam(PK, Ord(gpFreeze), 8, 24, 90, 0);
+  Hint(PK, 24 + ROW_H + 2, 50,
+    Tr('Freeze: die Leseposition steht still, der Klang friert ein; mit Hall klingt er lange aus. ' +
+    'Sättigung, Breite und Panorama: Reiter Summe.'));
 
   AddParam(PM, Ord(gpMorph), 8, 24, 70, 52);
   // eigener Morph-LFO (unabhaengig von beiden Klaengen)
@@ -2858,6 +2908,17 @@ begin
   L.Transparent := True;
   L.Caption := Tr('An: Beim Export/Rendern der DAW (nicht in Echtzeit) rechnet GranularSynth immer mit HQ und ' +
     'voller Stimmen- und Grainzahl - live darf es sparsam sein, die Datei klingt trotzdem bestmöglich.');
+  // Oversampling: gehoert zum Rechner (wie die Leistungsstufe), wirkt nur bei HQ
+  AddParam(PR, Ord(gpOversample), 400, 150, 0, 0, 0, Tr('Oversampling 2x (bei HQ)'));
+  L := TLabel.Create(Self);
+  L.Parent := PR;
+  L.SetBounds(404, 150 + ROW_H, 220, 110);
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Font.Color := $00A0A0A0;
+  L.Transparent := True;
+  L.Caption := Tr('An (Standard): Oszillatoren und Sättigung rechnen intern mit doppelter Abtastrate. ' +
+    'Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet etwas mehr Rechenzeit.');
 end;
 
 { --- Reiter EQ --- }
@@ -2865,14 +2926,10 @@ end;
 procedure TGranularEditor.BuildEqTab;
 const
   NAMES: array[0..5] of string = ('Linear', 'Wärmer', 'Heller', 'Präsenz', 'Telefon', 'Loudness');
-  FLT2: array[0..6] of TGranularParamId =
-    (gpFlt2On, gpFltRouting, gpFlt2Type, gpFlt2Cutoff, gpFlt2Reso, gpFlt2Contour, gpFlt2EnvAmt);
-  FLT2_CAP: array[0..6] of string = ('Filter 2 an', 'Parallel (aus = Reihe)', 'Typ', 'Cutoff', 'Resonanz', 'Kontur', 'Hüllkurve');
-  F2_ROW = 32;          // Zeilenabstand Filter 2
   EQ_C1 = 110;          // Spalte Baesse / Band A
   EQ_C2 = 520;          // Spalte Hoehen / Band B
 var
-  Area, Top, F2: TPanel;
+  Area, Top, PS: TPanel;
   I: Integer;
   B: TButton;
   L: TLabel;
@@ -2883,25 +2940,27 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
-  // Filter 2 links, Equalizer rechts
-  F2 := MakePanel(Area, alRight, Tr('Filter 2'));   // rechts; die EQ-Kurve sitzt links unter ihren Reglern
-  F2.Width := 330;
-  // gleichmaessiges Raster: beide Haken in einer Zeile, dann Typ und Regler im selben Abstand
-  AddParam(F2, Ord(gpFlt2On), 8, 20, 92, 0, 0, Tr('Filter 2 an'));
-  AddParam(F2, Ord(gpFltRouting), 190, 20, 0, 0, 0, Tr('Parallel statt Reihe'));
-  for I := 2 to High(FLT2) do
-    AddParam(F2, Ord(FLT2[I]), 8, 20 + (I - 1) * F2_ROW, 92, 62, 150, FLT2_CAP[I]);
+  // Summe = Ende der Kette (alle Noten zusammen): Saettigung, EQ, Stereo, Limiter, Master
+  PS := MakePanel(Area, alRight, Tr('Sättigung, Stereo, Ausgang'));   // rechts; die EQ-Kurve sitzt links
+  PS.Width := 330;
+  AddParam(PS, Ord(gpDrive), 8, 24, 100, 62);
+  AddParam(PS, Ord(gpWidth), 8, 24 + ROW_H, 100, 62, 0, Tr('Stereobreite'));
+  AddParam(PS, Ord(gpPan), 8, 24 + 2 * ROW_H, 100, 62, 0, Tr('Panorama'));
+  AddParam(PS, Ord(gpLimiter), 8, 24 + 3 * ROW_H, 100, 0, 0);
+  AddParam(PS, Ord(gpQuality), 8, 24 + 4 * ROW_H, 100, 0, 100);
+  AddParam(PS, Ord(gpMaster), 8, 24 + 5 * ROW_H, 100, 62, 0, Tr('Master'));
   L := TLabel.Create(Self);
-  L.Parent := F2;
-  L.SetBounds(8, 20 + 6 * F2_ROW + 8, 310, 120);
+  L.Parent := PS;
+  L.SetBounds(8, 24 + 6 * ROW_H + 8, 310, 150);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    Tr('In Reihe: Filter 1 -> Filter 2 (z.B. Hochpass + Tiefpass = Bandbreite). Parallel: beide Filter ' +
-    'bekommen das Signal, ihre Ausgänge werden gemischt (z.B. zwei Bandpässe = Vokal-Formanten). ' +
-    'Filter 2 folgt derselben Filter-Hüllkurve mit eigener Menge.');
+    Tr('Hier endet der Signalweg: alles wirkt auf den Gesamtklang. Reihenfolge: Echo/Hall -> Sättigung -> ' +
+    'EQ -> Stereo -> Limiter. Sättigung: warme Übersteuerung (mit HQ und Oversampling ohne ' +
+    'Spiegelfrequenzen). Breite: 0 % mono, 200 % extra breit; Panorama per LFO = Auto-Pan.');
+  AddStretch(L, 10);
   Top := MakePanel(Area, alTop, Tr('Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)'));
   Top.Height := 112;
   AddParam(Top, Ord(gpEqOn), 8, 24, 0, 0, 0, Tr('EQ an'));

@@ -22,9 +22,17 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, System.Classes, Vcl.Controls, Vcl.ComCtrls, Vcl.StdCtrls,
-  Vcl.Graphics;
+  Vcl.Graphics, Vcl.Forms;
 
 type
+  { Tooltip ohne Schlagschatten: Windows laesst den Schatten (CS_DROPSHADOW) eines Tooltips manchmal als
+    grauen Strich auf dem Bildschirm stehen, wenn das Fenster beim Ein-/Ausblenden zerstoert wird
+    (Plugin-Fenster zu, Host beendet). Ohne Schatten kann nichts haengen bleiben; passt zum flachen Stil. }
+  TFlatHintWindow = class(THintWindow)
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+  end;
+
   TModWheelEvent = procedure(Sender: TObject; Delta: Integer) of object;
 
   { Modulation am Regler: je Matrix-Zeile, die auf den Regler wirkt, eine eigene duenne Spur in eigener
@@ -124,6 +132,13 @@ implementation
 
 uses
   System.Math, System.SysUtils;
+
+procedure TFlatHintWindow.CreateParams(var Params: TCreateParams);
+begin
+  inherited;
+  Params.WindowClass.style := Params.WindowClass.style and not CS_DROPSHADOW;
+end;
+
 
 procedure FillRectColor(DC: HDC; const R: TRect; C: TColor);
 var
@@ -984,5 +999,8 @@ begin
     Message.Result := CDRF_DODEFAULT;
   end;
 end;
+
+initialization
+  HintWindowClass := TFlatHintWindow;   // gilt fuer Plugin und Test-Host (vor dem ersten Tooltip)
 
 end.

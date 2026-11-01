@@ -256,6 +256,20 @@ type
     FSinTab: array[0..4097] of Single;
     FOscArgs: TOscArgs;
     FOscGain, FOscRaw, FOscScratch: array[0..SUB_BLOCK + 3] of Single;   // +4: Huellkurven-Kern schreibt in 4er-Gruppen
+    // 2x-Oversampling (HQ + Schalter): Oszillatoren und Saettigung rechnen mit doppelter Rate
+    FOsOn: Boolean;
+    FHbDown, FHbUp: THbArgs;                                          // Halbband-Koeffizienten (abwaerts / aufwaerts)
+    FOscGain2, FOscRaw2: array[0..SUB_BLOCK * 2 + 3] of Single;       // Huellkurven auf doppelter Rate
+    FOsW: array[0..(HB_HIST * 2 + SUB_BLOCK * 2) * 2 - 1] of Single;  // Arbeitspuffer 2x: Vorlauf + Block
+    FOsDec: array[0..SUB_BLOCK * 2 - 1] of Single;                    // Ergebnis nach dem Abwaerts-Filter
+    FOscHist: array[0..OSC_COUNT - 1, 0..MAX_VOICES - 1, 0..HB_HIST * 2 * 2 - 1] of Single;   // Vorlauf je Oszillator/Stimme (eigenes Filter)
+    // Oszillatoren ohne eigenes Filter: alle einer Stimme in einen 2x-Puffer, nur EIN Abwaerts-Filter je Stimme
+    FOsVW: array[0..MAX_VOICES - 1, 0..(HB_HIST * 2 + SUB_BLOCK * 2) * 2 - 1] of Single;   // Vorlauf + Block
+    FOsVUsed: array[0..MAX_VOICES - 1] of Boolean;
+    FDrvMode: Integer;                                                // Saettigung: 0 aus, 1 normal, 2 mit Oversampling
+    FDrvU: array[0..(HB_HIST + SUB_BLOCK) * 2 - 1] of Single;         // Vorlauf + Block (1x) fuer das Aufwaerts-Filter
+    FDrvW: array[0..(HB_HIST * 2 + SUB_BLOCK * 2) * 2 - 1] of Single; // 2x: Vorlauf + Block
+    FDrvAlt: array[0..SUB_BLOCK * 2 - 1] of Single;                   // anderer Pfad beim Ueberblenden
     // Polyphone Modulation je Stimme
     FPndIdx: array[TGranularParamId] of ShortInt;              // Param -> PND-Index, -1 = global
     // Klangprozessor je Note: eigener Puffer, eigene Filter (1, 2, Oszillator) und Filter-Huellkurve
@@ -470,6 +484,9 @@ type
     procedure ProcessEcho(N: Integer);
     procedure ProcessReverb(N: Integer);
     procedure ProcessDrive(N: Integer);
+    procedure SatBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
+    procedure DriveOs(N: Integer; Drive, Make: Single);
+    procedure HbDecimate(W: PSingle; N: Integer; Dst: PSingle);
     procedure ProcessEq(N: Integer);
     procedure ProcessStereo(N: Integer);
     procedure RenderOsc(N: Integer);
@@ -652,6 +669,10 @@ implementation
 uses
   System.Diagnostics;
 
+type
+  PFloatArr = ^TFloatArr;
+  TFloatArr = array[0..$FFFFFF] of Single;
+
 { Abschnitts-Profil (nur Pruefstand, GSectProfOn = True): 0 Modulation/Arp, 1 Stimmen/Huellkurven,
   2 Grains, 3 Oszillatoren, 4 Filter je Note, 5 Echo, 6 Hall, 7 Rest (Summe, Drive, EQ, Limiter, Pegel) }
 procedure SectMark(K: Integer; var T: Int64);
@@ -709,6 +730,8 @@ begin
   for I := 1 to 3 do
   begin
     FSat.Hi4[I] := 3; FSat.Lo4[I] := -3; FSat.C27[I] := 27; FSat.C9[I] := 9;
+  HbInitArgs(FHbDown, 1, HB_CENTER);
+  HbInitArgs(FHbUp, 2, 0);
   end;
   FGainPrev := -1;
   FGrainGainPrev := -1;
@@ -2659,6 +2682,7 @@ begin
   FAutoTune := Eff(gpAutoTune) >= 0.5;
   FBendRange := Eff(gpBendRange);
   FHQ := (Eff(gpQuality) >= 0.5) or (FOffline and (FParams[Ord(gpRenderHQ)] >= 0.5));
+  FOsOn := FHQ and (FParams[Ord(gpOversample)] >= 0.5);
   FAutoPitch := Round(Eff(gpScPitchMode));
 end;
 
@@ -3311,6 +3335,7 @@ begin
       end;
       FLayerB.FParams[Ord(gpTempo)] := FParams[Ord(gpTempo)];
       FLayerB.FParams[Ord(gpMaster)] := FParams[Ord(gpMaster)];
+      FLayerB.FParams[Ord(gpOversample)] := FParams[Ord(gpOversample)];
       FLayerB.FParams[Ord(gpPerformance)] := FParams[Ord(gpPerformance)];
       FLayerB.FOutPeak := FOutPeak;
       // B rechnet den ganzen Block am Stueck (vorab); hoerbar, wenn B
@@ -4224,7 +4249,9 @@ var
   VFine, VLvl, VPn, VRatio: Double;
   FAtt, FDec, FSus, FRel: Double;
   E, F: Single;
-  OwnFm, OwnFlt: Boolean;
+  OwnFm, OwnFlt, OsV: Boolean;
+  Dst: PSingle;
+  G0, R0: Single;
   P: TOscParamIds;
 begin
   P := OSC_P[O];
@@ -4313,7 +4340,11 @@ begin
       FOscArgs.GR := Sqrt((1 + VPn) / 2) * Sqrt(2);
       Hz := 440 * Power(2, (Note - 69 + FGlideOfs[V] + (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 +
         FBend * FBendRange) / 12);
-      Dt := Min(Hz / FSampleRate, 0.45);
+      OsV := FOsOn and (Wave <> 5);              // Rauschen hat keine Obertoene, die spiegeln koennten
+      if OsV then
+        Dt := Min(Hz / (FSampleRate * 2), 0.45)
+      else
+        Dt := Min(Hz / FSampleRate, 0.45);
       // Huellkurven abschnittsweise (Stufe fuer Stufe, SIMD-Kern), Klang im SIMD-Kern
       E := Env;
       RunEnvSegments(E, Stage, StageTime, N, VAtt, VDec, VSus, VRel, Vel * VLvl, @FOscRaw[0], @FOscGain[0]);
@@ -4333,7 +4364,7 @@ begin
       if OwnFlt then
       begin
         FillChar(FVTmp, N * 2 * SizeOf(Single), 0);
-        FOscArgs.Out := @FVTmp[0];
+        Dst := @FVTmp[0];
       end
       else
       begin
@@ -4342,11 +4373,46 @@ begin
           FillChar(FVBuf[V], N * 2 * SizeOf(Single), 0);
           FVHasSig[V] := True;
         end;
-        FOscArgs.Out := @FVBuf[V, 0];
+        Dst := @FVBuf[V, 0];
       end;
-      FOscArgs.Env := @FOscGain[0];
-      FOscArgs.EnvRaw := @FOscRaw[0];
-      FOscArgs.Count := N;
+      if OsV then
+      begin
+        // doppelte Rate: Huellkurven linear dazwischen, Welle in den Arbeitspuffer hinter den Vorlauf
+        G0 := FOscGain[0]; R0 := FOscRaw[0];
+        for I := 0 to N - 1 do
+        begin
+          FOscGain2[I * 2] := (G0 + FOscGain[I]) * 0.5;
+          FOscGain2[I * 2 + 1] := FOscGain[I];
+          FOscRaw2[I * 2] := (R0 + FOscRaw[I]) * 0.5;
+          FOscRaw2[I * 2 + 1] := FOscRaw[I];
+          G0 := FOscGain[I]; R0 := FOscRaw[I];
+        end;
+        if OwnFlt then
+        begin
+          Move(FOscHist[O, V, 0], FOsW[0], HB_HIST * 2 * 2 * SizeOf(Single));
+          FillChar(FOsW[HB_HIST * 2 * 2], N * 2 * 2 * SizeOf(Single), 0);
+          FOscArgs.Out := @FOsW[HB_HIST * 2 * 2];
+        end
+        else
+        begin
+          if not FOsVUsed[V] then
+          begin
+            FillChar(FOsVW[V, HB_HIST * 2 * 2], N * 2 * 2 * SizeOf(Single), 0);
+            FOsVUsed[V] := True;
+          end;
+          FOscArgs.Out := @FOsVW[V, HB_HIST * 2 * 2];
+        end;
+        FOscArgs.Env := @FOscGain2[0];
+        FOscArgs.EnvRaw := @FOscRaw2[0];
+        FOscArgs.Count := N * 2;
+      end
+      else
+      begin
+        FOscArgs.Out := Dst;
+        FOscArgs.Env := @FOscGain[0];
+        FOscArgs.EnvRaw := @FOscRaw[0];
+        FOscArgs.Count := N;
+      end;
       if Uni <= 1 then
       begin
         FOscArgs.Ph := Ph;
@@ -4391,6 +4457,14 @@ begin
           end;
         end;
         FOscArgs.GL := GL0; FOscArgs.GR := GR0;
+      end;
+      if OsV and OwnFlt then
+      begin
+        // zurueck auf die normale Rate und dazumischen; Vorlauf fuer den naechsten Block merken
+        HbDecimate(@FOsW[0], N, @FOsDec[0]);
+        for I := 0 to N * 2 - 1 do
+          PFloatArr(Dst)[I] := PFloatArr(Dst)[I] + FOsDec[I];
+        Move(FOsW[N * 2 * 2], FOscHist[O, V, 0], HB_HIST * 2 * 2 * SizeOf(Single));
       end;
       if OwnFlt then
       begin
@@ -4577,11 +4651,21 @@ end;
 { alle Oszillatoren; FOscMix sammelt die mit eigenem Filter (an Filter 1/2 vorbei) }
 procedure TGranularEngine.RenderOsc(N: Integer);
 var
-  O: Integer;
+  O, V, I: Integer;
 begin
   FOscOwnFlt := False;
+  FillChar(FOsVUsed, SizeOf(FOsVUsed), 0);
   for O := 0 to OSC_COUNT - 1 do
     RenderOscOne(O, N);
+  // Oversampling: je Stimme einmal zurueck auf die normale Rate, in den Puffer der Stimme
+  for V := 0 to MAX_VOICES - 1 do
+    if FOsVUsed[V] then
+    begin
+      HbDecimate(@FOsVW[V, 0], N, @FOsDec[0]);
+      for I := 0 to N * 2 - 1 do
+        FVBuf[V, I] := FVBuf[V, I] + FOsDec[I];
+      Move(FOsVW[V, N * 2 * 2], FOsVW[V, 0], HB_HIST * 2 * 2 * SizeOf(Single));
+    end;
 end;
 
 { Stereobreite (Mitte/Seite) und Panorama (Balance mit gleicher Leistung) fuer die Summe }
@@ -4636,32 +4720,118 @@ begin
     [Eff(gpEqAFreq), Eff(gpEqAGain), Eff(gpEqBFreq), Eff(gpEqBGain)]);
 end;
 
-procedure TGranularEngine.ProcessDrive(N: Integer);
+procedure TGranularEngine.SatBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
 var
-  A, Drive, Make: Single;
   I, Cnt: Integer;
 begin
-  A := Eff(gpDrive) / 100;
-  if A <= 0.001 then
-    Exit;
-  // Antrieb 1 .. 16fach, Ausgleich haelt die Lautheit etwa gleich
-  Drive := 1 + 15 * A * A;
-  Make := 1 / Sqrt(Drive) * (1 + 0.35 * A);
   for I := 0 to 3 do
   begin
     FSat.Drive4[I] := Drive;
     FSat.Make4[I] := Make;
   end;
-  Cnt := (N * 2) and not 3;
-  FSat.P := @FMix[0];
+  Cnt := Count and not 3;
+  FSat.P := P;
   FSat.Count := Cnt;
   RenderSat(@FSat);
-  if Cnt < N * 2 then
+  if Cnt < Count then
   begin
-    FSat.P := @FMix[Cnt];
-    FSat.Count := N * 2 - Cnt;
+    FSat.P := @PFloatArr(P)[Cnt];
+    FSat.Count := Count - Cnt;
     SatBlockPas(@FSat);
   end;
+end;
+
+{ 2x abwaerts: W = Vorlauf (HB_HIST*2 Frames) + 2N neue Frames -> N Frames nach Dst.
+  Ausgabe n ist um Frame HB_HIST*2 + 2n + 1 - 35 (2x) zentriert: der neueste Frame wird gerade noch benutzt. }
+procedure TGranularEngine.HbDecimate(W: PSingle; N: Integer; Dst: PSingle);
+const
+  C0 = HB_HIST * 2 + 1 - (2 * HB_PAIRS - 1);
+begin
+  FHbDown.Out := PByte(Dst);
+  FHbDown.PC := PByte(W) + C0 * 8;
+  FHbDown.PD := PByte(W) + (C0 - 1) * 8;
+  FHbDown.PA := PByte(W) + (C0 + 1) * 8;
+  FHbDown.Count := N;
+  FHbDown.InStep := 16;
+  FHbDown.TapStep := 16;
+  FHbDown.OutStep := 8;
+  RenderHbFir(@FHbDown);
+end;
+
+{ Saettigung mit doppelter Rate: FMix -> aufwaerts (Halbband) -> Kennlinie -> abwaerts -> FMix.
+  Laufzeit 35 Samples; der Vorlauf beider Filter steht in FDrvU/FDrvW. }
+procedure TGranularEngine.DriveOs(N: Integer; Drive, Make: Single);
+var
+  I: Integer;
+begin
+  Move(FMix[0], FDrvU[HB_HIST * 2], N * 2 * SizeOf(Single));
+  // gerade Ausgaben: Filter um x[n - 17.5]; ungerade: x[n - 17] (Mitte des Halbbands)
+  FHbUp.Out := PByte(@FDrvW[HB_HIST * 2 * 2]);
+  FHbUp.PD := PByte(@FDrvU[(HB_HIST - HB_PAIRS) * 2]);
+  FHbUp.PA := PByte(@FDrvU[(HB_HIST - HB_PAIRS + 1) * 2]);
+  FHbUp.PC := FHbUp.PD;
+  FHbUp.Count := N;
+  FHbUp.InStep := 8;
+  FHbUp.TapStep := 8;
+  FHbUp.OutStep := 16;
+  RenderHbFir(@FHbUp);
+  for I := 0 to N - 1 do
+  begin
+    FDrvW[(HB_HIST * 2 + I * 2 + 1) * 2] := FDrvU[(HB_HIST - HB_PAIRS + 1 + I) * 2];
+    FDrvW[(HB_HIST * 2 + I * 2 + 1) * 2 + 1] := FDrvU[(HB_HIST - HB_PAIRS + 1 + I) * 2 + 1];
+  end;
+  SatBuffer(@FDrvW[HB_HIST * 2 * 2], N * 2 * 2, Drive, Make);
+  HbDecimate(@FDrvW[0], N, @FMix[0]);
+  Move(FDrvU[N * 2], FDrvU[0], HB_HIST * 2 * SizeOf(Single));
+  Move(FDrvW[N * 2 * 2], FDrvW[0], HB_HIST * 2 * 2 * SizeOf(Single));
+end;
+
+procedure TGranularEngine.ProcessDrive(N: Integer);
+var
+  A, Drive, Make, T: Single;
+  I, Mode: Integer;
+begin
+  A := Eff(gpDrive) / 100;
+  if A <= 0.001 then
+    Mode := 0
+  else if FOsOn then
+    Mode := 2
+  else
+    Mode := 1;
+  // Antrieb 1 .. 16fach, Ausgleich haelt die Lautheit etwa gleich
+  Drive := 1 + 15 * A * A;
+  Make := 1 / Sqrt(Drive) * (1 + 0.35 * A);
+  if (Mode <> 2) and (FDrvMode <> 2) then
+  begin
+    if Mode = 1 then
+      SatBuffer(@FMix[0], N * 2, Drive, Make);
+    FDrvMode := Mode;
+    Exit;
+  end;
+  if Mode = FDrvMode then
+  begin
+    DriveOs(N, Drive, Make);
+    Exit;
+  end;
+  // Wechsel von/zu Oversampling (andere Laufzeit): ueber den Block ueberblenden statt springen
+  if Mode = 2 then
+  begin
+    FillChar(FDrvU, SizeOf(FDrvU), 0);
+    FillChar(FDrvW, SizeOf(FDrvW), 0);
+  end;
+  Move(FMix[0], FDrvAlt[0], N * 2 * SizeOf(Single));
+  if Mode = 1 then
+    SatBuffer(@FDrvAlt[0], N * 2, Drive, Make);
+  DriveOs(N, Drive, Make);              // FMix = Oversampling-Pfad
+  for I := 0 to N - 1 do
+  begin
+    T := (I + 1) / N;                   // Anteil des neuen Pfads
+    if Mode <> 2 then
+      T := 1 - T;
+    FMix[I * 2] := FDrvAlt[I * 2] + (FMix[I * 2] - FDrvAlt[I * 2]) * T;
+    FMix[I * 2 + 1] := FDrvAlt[I * 2 + 1] + (FMix[I * 2 + 1] - FDrvAlt[I * 2 + 1]) * T;
+  end;
+  FDrvMode := Mode;
 end;
 
 function TGranularEngine.EnsureMorphLayer: TGranularEngine;

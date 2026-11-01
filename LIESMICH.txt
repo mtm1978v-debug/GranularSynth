@@ -1,4 +1,4 @@
-GranularSynth - Granular-Synthesizer (VST2 und VST3) mit Test-Host
+﻿GranularSynth - Granular-Synthesizer (VST2 und VST3) mit Test-Host
 =========================================================
 
 Inhalt dieses Ordners
@@ -17,6 +17,12 @@ Inhalt dieses Ordners
   Win32: fuer aeltere Hosts wie altes FL Studio (32 Bit). Diese Version nutzt die
          optimierten SSE-Assembler-Kerne (ab Pentium III / Athlon XP).
   Win64: fuer 64-Bit-Hosts. Ein 64-Bit-Host laedt nur 64-Bit-Plugins und umgekehrt.
+
+Ziel
+----
+  Professioneller Klang auf dem Niveau kommerzieller Digital-Synthesizer. Reihenfolge:
+  1. Klangqualitaet (u. a. 2x-Oversampling fuer Oszillatoren und Saettigung bei HQ),
+  2. niedrige Rechenlast, 3. einfache Bedienung.
 
 Sprache
 -------

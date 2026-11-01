@@ -1,4 +1,7 @@
-# Projektbewertung für den Agenten
+﻿# Projekteinschätzung GranularSynth
+
+> Eine Einschätzung des Projekts von außen (zuerst von GitHub Copilot). Stand: **01.11.2026, Version 2.7**.
+> Hin und wieder prüfen, ob sie noch stimmt (etwa bei größeren Versionen), und dann den Stand oben anpassen.
 
 ## Kurzfazit
 

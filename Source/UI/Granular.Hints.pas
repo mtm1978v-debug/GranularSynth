@@ -25,7 +25,7 @@ uses
   System.SysUtils, Granular.Params;
 
 const
-  PARAM_HINTS: array[0..300, 0..1] of string = (
+  PARAM_HINTS: array[0..301, 0..1] of string = (
     ('Anlauf an', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Anlauf-Start', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Arp Latch', 'Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".'),
@@ -99,7 +99,7 @@ const
     ('Graingröße', 'Graingröße: Länge eines Grains: kurz = körnig, lang = glatt.'),
     ('Grains an', 'Grains an / Pegel: Grains aus = nur die Oszillatoren klingen (klassischer Synthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-Bereich regelt die Summe aus Grains und Oszillatoren).'),
     ('Grundton', 'Tonleiter / Grundton: Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.'),
-    ('HQ-Modus', 'HQ-Modus: Bessere Interpolation der Grains (etwas mehr Rechenlast).'),
+    ('HQ-Modus', 'HQ-Modus: Bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und Sättigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).'),
     ('Hall Bass-Schnitt', 'Bass-Schnitt / Höhen-Schnitt: Filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dröhnen, Höhen-Schnitt für einen dunklen Raum.'),
     ('Hall Breite', 'Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix: Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).'),
     ('Hall Dämpfung', 'Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix: Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).'),
@@ -272,6 +272,7 @@ const
     ('Osz3-Filter Typ', 'Eigener Filter: Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).'),
     ('Osz3-Filter an', 'Eigener Filter: Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).'),
     ('Osz3-Pegel', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
+    ('Oversampling', 'Oversampling 2x (bei HQ): Standard an: Bei HQ rechnen Oszillatoren und Sättigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Klängen bis etwa die doppelte Rechenzeit der Oszillatoren. Gehört zum Rechner, nicht zum Preset.'),
     ('Phaser Mix', 'Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im Spektrum.'),
     ('Phaser Rückkopplung', 'Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im Spektrum.'),
     ('Phaser Tempo', 'Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im Spektrum.'),
@@ -328,7 +329,7 @@ const
     ('Verz. Tor', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).'),
     ('Verz. Tor Takt', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).')
   );
-  CAPTION_HINTS: array[0..100, 0..1] of string = (
+  CAPTION_HINTS: array[0..102, 0..1] of string = (
     ('A <-> B tauschen', 'Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.'),
     ('A/B', 'Zwischen zwei Fassungen hin- und herschalten und vergleichen.'),
     ('Alle Noten aus', 'Beendet sofort alle klingenden Noten (Notbremse).'),
@@ -369,7 +370,7 @@ const
     ('Grain-Panorama', 'Schiebt die Grains nach links oder rechts (die Streuung bleibt um die neue Mitte); der Oszillator hat sein eigenes Panorama.'),
     ('Graingröße', 'Länge eines Grains: kurz = körnig, lang = glatt.'),
     ('Grains an / Pegel', 'Grains aus = nur die Oszillatoren klingen (klassischer Synthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-Bereich regelt die Summe aus Grains und Oszillatoren).'),
-    ('HQ-Modus', 'Bessere Interpolation der Grains (etwas mehr Rechenlast).'),
+    ('HQ-Modus', 'Bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und Sättigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).'),
     ('Haken unter den Fadern', 'Grains, Oszillatoren, Echo, Hall und die vier Effekte ein/aus.'),
     ('Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix', 'Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).'),
     ('Hilfe', 'Dieses Fenster.'),
@@ -387,6 +388,7 @@ const
     ('Leistung', 'Leistungsstufe: begrenzt Stimmen und Grains, wenn der Rechner knapp wird (wird mit Presets nicht geladen).'),
     ('Leuchten', 'Der Hintergrund zeigt den Ausgang: blau/weiß nach Pegel, blauer wo der EQ absenkt, röter wo er anhebt.'),
     ('Limiter', 'Fängt Spitzen am Ausgang ab, damit nichts verzerrt.'),
+    ('Limiter / HQ-Modus / Master', 'Dieselben Regler wie im Reiter Schnell, hier am Ende des Signalwegs: Spitzenbegrenzung, Qualität und Gesamtlautstärke.'),
     ('Makros', 'Textur, Bewegung, Helligkeit, Raum, Streuung, Hüllkurven-Länge: jeder Regler verändert mehrere Einstellungen auf einmal. 50 % = Preset unverändert; „Makros auf 50 %“ setzt alle zurück.'),
     ('Master', 'Gesamtlautstärke; bleibt beim Presetwechsel erhalten.'),
     ('Modulationsmatrix', '32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; "Modulieren mit" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede für sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann ''global: letzte Note''. Der Papierkorb am Zeilenende leert die Zeile (Strg+Z nimmt es zurück).'),
@@ -396,6 +398,7 @@ const
     ('Oktave', 'Verschiebt die Grains um ganze Oktaven (-4 bis +4), zusätzlich zu Pitch.'),
     ('Oktave / Feinstimmung / Pegel / Panorama', 'Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Oszillator an', 'Drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte Sägezähne + Sub-Sinus).'),
+    ('Oversampling 2x (bei HQ)', 'Standard an: Bei HQ rechnen Oszillatoren und Sättigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Klängen bis etwa die doppelte Rechenzeit der Oszillatoren. Gehört zum Rechner, nicht zum Preset.'),
     ('Partner', 'Welcher LFO mit seinem Einmal-Ende das Ereignis "Ende Partner-LFO (Einmal)" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf "Einmal" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt.'),
     ('Phaser: Tempo / Tiefe / Rückkopplung / Mix', 'Sechs Allpässe, wandernde Kerben im Spektrum.'),
     ('Ping-Pong', 'Echos springen zwischen links und rechts.'),

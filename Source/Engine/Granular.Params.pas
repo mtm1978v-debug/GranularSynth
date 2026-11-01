@@ -159,6 +159,7 @@ type
     gpLfo8Rate, gpLfo8Shape, gpLfo8Sync, gpLfo8Trig, gpLfo8Once, gpLfo8Stop, gpLfo8StopMs, gpLfo8StopSync, gpLfo8Partner,
     // freie Makros (Okt. 2026): je ein Regler + Kurve; Ziele ueber die Matrix (Quelle 'Makro 1..4')
     gpUMac1, gpUMac2, gpUMac3, gpUMac4, gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve,
+    gpOversample,  // Nov. 2026: 2x-Oversampling bei HQ (Oszillatoren, Saettigung); gehoert zum Rechner, nicht zum Preset
     gpPerformance, // Leistungsstufe: begrenzt Stimmen/Grains (gehoert nicht zum Klang, bleibt beim Presetwechsel)
     gpMaster,      // Master-Lautstaerke (gehoert nicht zum Klang: bleibt beim Presetwechsel)
     gpTempo        // Tempo fuer LFO-Sync (im VST spaeter vom Host); muss der LETZTE sein
@@ -183,8 +184,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 7;
-  APP_VERSION = '2.7';
+  APP_VERSION_MINOR = 8;
+  APP_VERSION = '2.8';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -225,6 +226,7 @@ const
   FILTER_NAMES: array[0..5] of string = ('Tiefpass', 'Bandpass', 'Hochpass', 'Ladder 24 dB', 'Kamm', 'Formant (Vokal)');
   FLT_LADDER = 3; FLT_COMB = 4; FLT_FORMANT = 5;
   RENDER_HQ_NAMES: array[0..1] of string = ('wie Echtzeit', 'Höchste Qualität');
+  OVERSAMPLE_NAMES: array[0..1] of string = ('Aus', '2x bei HQ');
   ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 -> 2)', 'Parallel (1 + 2)');
   AUTOPITCH_NAMES: array[0..2] of string = ('Aus', 'Frei', 'Halbtöne');
   SCALE_NAMES: array[0..8] of string = ('Aus (chromatisch frei)', 'Dur', 'Moll', 'Harmonisch Moll', 'Dorisch',
@@ -638,6 +640,7 @@ const
     (Name: 'Makro 2 Kurve'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
     (Name: 'Makro 3 Kurve'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
     (Name: 'Makro 4 Kurve'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
+    (Name: 'Oversampling'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 1; Curve: pcStepped; Steps: 2),
     (Name: 'Leistung'; UnitStr: ''; MinV: 0; MaxV: 2; DefV: 0; Curve: pcStepped; Steps: 3),
     (Name: 'Master';        UnitStr: 'dB'; MinV: -60;  MaxV: 6;     DefV: 0;    Curve: pcDecibel; Steps: 0),
     (Name: 'Tempo';         UnitStr: 'BPM'; MinV: 60;  MaxV: 200;  DefV: 120;  Curve: pcLinear;  Steps: 0)
@@ -680,7 +683,7 @@ const
     gpOsc3FmAmt, gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn,
     gpOsc3FltType, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn,
     gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease, gpMaster, gpTempo);
-  VST_ADDED_COUNT = 115;   // Anzahl der Eintraege in VST_ADDED
+  VST_ADDED_COUNT = 116;   // Anzahl der Eintraege in VST_ADDED
   VST_ADDED: array[0..VST_ADDED_COUNT - 1] of TGranularParamId = (
     // Okt. 2026: Ereignis-Verzoegerung
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
@@ -715,7 +718,9 @@ const
     gpLfo6Rate, gpLfo6Shape, gpLfo6Sync, gpLfo6Trig, gpLfo6Once, gpLfo6Stop, gpLfo6StopMs, gpLfo6StopSync, gpLfo6Partner,
     gpLfo7Rate, gpLfo7Shape, gpLfo7Sync, gpLfo7Trig, gpLfo7Once, gpLfo7Stop, gpLfo7StopMs, gpLfo7StopSync, gpLfo7Partner,
     gpLfo8Rate, gpLfo8Shape, gpLfo8Sync, gpLfo8Trig, gpLfo8Once, gpLfo8Stop, gpLfo8StopMs, gpLfo8StopSync, gpLfo8Partner,
-    gpUMac1, gpUMac2, gpUMac3, gpUMac4, gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve);
+    gpUMac1, gpUMac2, gpUMac3, gpUMac4, gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve,
+    // Nov. 2026: Oversampling
+    gpOversample);
 
 
 { VST-Nummer -> interner Index und zurueck (-1 = ungueltig) }
@@ -1042,6 +1047,7 @@ begin
     gpTgRate: Result := ARP_RATE_NAMES[EnsureRange(Step, 0, 5)];
     gpTgSteps: Result := IntToStr(EnsureRange(Step, 0, 15) + 1);
     gpRenderHQ: Result := RENDER_HQ_NAMES[EnsureRange(Step, 0, 1)];
+    gpOversample: Result := OVERSAMPLE_NAMES[EnsureRange(Step, 0, 1)];
     gpLoopMode: if Step = 0 then Result := 'Vorwärts' else Result := 'Hin und her';
     gpFltRouting: Result := ROUTING_NAMES[EnsureRange(Step, 0, 1)];
     gpScPitchMode: Result := AUTOPITCH_NAMES[EnsureRange(Step, 0, 2)];

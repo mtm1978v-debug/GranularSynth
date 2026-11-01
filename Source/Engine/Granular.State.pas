@@ -544,11 +544,12 @@ begin
   // Regler, die das Preset nicht kennt (aeltere Presets): Standardwert statt Rest vom vorigen
   // Preset. Master und Tempo gehoeren nicht zum Klang und bleiben.
   for I := 0 to NAMED_COUNT - 1 do
-    if not IdIn(TGranularParamId(I), [gpMaster, gpTempo, gpPerformance, gpRenderHQ]) then
+    if not IdIn(TGranularParamId(I), [gpMaster, gpTempo, gpPerformance, gpRenderHQ, gpOversample]) then
       Engine.SetParam(I, PlainToParam(TGranularParamId(I), GetParamInfo(I).DefV));
   // Leistungsstufe gehoert zum Rechner, nicht zum Klang: Presets aendern sie nicht
   for I := 0 to High(Entries) do
-    if (Entries[I].Index <> Ord(gpPerformance)) and (Entries[I].Index <> Ord(gpRenderHQ)) then
+    if (Entries[I].Index <> Ord(gpPerformance)) and (Entries[I].Index <> Ord(gpRenderHQ)) and
+      (Entries[I].Index <> Ord(gpOversample)) then
       Engine.SetParam(Entries[I].Index, Entries[I].Value);
   for I := 0 to FREE_LFO_COUNT - 1 do
     Engine.FreeLfo[I]^ := Free[I];

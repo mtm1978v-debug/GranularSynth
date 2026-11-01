@@ -1,8 +1,31 @@
-﻿# GranularSynth – Änderungen
+﻿﻿# GranularSynth – Änderungen
 
 Alle nennenswerten Änderungen, die neueste Version oben.
 Jede Version nennt **Neu** (hinzugekommen), **Geändert** und **Behoben**.
 Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Installation ändert.
+
+---
+
+## Version 2.8 – 01.11.2026
+
+### Neu
+- **Oversampling (2x) bei HQ:** Oszillatoren und Sättigung rechnen intern mit doppelter Abtastrate und werden danach mit einem steilen Halbband-Filter (71 Taps, −98 dB Sperrdämpfung) zurückgerechnet. Harte FM-, Sync- und Drive-Klänge bleiben dadurch sauber, ohne metallische Spiegelfrequenzen. Gemessen bei hohen Tönen: FM von +16 dB auf −70 dB Spiegelanteil, harter Drive von −18 dB auf −55 dB, Sägezahn um 19 dB sauberer. Standardmäßig an; abschaltbar im Reiter *Leistung* („Oversampling 2x (bei HQ)“). Die Einstellung gehört zum Rechner, nicht zum Preset.
+
+### Geändert
+- **Reiter neu geordnet, nach dem Weg des Signals:** Schnell · Grain · Samples · Osz 1-3 · **Filter** · Modulation · LFO · Timing · Effekte · **Echo / Hall** · **Summe** · Extras · Mischpult · Leistung.
+  - **Filter:** Filter 1 und Filter 2 mit Verschaltung zusammen auf einem Reiter (beide wirken je Note).
+  - **Echo / Hall:** ohne Filter, nur noch die beiden Raum-Effekte.
+  - **Summe** (vorher „Filter 2 / EQ“): alles, was auf den Gesamtklang wirkt – Sättigung, EQ, Stereobreite, Panorama, Limiter, HQ und Master.
+  - **Extras:** nur noch Spielhilfen (Arpeggiator, Harmonie, Freeze, Morph, Schwellen-Tor).
+  - Presets, Automation und VST-Nummern bleiben unverändert.
+- **Projektziel festgehalten:** GranularSynth strebt professionellen Klang auf dem Niveau kommerzieller Digital-Synthesizer an. Reihenfolge bei Zielkonflikten: Klangqualität, dann niedrige Rechenlast, dann einfache Bedienung.
+
+### Behoben
+- **Grauer Strich auf dem Bildschirm:** Windows ließ manchmal den Schatten eines Tooltips stehen, wenn das Plugin-Fenster geschlossen wurde, während ein Tooltip gerade ein- oder ausgeblendet wurde. Die Tooltips haben jetzt keinen Schlagschatten mehr (passt zum flachen Stil), dadurch kann nichts mehr hängen bleiben.
+
+### Hinweis
+- Mit HQ und Oversampling klingen Presets mit FM, Sync, hellen Oszillatoren oder viel Sättigung sauberer als vorher; der Grundcharakter bleibt. Wer den alten Klang genau braucht, schaltet Oversampling im Reiter *Leistung* ab (dann bitgleich wie 2.7).
+- Rechenzeit: Oszillatoren brauchen mit Oversampling etwa doppelt so viel; Grains sind nicht betroffen. Bei typischen Klängen steigt die Gesamtlast nur wenig.
 
 ---
 

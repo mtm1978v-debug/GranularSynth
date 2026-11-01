@@ -1,4 +1,4 @@
-﻿# GranularSynth
+﻿﻿# GranularSynth
 
 **Granular- und FM-Synthesizer als VST2- und VST3-Plugin für Windows (32 und 64 Bit)**, mit eigenem Test-Host.
 Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind von Hand in SSE-Assembler optimiert, damit die CPU-Last niedrig bleibt.
@@ -7,10 +7,19 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 
 ![Reiter Grain](docs/screenshots/grain.png)
 
+## Ziel
+
+**Professioneller Klang auf dem Niveau kommerzieller Digital-Synthesizer.** Bei jeder Entscheidung gilt die Reihenfolge:
+1. **Klangqualität:** saubere Filter (TPT/Zavalishin), bandbegrenzte Oszillatoren (PolyBLEP), Hermite-Interpolation der Grains, 2x-Oversampling für Oszillatoren und Sättigung.
+2. **Niedrige Rechenlast:** handoptimierte SSE-Kerne, jeder mit Pascal-Referenz im Prüfstand.
+3. **Einfache Bedienung:** eine klare Oberfläche, Hilfe auf Deutsch und Englisch, Lernpfad.
+
+*Goal: professional sound on the level of commercial digital synthesizers. Priorities: 1. sound quality, 2. low CPU load, 3. easy operation.*
+
 ## Was er kann
 
 - **Granular-Synthese** aus beliebigen Samples (WAV, MP3 u. a.). Einstellbar sind Auswahl, Position, Spray, Scan, Graingröße, Dichte, Fenster und Rückwärts-Anteil. Dazu kommen ein Anlauf vor der Auswahl, eine Schleife hin und her und bis zu drei Zonen.
-- **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison.
+- **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison. Mit HQ rechnen Oszillatoren und Sättigung mit **2x-Oversampling**: auch harte FM- und Drive-Klänge bleiben frei von Spiegelfrequenzen.
 - **Modulationsmatrix mit 32 Zeilen**, 8 LFOs (auch frei gezeichnet oder in Stufen), Hüllkurven, Velocity, Sidechain-Pegel und Sidechain-Tonhöhe. Die Modulation wirkt je Note.
 - **Vier freie Makros**: Ein Regler bewegt beliebig viele Ziele mit wählbarer Kurve. Die Makros lassen sich in der DAW automatisieren.
 - **Effekte**: zwei Filter, EQ, Echo, Hall, Gate, Crusher, Chorus, Phaser und Trance-Gate. Dazu ein Mischpult mit Pegelanzeigen.
