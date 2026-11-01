@@ -298,6 +298,9 @@ begin
   // Testhilfe: GRANULAR_HELP=1 oeffnet die Hilfe, =2 gleich den Changelog
   if GetEnvironmentVariable('GRANULAR_HELP') <> '' then
     FEditor.ShowHelp(GetEnvironmentVariable('GRANULAR_HELP') = '2');
+  // Testhilfe: GRANULAR_FREELFO=1..9 oeffnet das Fenster 'freie Form' (1 = LFO 1); fuer Bildschirmfotos
+  if StrToIntDef(GetEnvironmentVariable('GRANULAR_FREELFO'), 0) > 0 then
+    FEditor.OpenFreeEditor(StrToIntDef(GetEnvironmentVariable('GRANULAR_FREELFO'), 1) - 1);
   // Testhilfe: GRANULAR_LANGTEST=<Kuerzel> schaltet nach dem Oeffnen die Sprache um (wie die Auswahl im Reiter Extras)
   if GetEnvironmentVariable('GRANULAR_LANGTEST') <> '' then
   begin

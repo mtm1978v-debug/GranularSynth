@@ -329,7 +329,7 @@ const
     ('Verz. Tor', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).'),
     ('Verz. Tor Takt', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).')
   );
-  CAPTION_HINTS: array[0..102, 0..1] of string = (
+  CAPTION_HINTS: array[0..103, 0..1] of string = (
     ('A <-> B tauschen', 'Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.'),
     ('A/B', 'Zwischen zwei Fassungen hin- und herschalten und vergleichen.'),
     ('Alle Noten aus', 'Beendet sofort alle klingenden Noten (Notbremse).'),
@@ -365,6 +365,7 @@ const
     ('Filter 2', 'Zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).'),
     ('Filter an, Typ', 'Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, steil), Kamm (metallisch, Cutoff = Tonhöhe), Formant (Vokale A-E-I-O-U über den Cutoff).'),
     ('Freeze', 'Leseposition steht still, der Klang friert ein.'),
+    ('Freie Form: Klaviatur, Glättung', 'Im Fenster der freien Form (Klick auf die LFO-Grafik): im Modus Halbtöne zeigt links eine Klaviatur, welche Note jede Stufe spielt (Bezugston = die Taste, die du spielst; jedes C mit Oktave), die Stufen tragen den Notennamen. Glättung 0-100 %: 0 % = harte Stufen (jeder Ton steht), wenig = kurzes Gleiten von Ton zu Ton, 100 % = runde Kurve; die gelbe Linie zeigt den echten Verlauf. Wird mit dem Preset gespeichert.'),
     ('Freie Makros', 'Rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle "Makro n"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal für die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37.'),
     ('Glide / Zeit', 'Portamento: Töne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens.'),
     ('Grain-Panorama', 'Schiebt die Grains nach links oder rechts (die Streuung bleibt um die neue Mitte); der Oszillator hat sein eigenes Panorama.'),

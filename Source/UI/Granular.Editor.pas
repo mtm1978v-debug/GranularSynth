@@ -149,6 +149,9 @@ type
     // Parameter, die Daten liegen nur im Chunk. Felder sind nur bei offenem Fenster belegt.
     FFreeView: array[0..FREE_LFO_COUNT - 1] of TFreeLfoView;
     FFreeMode, FFreeRange: array[0..FREE_LFO_COUNT - 1] of TComboBox;
+    FFreeRoot: array[0..FREE_LFO_COUNT - 1] of TComboBox;     // Bezugston der Klaviatur
+    FFreeSmooth: array[0..FREE_LFO_COUNT - 1] of TTrackBar;   // Glaettung 0..100 %
+    FFreeSmoothLbl: array[0..FREE_LFO_COUNT - 1] of TLabel;
     FFreeSteps: array[0..FREE_LFO_COUNT - 1] of TTrackBar;
     FFreeStepsLbl: array[0..FREE_LFO_COUNT - 1] of TLabel;
     FWave: TWaveView;
@@ -252,6 +255,8 @@ type
     procedure FreeActivateClick(Sender: TObject);
     procedure FreePitchClick(Sender: TObject);
     procedure FreeSmoothClick(Sender: TObject);
+    procedure FreeSmoothChange(Sender: TObject);
+    procedure FreeRootChange(Sender: TObject);
     procedure FreeResetClick(Sender: TObject);
     procedure BuildModMenu;
     function TakeSnapshot: TArray<Single>;
@@ -3158,6 +3163,9 @@ begin
       FFreeView[K].Tick;   // zeichnet nur, wenn die Abspielmarke weiterrueckt
 end;
 
+const
+  NOTE_NAMES_DE: array[0..11] of string = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H');
+
 { Werkzeugfenster fuer die Form "Frei" eines LFOs (nicht modal, bleibt vorn): Aenderungen wirken
   sofort und sind beim Spielen live zu hoeren - Engine-Daten werden direkt bearbeitet, Klaviatur
   und PC-Tasten bleiben bedienbar. Die LFO-Anzeige im Modulations-Reiter zeigt die Form mit. }
@@ -3201,9 +3209,9 @@ begin
     Frm.BorderIcons := [biSystemMenu];
     Frm.Position := poScreenCenter;
     Frm.ClientWidth := 990;
-    Frm.ClientHeight := 360;
+    Frm.ClientHeight := 420;
     Frm.Constraints.MinWidth := 880;
-    Frm.Constraints.MinHeight := 260;
+    Frm.Constraints.MinHeight := 300;
     Frm.Color := BG_MAIN;
     Frm.Font.Assign(Font);
     Frm.KeyPreview := True;
@@ -3269,13 +3277,60 @@ begin
     FFreeRange[K].TabStop := False;
     FFreeRange[K].OnChange := FreeRangeChange;
 
+    // zweite Zeile: Glaettung (weiche Uebergaenge zwischen den Stufen) und Bezugston der Klaviatur
+    L := TLabel.Create(Frm);
+    L.Parent := P;
+    L.SetBounds(8, 58, 70, 16);
+    L.Caption := Tr('Glättung');
+    L.Font.Color := COL_NAME;
+    L.Transparent := True;
+    FFreeSmooth[K] := TTrackBar.Create(Frm);
+    FFreeSmooth[K].Parent := P;
+    FFreeSmooth[K].SetBounds(80, 54, 200, 26);
+    FFreeSmooth[K].Min := 0;
+    FFreeSmooth[K].Max := 100;
+    FFreeSmooth[K].TickStyle := tsNone;
+    FFreeSmooth[K].ThumbLength := 16;
+    FFreeSmooth[K].Tag := K;
+    FFreeSmooth[K].TabStop := False;
+    FFreeSmooth[K].OnChange := FreeSmoothChange;
+    FFreeSmooth[K].Hint := Tr('Glättung: 0 % = harte Stufen (jeder Ton steht), wenig = kurzes Gleiten von Ton zu Ton, ' +
+      '100 % = runde Kurve durch alle Werte.');
+    FFreeSmooth[K].ShowHint := True;
+    FFreeSmoothLbl[K] := TLabel.Create(Frm);
+    FFreeSmoothLbl[K].Parent := P;
+    FFreeSmoothLbl[K].SetBounds(284, 58, 40, 16);
+    FFreeSmoothLbl[K].Font.Color := COL_VAL;
+    FFreeSmoothLbl[K].Transparent := True;
+    L := TLabel.Create(Frm);
+    L.Parent := P;
+    L.SetBounds(340, 58, 90, 16);
+    L.Caption := Tr('Bezugston');
+    L.Font.Color := COL_NAME;
+    L.Transparent := True;
+    FFreeRoot[K] := TComboBox.Create(Frm);
+    FFreeRoot[K].Parent := P;
+    FFreeRoot[K].Style := csDropDownList;
+    FFreeRoot[K].SetBounds(430, 55, 54, 21);
+    for I := 0 to 11 do
+      FFreeRoot[K].Items.Add(NOTE_NAMES_DE[I]);
+    if LangCode <> 'de' then
+      FFreeRoot[K].Items[11] := 'B';
+    FFreeRoot[K].ItemIndex := 0;
+    FFreeRoot[K].Tag := K;
+    FFreeRoot[K].TabStop := False;
+    FFreeRoot[K].OnChange := FreeRootChange;
+    FFreeRoot[K].Hint := Tr('Bezugston: die Taste, die du spielst. Die Klaviatur links benennt die Stufen danach ' +
+      '(nur Anzeige, der Klang ändert sich nicht).');
+    FFreeRoot[K].ShowHint := True;
+
     Btn(Tr('Zurücksetzen'), 8, 92, FreeResetClick);
-    Btn(Tr('Glätten'), 104, 70, FreeSmoothClick);
-    Btn(Tr('Form = Frei'), 286, 80, FreeActivateClick);
+    Btn(Tr('Werte mitteln'), 104, 96, FreeSmoothClick);
+    Btn(Tr('Form = Frei'), 312, 80, FreeActivateClick);
     if K <> 2 then
     begin
-      Btn(Tr('Auf Pitch legen'), 178, 104, FreePitchClick);
-      Btn(Tr('Auf Gate legen'), 370, 100, FreeGateClick);
+      Btn(Tr('Auf Pitch legen'), 204, 104, FreePitchClick);
+      Btn(Tr('Auf Gate legen'), 396, 100, FreeGateClick);
     end;
 
     L := TLabel.Create(Frm);
@@ -3292,11 +3347,12 @@ begin
       Tr('Ziehen setzt Werte (auch über mehrere Stufen), Rechtsklick setzt 0, Mausrad = +/- 1 Halbton. ' +
       '"Auf Pitch legen" stellt Form Frei, Neustart bei Note an und einen Matrix-Slot LFO -> Pitch ' +
       '(Menge 50 %, Faktor x1) ein: jede Stufe trifft genau ihren Halbton, jede Note spielt die Folge von vorn. ' +
-      'Rate/Sync gilt für einen ganzen Durchlauf. Änderungen wirken sofort.');
+      'Rate/Sync gilt für einen ganzen Durchlauf. Klaviatur links: welche Note eine Stufe spielt (Bezugston = gespielte Taste). ' +
+      'Glättung: weiche Übergänge, die gelbe Linie zeigt den echten Verlauf. Änderungen wirken sofort.');
 
     FFreeView[K] := TFreeLfoView.Create(Frm, FEngine, K);
     FFreeView[K].Parent := P;
-    FFreeView[K].SetBounds(8, 52, P.ClientWidth - 16, P.ClientHeight - 52 - 56);
+    FFreeView[K].SetBounds(8, 84, P.ClientWidth - 16, P.ClientHeight - 84 - 56);
     FFreeView[K].Anchors := [akLeft, akTop, akRight, akBottom];
 
     Tmr := TTimer.Create(Frm);
@@ -3318,6 +3374,9 @@ begin
   FFreeRange[K] := nil;
   FFreeSteps[K] := nil;
   FFreeStepsLbl[K] := nil;
+  FFreeSmooth[K] := nil;
+  FFreeSmoothLbl[K] := nil;
+  FFreeRoot[K] := nil;
   FFreeForm[K] := nil;
   Action := caFree;
   if LfoOfFree(K) >= 0 then
@@ -3355,6 +3414,10 @@ begin
       FFreeStepsLbl[K].Caption := IntToStr(FFreeSteps[K].Position);
       FFreeSteps[K].Enabled := F.Mode <> 2;
       FFreeRange[K].Enabled := F.Mode = 0;
+      FFreeRoot[K].Enabled := F.Mode = 0;
+      FFreeSmooth[K].Position := Round(EnsureRange(F.Smooth, 0, 1) * 100);
+      FFreeSmooth[K].Enabled := F.Mode <> 2;
+      FFreeSmoothLbl[K].Caption := IntToStr(FFreeSmooth[K].Position) + ' %';
       FFreeView[K].Rebuild;
     end;
   finally
@@ -3437,6 +3500,28 @@ begin
       F1 := S;
   SetSlot(Slot, Src, Dst, 50, F1);
   UpdateFromEngine;
+end;
+
+procedure TGranularEditor.FreeSmoothChange(Sender: TObject);
+var
+  K: Integer;
+begin
+  if FUpdating then
+    Exit;
+  K := (Sender as TComponent).Tag;
+  FEngine.FreeLfo[K].Smooth := FFreeSmooth[K].Position / 100;
+  FFreeSmoothLbl[K].Caption := IntToStr(FFreeSmooth[K].Position) + ' %';
+  FFreeView[K].Rebuild;
+  if LfoOfFree(K) >= 0 then
+    FLfoViews[LfoOfFree(K)].ForceFullInvalidate;
+end;
+
+procedure TGranularEditor.FreeRootChange(Sender: TObject);
+var
+  K: Integer;
+begin
+  K := (Sender as TComponent).Tag;
+  FFreeView[K].Root := FFreeRoot[K].ItemIndex;
 end;
 
 procedure TGranularEditor.FreeSmoothClick(Sender: TObject);

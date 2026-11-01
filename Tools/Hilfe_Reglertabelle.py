@@ -104,6 +104,7 @@ TABS = [
 ]),
 ("Reiter LFO 1-8 / Trigger", [
  ("LFO 1 bis 8: Rate, Form, Sync", "langsame Schwingung (Sinus, Dreieck, S\u00e4ge, Rechteck, Zufall, Frei); Sync = im Takt des Hosts. Klick auf die Grafik \u00f6ffnet die freie Form. Umschalter unten rechts: LFO 1-4 / LFO 5-8 (in Klammern: benutzte LFOs 5-8; unbenutzte kosten keine Rechenzeit)."),
+ ("Freie Form: Klaviatur, Gl\u00e4ttung", "im Fenster der freien Form (Klick auf die LFO-Grafik): im Modus Halbt\u00f6ne zeigt links eine Klaviatur, welche Note jede Stufe spielt (Bezugston = die Taste, die du spielst; jedes C mit Oktave), die Stufen tragen den Notennamen. Gl\u00e4ttung 0-100 %: 0 % = harte Stufen (jeder Ton steht), wenig = kurzes Gleiten von Ton zu Ton, 100 % = runde Kurve; die gelbe Linie zeigt den echten Verlauf. Wird mit dem Preset gespeichert."),
  ("Einmal", "der LFO l\u00e4uft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz)."),
  ("Neustart", "frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), Sidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor \u00f6ffnet, Ruhe, Ausgang > Schwelle."),
  ("Partner", "welcher LFO mit seinem Einmal-Ende das Ereignis \"Ende Partner-LFO (Einmal)\" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf \"Einmal\" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt."),
@@ -162,7 +163,7 @@ TABS = [
  ("Zeiger / Laufzeit", "geschätzte Gesamtlast und gemessene Rechenzeit im Host (Aufrufe/s, Anteil am Puffer, Spitzenwert)."),
 ]),]
 
-NO = {"Sprache / Language", "Zonen 1-3", "Aufnahme", "Kategorie / Stern", "Wiederholen", "Lastliste", "Zeiger / Laufzeit", "Audio laden...", "Alle Noten aus", "Okt - / Okt +", "Preset w\u00e4hlen, < >", "Speichern...", "CLIP / MIDI",
+NO = {"Sprache / Language", "Freie Form: Klaviatur, Gl\u00e4ttung", "Zonen 1-3", "Aufnahme", "Kategorie / Stern", "Wiederholen", "Lastliste", "Zeiger / Laufzeit", "Audio laden...", "Alle Noten aus", "Okt - / Okt +", "Preset w\u00e4hlen, < >", "Speichern...", "CLIP / MIDI",
       "Info", "Hilfe", "Statuszeile", "Autoplay, Haken \u201ealle\u201c", "Variieren / St\u00e4rke / Gesperrt", "A/B", "Spektrum", "Kurve", "Leuchten",
       "Ziel B merken / laden / l\u00f6schen", "A <-> B tauschen"}
 PART = {"Bend / Mod": "MIDI", "Latch": "Arp Latch", "Arpeggiator": "ja (Muster: nein)", "LFO 1 bis 8: Rate, Form, Sync": "ja (freie Form: nein)",

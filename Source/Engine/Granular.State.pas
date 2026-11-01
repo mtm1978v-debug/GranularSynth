@@ -99,7 +99,8 @@ const
   MRPC_MAGIC: array[0..3] of AnsiChar = ('M', 'R', 'P', 'C');
   TGAT_MAGIC: array[0..3] of AnsiChar = ('T', 'G', 'A', 'T');
   ZONE_MAGIC: array[0..3] of AnsiChar = ('Z', 'O', 'N', 'E');
-  FLF8_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'F', '8');   // freie Formen LFO 5..8 (ganz hinten)
+  FLF8_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'F', '8');   // freie Formen LFO 5..8
+  FLSM_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'S', 'M');   // Nov. 2026: Glaettung je freier Form (ganz hinten)
   MAX_STR = 4096;
 
 procedure WriteStr(S: TStream; const Value: string);
@@ -219,6 +220,12 @@ begin
     S.WriteBuffer(N, 4);
     for I := 5 to FREE_LFO_COUNT - 1 do
       WriteFreeEntry(S, Engine.FreeLfo[I]);
+    // Glaettung der freien Formen (aeltere Versionen ueberlesen den Abschnitt)
+    S.WriteBuffer(FLSM_MAGIC, 4);
+    N := FREE_LFO_COUNT;
+    S.WriteBuffer(N, 4);
+    for I := 0 to FREE_LFO_COUNT - 1 do
+      S.WriteBuffer(Engine.FreeLfo[I].Smooth, 4);
     Result := Copy(S.Bytes, 0, S.Size);
   finally
     S.Free;
@@ -538,6 +545,19 @@ begin
           Break;
         if 5 + K < FREE_LFO_COUNT then
           Free[5 + K] := Fr8;
+      end;
+  end;
+  if (P + 8 <= Length(Data)) and CompareMem(@Data[P], @FLSM_MAGIC[0], 4) then
+  begin
+    Inc(P, 4);
+    if ReadInt(ZN) then
+      for K := 0 to Min(ZN, 64) - 1 do
+      begin
+        if P + 4 > Length(Data) then
+          Break;
+        if K < FREE_LFO_COUNT then
+          Free[K].Smooth := EnsureRange(PSingle(@Data[P])^, 0, 1);
+        Inc(P, 4);
       end;
   end;
 

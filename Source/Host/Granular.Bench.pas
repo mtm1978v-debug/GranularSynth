@@ -838,6 +838,62 @@ end;
 
 { Freier LFO (Neustart 'frei') laeuft global durch: eine kurze Note uebernimmt den aktuellen Wert
   des durchlaufenden LFOs (keinen Neustart bei 0), mit und ohne Noten-Modulation in anderen Zeilen }
+{ Glaettung des freien LFOs: 0 % = Stufen wie bisher, halbe Glaettung = Mitte des Uebergangs bei
+  einem Viertel der Stufe, 100 % ohne Spruenge; der Wert ueberlebt Speichern/Laden (Abschnitt FLSM) }
+function CheckFreeSmooth: string;
+var
+  F: TFreeLfo;
+  E, E2: TGranularEngine;
+  D: TBytes;
+  Path: string;
+  I: Integer;
+  V, Prev, MaxJump, Err: Double;
+  Ok: Boolean;
+begin
+  FreeLfoDefault(F);
+  F.Mode := 1;
+  F.Steps := 4;
+  F.Step[0] := 0; F.Step[1] := 1; F.Step[2] := -1; F.Step[3] := 0.5;
+  Err := 0;
+  // ohne Glaettung: genau die Stufe
+  F.Smooth := 0;
+  Err := Max(Err, Abs(FreeLfoValue(F, 0.25 + 0.01) - 1));
+  // halbe Glaettung: Stufe 1 beginnt bei Phase 0,25, Uebergang 0 -> 1 ueber eine halbe Stufe
+  F.Smooth := 0.5;
+  Err := Max(Err, Abs(FreeLfoValue(F, 0.25) - 0));                     // Anfang = vorige Stufe
+  Err := Max(Err, Abs(FreeLfoValue(F, 0.25 + 0.25 * 0.25) - 0.5));     // Mitte des Uebergangs
+  Err := Max(Err, Abs(FreeLfoValue(F, 0.25 + 0.25 * 0.75) - 1));       // danach die Stufe
+  // volle Glaettung: keine Spruenge (feines Abtasten)
+  F.Smooth := 1;
+  MaxJump := 0;
+  Prev := FreeLfoValue(F, 0);
+  for I := 1 to 4000 do
+  begin
+    V := FreeLfoValue(F, I / 4000);
+    MaxJump := Max(MaxJump, Abs(V - Prev));
+    Prev := V;
+  end;
+  // Speichern/Laden
+  E := TGranularEngine.Create;
+  E2 := TGranularEngine.Create;
+  try
+    E.FreeLfo[6].Smooth := 0.37;
+    D := SaveChunk(E, '');
+    LoadChunk(E2, D, Path);
+    Ok := Abs(E2.FreeLfo[6].Smooth - 0.37) < 1E-6;
+    Ok := Ok and (E2.FreeLfo[0].Smooth = 0);
+  finally
+    E.Free;
+    E2.Free;
+  end;
+  Result := Format('LFO-Glaettung: Abweichung %.1e, groesster Sprung bei 100 %% %.4f, Speichern/Laden %s',
+    [Err, MaxJump, IfThen(Ok, 'ok', 'FALSCH')]);
+  if (Err < 1E-5) and (MaxJump < 0.01) and Ok then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
 function CheckFreeLfo: string;
 
   function Run(WithNoteRow: Boolean; StartBlock: Integer; out GlobalV: Double): Double;
@@ -2981,7 +3037,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckOversample + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckOversample + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;
 

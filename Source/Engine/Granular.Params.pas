@@ -184,8 +184,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 8;
-  APP_VERSION = '2.8';
+  APP_VERSION_MINOR = 9;
+  APP_VERSION = '2.9';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -779,6 +779,7 @@ type
     Steps: Integer;
     Step: array[0..FREE_MAX_STEPS - 1] of Single;
     Draw: array[0..FREE_DRAW_N - 1] of Single;
+    Smooth: Single;   // Nov. 2026: Glaettung der Stufen 0..1 (0 = harte Stufen, 1 = runde Kurve)
   end;
   PFreeLfo = ^TFreeLfo;
 
@@ -1141,6 +1142,7 @@ var
 begin
   F.Mode := 0;
   F.Steps := 8;
+  F.Smooth := 0;
   for I := 0 to FREE_MAX_STEPS - 1 do
     F.Step[I] := MELODY[I mod 8] / FREE_SEMIS;
   for I := 0 to FREE_DRAW_N - 1 do
@@ -1156,6 +1158,7 @@ function FreeLfoValue(const F: TFreeLfo; Phase: Double): Single;
 var
   N, I: Integer;
   X, T: Double;
+  Prev: Single;
 begin
   Phase := Phase - Floor(Phase);
   if F.Mode = 2 then
@@ -1170,9 +1173,24 @@ begin
   else
   begin
     N := EnsureRange(F.Steps, 1, FREE_MAX_STEPS);
-    Result := F.Step[Min(Trunc(Phase * N), N - 1)];
+    X := Phase * N;
+    I := Min(Trunc(X), N - 1);
+    Result := F.Step[I];
     if F.Mode = 0 then
       Result := FreeQuantize(Result);
+    // Glaettung: am Anfang jeder Stufe weich (Kosinus) vom Wert der vorigen Stufe herueber gleiten;
+    // der Uebergang dauert Smooth * Stufenlaenge (1 = ganze Stufe -> runde Kurve durch alle Werte)
+    if F.Smooth > 0.001 then
+    begin
+      T := X - I;
+      if T < F.Smooth then
+      begin
+        Prev := F.Step[(I + N - 1) mod N];
+        if F.Mode = 0 then
+          Prev := FreeQuantize(Prev);
+        Result := Prev + (Result - Prev) * (0.5 - 0.5 * Cos(Pi * T / F.Smooth));
+      end;
+    end;
   end;
 end;
 

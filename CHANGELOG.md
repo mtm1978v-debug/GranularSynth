@@ -6,6 +6,21 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.9 – 01.11.2026
+
+### Neu
+- **Klaviatur am freien LFO:** Im Fenster der freien Form (Modus *Halbtöne*) zeigt links eine Klaviatur, welche Note jede Stufe spielt. Jedes C trägt seine Oktave, die gespielte Taste ist orange hervorgehoben. Die Stufen tragen den Notennamen (z. B. „G +7“). Mit *Bezugston* stellst du ein, welche Taste du spielst – so lassen sich Melodien direkt nach Noten setzen.
+- **Glättung am freien LFO (0–100 %):** 0 % = harte Stufen (jeder Ton steht), wenig = kurzes Gleiten von Ton zu Ton, 100 % = runde Kurve durch alle Werte. Die gelbe Linie zeigt den echten Verlauf. Gilt für die Stufen-Modi und wird mit dem Preset gespeichert.
+
+### Geändert
+- **README:** Bildschirmfotos aller Reiter (mit laufendem Klang) und des freien LFOs.
+- Der bisherige Knopf *Glätten* (verändert die Werte selbst) heißt jetzt *Werte mitteln*.
+
+### Hinweis
+- Presets ohne Glättung klingen unverändert. Ältere Versionen laden neue Presets weiter, nur ohne Glättung.
+
+---
+
 ## Version 2.8 – 01.11.2026
 
 ### Neu

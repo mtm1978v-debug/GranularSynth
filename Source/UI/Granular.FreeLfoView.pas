@@ -17,6 +17,8 @@ unit Granular.FreeLfoView;
                         interpoliert zusaetzlich -> keine Bildschirm-Treppen im Ton
   Bedienung: Ziehen setzt Werte (auch ueber mehrere Stufen), Rechtsklick/-ziehen setzt 0,
   Mausrad auf einer Stufe = +/- 1 Halbton (bzw. fein im Modus Frei).
+  Halbton-Modus: links eine Klaviatur mit Notennamen (Bezugston = gespielte Taste, waehlbar), damit
+  man Melodien direkt nach Noten setzen kann. Bei Glaettung > 0 zeigt eine Kurve den echten Verlauf.
   Zeichnen: Raster, Balken und Kurve liegen in einer gecachten Ebene; je Bild kommt nur
   die Abspielmarke dazu, und auch das nur, wenn sie sich bewegt hat. }
 
@@ -42,6 +44,7 @@ type
     FLastVal: Single;
     FMarkKey: Integer;         // zuletzt gezeichnete Markenposition (Stufe bzw. Pixel), -1 = keine
     FWasFree: Boolean;         // Form war beim letzten Aufbau 'Frei' (Hinweistext)
+    FRoot: Integer;            // Bezugston der Klaviatur: Stufe 0 = diese Note (0 = C)
     FOnChange: TNotifyEvent;
     function Data: PFreeLfo;
     function ShapeIsFree: Boolean;
@@ -53,6 +56,9 @@ type
     procedure EditAt(X, Y: Integer; First: Boolean);
     procedure Changed;
     procedure SetRange(const Value: Integer);
+    procedure SetRoot(const Value: Integer);
+    function KeysW: Integer;
+    procedure DrawKeys(W, H: Integer);
   protected
     procedure DoPaintBuffer; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -67,6 +73,7 @@ type
     { im Animationstakt: zeichnet nur, wenn sich Abspielmarke oder Inhalt geaendert haben }
     procedure Tick;
     property Range: Integer read FRange write SetRange;
+    property Root: Integer read FRoot write SetRoot;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
@@ -109,7 +116,14 @@ const
   COL_CAP     = $FF9FE0FF;
   COL_CURVE   = $FF9FE0FF;
   COL_FILLC   = $FF20486A;
+  COL_KEY_W   = $FFC8CCD2;   // Klaviatur: weisse Taste (gedaempft wie der Rest der Oberflaeche)
+  COL_KEY_B   = $FF1C1E22;
+  COL_KEY_GAP = $FF5A606A;
+  COL_SMOOTH  = $FFFFD070;   // Verlauf mit Glaettung
   TOP_PAD = 6;
+  KEYS_W = 36;               // Breite der Klaviatur links (Halbton-Modus)
+  NOTE_NAMES: array[0..11] of string = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H');
+  BLACK_KEY: array[0..11] of Boolean = (False, True, False, True, False, False, True, False, True, False, True, False);
 
 constructor TFreeLfoView.Create(AOwner: TComponent; AEngine: TGranularEngine; ALfo: Integer);
 begin
@@ -180,6 +194,72 @@ begin
   end;
 end;
 
+procedure TFreeLfoView.SetRoot(const Value: Integer);
+begin
+  if Value <> FRoot then
+  begin
+    FRoot := ((Value mod 12) + 12) mod 12;
+    Rebuild;
+  end;
+end;
+
+{ Notenname; deutsch H, sonst B }
+function NoteName(N: Integer): string;
+begin
+  Result := NOTE_NAMES[N];
+  if (N = 11) and (LangCode <> 'de') then
+    Result := 'B';
+end;
+
+{ Klaviatur nur im Halbton-Modus (dort bedeutet die Hoehe eine Note) }
+function TFreeLfoView.KeysW: Integer;
+begin
+  if (Data.Mode = 0) and (Width > 200) then
+    Result := KEYS_W
+  else
+    Result := 0;
+end;
+
+{ Klaviatur links: je Halbtonzeile eine Taste, Name bei genug Hoehe, C immer beschriftet;
+  die Zeile 0 (= gespielte Taste) ist hervorgehoben }
+procedure TFreeLfoView.DrawKeys(W, H: Integer);
+var
+  K, Note, Y, Y0, Y1: Integer;
+  Hs: Single;
+  Black: Boolean;
+  S: string;
+begin
+  Hs := (H - 2 * TOP_PAD) / (2 * FRange);
+  // wie ein liegendes Klavier: weisse Flaeche, schwarze Tasten kuerzer darueber
+  FStatic.FillRectS(0, 0, KEYS_W - 1, H, COL_KEY_W);
+  for K := -FRange to FRange do
+  begin
+    Y := ValueToY(K / FREE_SEMIS, H);
+    Y0 := Round(Y - Hs / 2);
+    Y1 := Round(Y + Hs / 2);
+    Note := ((FRoot + K) mod 12 + 12) mod 12;
+    Black := BLACK_KEY[Note];
+    if K = 0 then
+      FStatic.FillRectS(0, Max(Y0, 0), KEYS_W - 1, Min(Y1, H), $FFE8B878);   // Bezugston = gespielte Taste
+    if Black then
+      FStatic.FillRectS(0, Max(Y0, 0), KEYS_W - 13, Min(Y1, H), COL_KEY_B)
+    else if not BLACK_KEY[(Note + 11) mod 12] then
+      FStatic.HorzLineS(0, Min(Y1, H - 1), KEYS_W - 2, COL_KEY_GAP);   // Fuge E|F und H|C
+    if (Hs >= 9) or (Note = 0) then
+    begin
+      S := NoteName(Note);
+      if Note = 0 then
+        S := S + IntToStr((60 + FRoot + K) div 12 - 1);   // Bezugston C = C4 (MIDI 60)
+      if Black then FStatic.Font.Color := $00D0D0D0 else FStatic.Font.Color := $00202020;
+      if Black then
+        FStatic.Textout(2, Y - 6, S)
+      else
+        FStatic.Textout(KEYS_W - 2 - FStatic.TextWidth(S) - 1, Y - 6, S);
+    end;
+  end;
+  FStatic.VertLineS(KEYS_W - 1, 0, H - 1, COL_OCT);
+end;
+
 procedure TFreeLfoView.Rebuild;
 begin
   FDirty := True;
@@ -197,14 +277,16 @@ end;
 function TFreeLfoView.CurrentMarkKey: Integer;
 var
   Ph: Double;
+  L: Integer;
 begin
   Result := -1;
   if not ShapeIsFree then
     Exit;
   Ph := FEngine.LfoPhase[FLfo];
   Ph := Ph - Floor(Ph);
+  L := KeysW;
   if Data.Mode = 2 then
-    Result := Round(Ph * Max(1, Width - 1))
+    Result := L + Round(Ph * Max(1, Width - L - 1))
   else
     Result := Min(Trunc(Ph * Data.Steps), Data.Steps - 1);
 end;
@@ -229,6 +311,7 @@ var
   S: string;
   YPrev: Integer;
   YF, YPrevF: Single;
+  L, WW: Integer;
 begin
   if FStatic = nil then
   begin
@@ -240,9 +323,11 @@ begin
   FStatic.BeginUpdate;
   try
     FStatic.Clear(COL_BG);
-    FStatic.Font.Name := 'TahomaTr(';
+    FStatic.Font.Name := 'Tahoma';
     FStatic.Font.Size := 7;
     Mid := H div 2;
+    L := KeysW;
+    WW := Max(1, W - L);
 
     // waagrechtes Raster
     if F.Mode = 0 then
@@ -250,10 +335,10 @@ begin
       for K := -FRange to FRange do
       begin
         Y := ValueToY(K / FREE_SEMIS, H);
-        if K mod 12 = 0 then
-          FStatic.HorzLineS(0, Y, W - 1, COL_OCT)
+        if ((FRoot + K) mod 12 + 12) mod 12 = 0 then
+          FStatic.HorzLineS(L, Y, W - 1, COL_OCT)          // jedes C kraeftiger (Oktaven)
         else if (H - 2 * TOP_PAD) / (2 * FRange) >= 4 then
-          FStatic.HorzLineS(0, Y, W - 1, COL_LINE);
+          FStatic.HorzLineS(L, Y, W - 1, COL_LINE);
       end;
     end
     else
@@ -261,7 +346,9 @@ begin
       FStatic.HorzLineS(0, ValueToY(0.5, H), W - 1, COL_LINE);
       FStatic.HorzLineS(0, ValueToY(-0.5, H), W - 1, COL_LINE);
     end;
-    FStatic.HorzLineS(0, Mid, W - 1, COL_ZERO);
+    FStatic.HorzLineS(L, Mid, W - 1, COL_ZERO);
+    if L > 0 then
+      DrawKeys(W, H);
 
     if F.Mode = 2 then
     begin
@@ -290,8 +377,8 @@ begin
       FStatic.Font.Color := $00E0E0E0;
       for I := 0 to N - 1 do
       begin
-        X0 := I * W div N;
-        X1 := (I + 1) * W div N - 1;
+        X0 := L + I * WW div N;
+        X1 := L + (I + 1) * WW div N - 1;
         // Trennlinien, jede 4. Stufe kraeftiger (Takt-Orientierung)
         if I > 0 then
           if I mod 4 = 0 then
@@ -316,7 +403,9 @@ begin
         if (F.Mode = 0) and (X1 - X0 >= 18) then
         begin
           K := Round(V * FREE_SEMIS);
-          if K > 0 then S := '+' + IntToStr(K) else S := IntToStr(K);
+          S := NoteName(((FRoot + K) mod 12 + 12) mod 12);
+          if X1 - X0 >= 34 then
+            if K > 0 then S := S + ' +' + IntToStr(K) else S := S + ' ' + IntToStr(K);
           if V >= 0 then
             FStatic.Textout(X0 + 4, Min(Y + 3, H - 14), S)
           else
@@ -325,17 +414,29 @@ begin
       end;
     end;
 
+    if (F.Mode <> 2) and (F.Smooth > 0.001) then
+    begin
+      // echter Verlauf mit Glaettung (so hoert man es)
+      YPrevF := (H div 2) - EnsureRange(FreeLfoValue(F^, 0) / VisMax, -1, 1) * ((H div 2) - TOP_PAD);
+      for Px := 0 to WW - 1 do
+      begin
+        YF := (H div 2) - EnsureRange(FreeLfoValue(F^, Px / WW) / VisMax, -1, 1) * ((H div 2) - TOP_PAD);
+        AASpan(FStatic, L + Px, YPrevF, YF, COL_SMOOTH);
+        YPrevF := YF;
+      end;
+    end;
+
     FStatic.Font.Color := $00909090;
     if F.Mode = 0 then
     begin
-      FStatic.Textout(W - 30, ValueToY(Min(12, FRange) / FREE_SEMIS, H) + 1, Format(Tr(')+%d'), [Min(12, FRange)]));
-      FStatic.Textout(W - 30, ValueToY(-Min(12, FRange) / FREE_SEMIS, H) - 12, Format(Tr('-%d'), [Min(12, FRange)]));
+      FStatic.Textout(W - 30, ValueToY(Min(12, FRange) / FREE_SEMIS, H) + 1, '+' + IntToStr(Min(12, FRange)));
+      FStatic.Textout(W - 30, ValueToY(-Min(12, FRange) / FREE_SEMIS, H) - 12, '-' + IntToStr(Min(12, FRange)));
     end;
     FWasFree := ShapeIsFree;
     if not FWasFree then
     begin
       FStatic.Font.Color := $0060B0FF;
-      FStatic.Textout(6, 4, Tr('inaktiv - Form "Frei" wählen (Knopf rechts oder Modulations-Reiter)'));
+      FStatic.Textout(L + 6, 4, Tr('inaktiv - Form "Frei" wählen (Knopf rechts oder Modulations-Reiter)'));
     end;
   finally
     FStatic.EndUpdate;
@@ -380,8 +481,8 @@ begin
         begin
           // aktuelle Stufe leuchtet auf
           N := EnsureRange(Data.Steps, 1, FREE_MAX_STEPS);
-          X0 := K * W div N;
-          X1 := (K + 1) * W div N;
+          X0 := KeysW + K * (W - KeysW) div N;
+          X1 := KeysW + (K + 1) * (W - KeysW) div N;
           B.FillRectTS(X0 + 1, 0, X1, H, $30FFD070);
           B.FillRectTS(X0 + 1, H - 4, X1, H, $C0FFD070);
         end;
@@ -402,7 +503,8 @@ var
   W, H: Integer;
 begin
   F := Data;
-  W := Max(1, Width);
+  X := X - KeysW;
+  W := Max(1, Width - KeysW);
   H := Height;
   if FErase then
     V := 0
@@ -452,7 +554,7 @@ end;
 procedure TFreeLfoView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if Button in [mbLeft, mbRight] then
+  if (Button in [mbLeft, mbRight]) and (X >= KeysW) then
   begin
     FDrawing := True;
     FErase := Button = mbRight;
@@ -466,7 +568,7 @@ procedure TFreeLfoView.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
   if FDrawing then
-    EditAt(EnsureRange(X, 0, Width - 1), EnsureRange(Y, 0, Height - 1), False);
+    EditAt(EnsureRange(X, KeysW, Width - 1), EnsureRange(Y, 0, Height - 1), False);
 end;
 
 procedure TFreeLfoView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -489,7 +591,7 @@ begin
     Exit;
   P := ScreenToClient(MousePos);
   N := EnsureRange(F.Steps, 1, FREE_MAX_STEPS);
-  Idx := EnsureRange(P.X * N div Max(1, Width), 0, N - 1);
+  Idx := EnsureRange((P.X - KeysW) * N div Max(1, Width - KeysW), 0, N - 1);
   if WheelDelta > 0 then Dir := 1 else Dir := -1;
   if F.Mode = 0 then
     F.Step[Idx] := FreeQuantize(FreeQuantize(F.Step[Idx]) + Dir / FREE_SEMIS)

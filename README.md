@@ -30,13 +30,24 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 - **Mitgeliefert**: über 160 Presets, darunter ein **Lernpfad (L01–L37)**, der die Matrix Schritt für Schritt erklärt. Dazu Beispieltöne und eine ausführliche Hilfe.
 - **GranularHost**: ein kleiner Test-Host für VST2 und VST3 mit Klaviatur, Autoplay, Audio-Ein- und -Ausgang, Sidechain und einem Prüfstand (`-bench`).
 
-![Modulationsmatrix und freie Makros](docs/screenshots/modulation.png)
+## Alle Reiter
 
-![Mischpult](docs/screenshots/mischpult.png)
+Die Reiter folgen dem Weg des Signals. Klick auf ein Bild zeigt es groß.
+
+| | |
+|---|---|
+| **Schnell: Makros, Variieren, A/B**<br>[![Schnell: Makros, Variieren, A/B](docs/screenshots/schnell.png)](docs/screenshots/schnell.png) | **Grain: Sample, Grains, Hüllkurve**<br>[![Grain: Sample, Grains, Hüllkurve](docs/screenshots/grain.png)](docs/screenshots/grain.png) |
+| **Samples: Zonen und Aufnahme**<br>[![Samples: Zonen und Aufnahme](docs/screenshots/samples.png)](docs/screenshots/samples.png) | **Osz 1-3: FM-Oszillatoren**<br>[![Osz 1-3: FM-Oszillatoren](docs/screenshots/osz.png)](docs/screenshots/osz.png) |
+| **Filter 1 + 2 (je Note)**<br>[![Filter 1 + 2 (je Note)](docs/screenshots/filter.png)](docs/screenshots/filter.png) | **Modulationsmatrix und freie Makros**<br>[![Modulationsmatrix und freie Makros](docs/screenshots/modulation.png)](docs/screenshots/modulation.png) |
+| **LFO 1-8 und Trigger**<br>[![LFO 1-8 und Trigger](docs/screenshots/lfo.png)](docs/screenshots/lfo.png) | **Freier LFO mit Klaviatur und Glättung**<br>[![Freier LFO mit Klaviatur und Glättung](docs/screenshots/lfo_frei.png)](docs/screenshots/lfo_frei.png) |
+| **Timing / Events**<br>[![Timing / Events](docs/screenshots/timing.png)](docs/screenshots/timing.png) | **Effekte: Chorus, Phaser, Crusher, Trance-Gate**<br>[![Effekte: Chorus, Phaser, Crusher, Trance-Gate](docs/screenshots/effekte.png)](docs/screenshots/effekte.png) |
+| **Echo / Hall**<br>[![Echo / Hall](docs/screenshots/echo_hall.png)](docs/screenshots/echo_hall.png) | **Summe: EQ, Sättigung, Stereo, Limiter**<br>[![Summe: EQ, Sättigung, Stereo, Limiter](docs/screenshots/summe.png)](docs/screenshots/summe.png) |
+| **Extras: Arpeggiator, Harmonie, Morph**<br>[![Extras: Arpeggiator, Harmonie, Morph](docs/screenshots/extras.png)](docs/screenshots/extras.png) | **Mischpult**<br>[![Mischpult](docs/screenshots/mischpult.png)](docs/screenshots/mischpult.png) |
+| **Leistung: Rechenlast, Oversampling**<br>[![Leistung: Rechenlast, Oversampling](docs/screenshots/leistung.png)](docs/screenshots/leistung.png) |  |
 
 *English interface / englische Oberfläche:*
 
-![English user interface](docs/screenshots/modulation_en.png)
+![English user interface](docs/screenshots/summe_en.png)
 
 ## Installation
 
