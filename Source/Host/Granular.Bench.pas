@@ -16,6 +16,7 @@ unit Granular.Bench;
 interface
 
 function RunBenchmark: string;
+function RenderAB(const ProjectDir: string): string;
 
 implementation
 
@@ -2492,7 +2493,8 @@ end;
 { Oversampling (HQ): Halbband-Kern SIMD gegen Pascal, Spiegelfrequenzen mit/ohne Oversampling
   (FM-Oszillator und Saettigung bei hohem Ton), Rechenzeit. Spiegelanteil = Energie neben den
   Obertoenen (dort liegt bei einem periodischen Klang nichts ausser Spiegelungen) relativ zum Grundton. }
-function OsAliasDb(OsOn: Boolean; Wave, Note: Integer; Drive: Double; Ratio: Double = 1): Double;
+function OsAliasDb(OsOn: Boolean; Wave, Note: Integer; Drive: Double; Ratio: Double = 1; DrawSaw: Boolean = False;
+  Classic: Boolean = False): Double;
 const
   WIN = 8192;
 var
@@ -2540,6 +2542,14 @@ begin
     E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
     E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(OsOn)));
     E.SetParamById(gpOscLevel, PlainToParam(gpOscLevel, 100));   // laut genug, dass die Saettigung hart begrenzt
+    E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(Classic)));
+    if DrawSaw then
+    begin
+      for B := 0 to OSC_DRAW_N - 1 do
+        E.OscDraw[0].Pt[B] := 1 - 2 * B / OSC_DRAW_N;
+      E.OscDrawChanged(0);
+      E.SetParamById(gpOscDraw, StepToParam(Ord(gpOscDraw), 1));
+    end;
     E.NoteOn(Note, 1);
     SetLength(X, WIN);
     Got := 0;
@@ -2571,6 +2581,325 @@ begin
     F := F + 2.7;                       // ~ halbe Bin-Breite (5,4 Hz): kein Spiegelton faellt durch
   end;
   Result := 10 * Log10(Max(PA, 1E-30) / Max(P0, 1E-30));
+end;
+
+{ Gezeichnete Oszillator-Welle: Kern SIMD gegen Pascal, Spiegelanteil einer gezeichneten Saege in hoher
+  Lage (bandbegrenzte Wavetable: muss sauberer sein als die eingebaute Saege), Speichern/Laden }
+{ Oversampling nur wo noetig: Sinus und gezeichnete Welle ohne Sync rechnen auch bei HQ ohne Oversampling
+  (dort entstehen keine Spiegelfrequenzen) - Ausgabe gleich wie mit Oversampling aus, Rechenzeit gleich }
+function CheckOsSkip: string;
+var
+  On: Boolean;
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  Out: array[Boolean] of array of Single;
+  Ms: array[Boolean] of Double;
+  K, N, I: Integer;
+  T0, T1, Fq: Int64;
+  D: Double;
+begin
+  QueryPerformanceFrequency(Fq);
+  for On := False to True do
+  begin
+    SetLength(Out[On], 431 * 512);
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+      E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
+      E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(On)));
+      E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+      E.SetParamById(gpOsc2On, StepToParam(Ord(gpOsc2On), 1));
+      E.SetParamById(gpOsc3On, StepToParam(Ord(gpOsc3On), 1));
+      E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), 0));
+      E.SetParamById(gpOsc2Draw, StepToParam(Ord(gpOsc2Draw), 1));
+      E.SetParamById(gpOsc3Wave, StepToParam(Ord(gpOsc3Wave), 0));
+      E.SetParamById(gpOscUnison, PlainToParam(gpOscUnison, 3));
+      E.SetParamById(gpOsc2Unison, PlainToParam(gpOsc2Unison, 3));
+      E.SetParamById(gpOsc3Unison, PlainToParam(gpOsc3Unison, 3));
+      for K := 0 to 7 do
+        E.NoteOn(48 + K * 4, 0.7);
+      QueryPerformanceCounter(T0);
+      for N := 0 to 430 do
+      begin
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        Move(L[0], Out[On][N * 512], 512 * SizeOf(Single));
+      end;
+      QueryPerformanceCounter(T1);
+      Ms[On] := (T1 - T0) * 1000 / Fq;
+    finally
+      E.Free;
+    end;
+  end;
+  D := 0;
+  for I := 0 to High(Out[False]) do
+    D := Max(D, Abs(Out[True][I] - Out[False][I]));
+  Result := Format('Oversampling nur wo noetig (Sinus + gezeichnet, 8 Stimmen, Unison 3): Abweichung %.1e, ' +
+    'Rechenzeit %.0f ms -> %.0f ms', [D, Ms[False], Ms[True]]);
+  if (D < 1E-6) and (Ms[True] < Ms[False] * 1.25 + 5) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
+{ Wavetable-Modell der eingebauten Wellen: Spiegelanteil (Saege/Rechteck E7) klassisch mit Oversampling
+  gegen Wavetable ohne Oversampling; Bass-Bandbreite (Saege A1: Oberton 270 = 14,9 kHz muss da sein,
+  Soll -20 log 270 = -48,6 dB zum Grundton); Gleiten ueber alle Stufen ohne Spruenge in den Hoehen;
+  Rechenzeit HQ klassisch gegen Wavetable. }
+function OscHarmDb(Classic: Boolean; Wave, Note, K: Integer): Double;
+const
+  WIN = 8192;
+var
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  X: array of Double;
+  B, I, Got: Integer;
+  W, F0, Re, Im, C, S, Cd, Sd, T: Double;
+
+  function Pow(Fr: Double): Double;
+  var
+    N: Integer;
+  begin
+    Re := 0; Im := 0; C := 1; S := 0;
+    Cd := Cos(2 * Pi * Fr / SR); Sd := Sin(2 * Pi * Fr / SR);
+    for N := 0 to WIN - 1 do
+    begin
+      Re := Re + X[N] * C;
+      Im := Im + X[N] * S;
+      T := C * Cd - S * Sd;
+      S := S * Cd + C * Sd;
+      C := T;
+    end;
+    Result := Re * Re + Im * Im;
+  end;
+
+begin
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+    E.SetParamById(gpFltOn, StepToParam(Ord(gpFltOn), 0));
+    E.SetParamById(gpEchoOn, StepToParam(Ord(gpEchoOn), 0));
+    E.SetParamById(gpRevOn, StepToParam(Ord(gpRevOn), 0));
+    E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+    E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+    E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), Wave));
+    E.SetParamById(gpOscSustain, PlainToParam(gpOscSustain, 100));
+    E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
+    E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(Classic)));
+    E.NoteOn(Note, 0.8);
+    SetLength(X, WIN);
+    Got := 0;
+    for B := 0 to 40 do
+    begin
+      E.Process(nil, nil, @L[0], @R[0], 512);
+      if B >= 8 then
+        for I := 0 to 511 do
+          if Got < WIN then
+          begin
+            W := Got / (WIN - 1) * 2 * Pi;
+            X[Got] := L[I] * (0.35875 - 0.48829 * Cos(W) + 0.14128 * Cos(2 * W) - 0.01168 * Cos(3 * W));
+            Inc(Got);
+          end;
+    end;
+  finally
+    E.Free;
+  end;
+  F0 := 440 * Power(2, (Note - 69) / 12);
+  Result := 10 * Log10(Max(Pow(F0 * K), 1E-30) / Max(Pow(F0), 1E-30));
+end;
+
+{ Glide ueber 4 Oktaven: Anteil der Hoehen (2. Differenz) an der Gesamtenergie je Block darf zwischen
+  Nachbarbloecken nicht springen (Stufenwechsel der Wavetable) }
+var
+  GGlideDbg: string;
+
+function GlideJumpDb(Classic: Boolean): Double;
+var
+  E: TGranularEngine;
+  L, R: array[0..255] of Single;
+  B, I: Integer;
+  En, Tot, Prev, Jmp, D: Double;
+begin
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+    E.SetParamById(gpFltOn, StepToParam(Ord(gpFltOn), 0));
+    E.SetParamById(gpEchoOn, StepToParam(Ord(gpEchoOn), 0));
+    E.SetParamById(gpRevOn, StepToParam(Ord(gpRevOn), 0));
+    E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+    E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), 2));
+    E.SetParamById(gpOscSustain, PlainToParam(gpOscSustain, 100));
+    E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
+    E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(Classic)));
+    E.SetParamById(gpBendRange, PlainToParam(gpBendRange, 24));
+    E.PitchBend(-1);
+    E.NoteOn(64, 0.8);
+    for B := 0 to 20 do E.Process(nil, nil, @L[0], @R[0], 256);
+    Prev := -1; Jmp := 0;
+    En := 0; Tot := 0;
+    for B := 0 to 1599 do
+    begin
+      E.PitchBend(-1 + 2 * B / 1600);          // Pitch-Bend +-24 Halbtoene: 4 Oktaven stufenlos
+      E.Process(nil, nil, @L[0], @R[0], 256);
+      for I := 2 to 255 do
+      begin
+        D := L[I] - 2 * L[I - 1] + L[I - 2];
+        En := En + D * D;
+        Tot := Tot + L[I] * L[I];
+      end;
+      if B mod 8 = 7 then                      // Fenster 2048 Samples: immer mehrere Perioden
+      begin
+        if Tot > 1E-9 then En := En / Tot else En := 0;
+        if (B >= 40) and (Prev > 1E-12) and (En > 1E-12) and (Abs(10 * Log10(En / Prev)) > Jmp) then
+        begin
+          Jmp := Abs(10 * Log10(En / Prev));
+          GGlideDbg := Format('Fenster %d: %.3g -> %.3g', [B div 8, Prev, En]);
+        end;
+        Prev := En;
+        En := 0;
+        Tot := 0;
+      end;
+    end;
+  finally
+    E.Free;
+  end;
+  Result := Jmp;
+end;
+
+function CheckWavetable: string;
+var
+  SawC, SawW, SqC, SqW, BassC, BassW, JmpC, JmpW: Double;
+  On: Boolean;
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  K, N: Integer;
+  T0, T1, Fq: Int64;
+  Ms: array[Boolean] of Double;
+begin
+  SawC := OsAliasDb(True, 2, 100, 0, 1, False, True);
+  SawW := OsAliasDb(True, 2, 100, 0, 1, False, False);
+  SqC := OsAliasDb(True, 3, 100, 0, 1, False, True);
+  SqW := OsAliasDb(True, 3, 100, 0, 1, False, False);
+  BassC := OscHarmDb(True, 2, 33, 270);
+  BassW := OscHarmDb(False, 2, 33, 270);
+  JmpC := GlideJumpDb(True);
+  JmpW := GlideJumpDb(False);
+  QueryPerformanceFrequency(Fq);
+  for On := False to True do        // On = klassisch
+  begin
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+      E.SetParamById(gpQuality, StepToParam(Ord(gpQuality), 1));
+      E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(On)));
+      E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+      E.SetParamById(gpOsc2On, StepToParam(Ord(gpOsc2On), 1));
+      E.SetParamById(gpOsc3On, StepToParam(Ord(gpOsc3On), 1));
+      E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), 2));
+      E.SetParamById(gpOsc2Wave, StepToParam(Ord(gpOsc2Wave), 3));
+      E.SetParamById(gpOsc3Wave, StepToParam(Ord(gpOsc3Wave), 1));
+      E.SetParamById(gpOscUnison, PlainToParam(gpOscUnison, 3));
+      E.SetParamById(gpOsc2Unison, PlainToParam(gpOsc2Unison, 3));
+      E.SetParamById(gpOsc3Unison, PlainToParam(gpOsc3Unison, 3));
+      for K := 0 to 7 do
+        E.NoteOn(48 + K * 4, 0.7);
+      QueryPerformanceCounter(T0);
+      for N := 0 to 430 do
+        E.Process(nil, nil, @L[0], @R[0], 512);
+      QueryPerformanceCounter(T1);
+      Ms[On] := (T1 - T0) * 1000 / Fq;
+    finally
+      E.Free;
+    end;
+  end;
+  Result := Format('Wavetable-Wellen (HQ): Spiegelanteil Saege E7 klassisch %.1f -> Wavetable %.1f dB, Rechteck %.1f -> %.1f dB | ' +
+    'Bass Saege A1, Oberton 270 (14,9 kHz): klassisch %.1f, Wavetable %.1f dB (Soll -48,6) | Pitch-Bend 4 Oktaven, groesste ' +
+    'Aenderung des Hoehenanteils je Fenster: klassisch %.2f, Wavetable %.2f dB | Rechenzeit 8 Stimmen, Saege/Rechteck/Dreieck x Unison 3: ' +
+    'klassisch %.0f ms, Wavetable %.0f ms',
+    [SawC, SawW, SqC, SqW, BassC, BassW, JmpC, JmpW, Ms[True], Ms[False]]);
+  if (SawW < SawC - 20) and (SqW < SqC - 20) and (Abs(BassW + 48.6) < 1.5) and (JmpW <= JmpC + 0.5) and
+    (Ms[False] < Ms[True] * 1.15) then   // Klang zuerst: Rechenzeit hoechstens wenig ueber dem alten Weg
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
+function CheckOscDraw: string;
+var
+  A, B: TWtArgs;
+  Tab: array[0..2048 + 1] of Single;
+  Tab2: array[0..1024 + 1] of Single;
+  Env: array[0..255] of Single;
+  OA, OB: array[0..511] of Single;
+  I: Integer;
+  D, AlOff, AlOn, SawOn: Double;
+  E, E2: TGranularEngine;
+  Ch: TBytes;
+  Path: string;
+  Ok: Boolean;
+begin
+  for I := 0 to 2048 + 1 do
+    Tab[I] := Sin(2 * Pi * I / 2048) + 0.3 * Sin(6 * Pi * I / 2048);
+  for I := 0 to 1024 + 1 do
+    Tab2[I] := Sin(2 * Pi * I / 1024);
+  for I := 0 to 255 do
+    Env[I] := 0.4 + 0.3 * Sin(I * 0.07);
+  FillChar(A, SizeOf(A), 0);
+  A.Env := @Env[0]; A.TabA := @Tab[0]; A.TabB := @Tab2[0]; A.Count := 256; A.Ph := 0.37; A.DtP := 0.0213;
+  A.SyncR := 1.7; A.GL := 0.8; A.GR := 1.1; A.CSizeA := 2048; A.CSizeB := 1024; A.Mix := 0.3; A.One := 1;
+  B := A;
+  FillChar(OA, SizeOf(OA), 0);
+  FillChar(OB, SizeOf(OB), 0);
+  A.Out := @OA[0];
+  B.Out := @OB[0];
+  RenderWt(@A);
+  WtBlockPas(@B);
+  D := Abs(A.Ph - B.Ph);
+  for I := 0 to High(OA) do
+    D := Max(D, Abs(OA[I] - OB[I]));
+  // schneller Pfad (kein Sync, gleich lange Tabellen) gegen Pascal und gegen den allgemeinen Kern
+  A.SyncR := 1; A.CSizeB := 2048; A.TabB := @Tab[0]; A.Ph := 0.37; B := A;
+  FillChar(OA, SizeOf(OA), 0);
+  FillChar(OB, SizeOf(OB), 0);
+  A.Out := @OA[0];
+  B.Out := @OB[0];
+  RenderWtFast(@A);
+  WtFastPas(@B);
+  for I := 0 to High(OA) do
+    D := Max(D, Abs(OA[I] - OB[I]));
+  AlOff := OsAliasDb(False, 0, 100, 0, 1, True);
+  AlOn := OsAliasDb(True, 0, 100, 0, 1, True);
+  SawOn := OsAliasDb(True, 2, 100, 0, 1, False, True);
+  E := TGranularEngine.Create;
+  E2 := TGranularEngine.Create;
+  try
+    for I := 0 to OSC_DRAW_N - 1 do
+      E.OscDraw[2].Pt[I] := Sin(4 * Pi * I / OSC_DRAW_N) * 0.7;
+    E.OscDraw[2].Smooth := 0.42;
+    E.OscDrawChanged(2);
+    E.SetParamById(gpOsc3Draw, 1);
+    Ch := SaveChunk(E, '');
+    LoadChunk(E2, Ch, Path);
+    Ok := CompareMem(E.OscDraw[2], E2.OscDraw[2], SizeOf(TOscDraw)) and
+      (E2.GetParam(Ord(gpOsc3Draw)) >= 0.5) and CompareMem(E.OscWaveTable(2), E2.OscWaveTable(2), WT_LEN[0] * 4);
+  finally
+    E.Free;
+    E2.Free;
+  end;
+  Result := Format('Gezeichnete Welle: Kern SIMD gegen Pascal max. %.1e | Spiegelanteil gezeichnete Saege E7 ' +
+    '%.1f dB (mit Oversampling %.1f dB; klassische Saege %.1f dB) | Speichern/Laden %s',
+    [D, AlOff, AlOn, SawOn, IfThen(Ok, 'ok', 'FALSCH')]);
+  if (D < 1E-4) and (AlOn < SawOn - 10) and (AlOff < -50) and Ok then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
 end;
 
 function CheckOversample: string;
@@ -2667,10 +2996,103 @@ begin
     Result := Result + ' -> OK';
 end;
 
+{ Hoerprobe Wavetable gegen klassisch (GranularHost.exe -abrender <Projektordner>): ausgewaehlte Presets mit
+  Saege/Rechteck spielen eine kurze Phrase (tief bis hoch, dann Akkord), je einmal mit jedem Oszillator-Modell.
+  WAV-Dateien nach <Projektordner>\Hoerprobe Wavetable\ (Name_A_klassisch.wav, Name_B_wavetable.wav). }
+function RenderAB(const ProjectDir: string): string;
+const
+  PRESETS: array[0..5] of string = (
+    '128 GRAINS + FM - Analog - Drei Saegen als breite Flaeche',
+    '129 FM - Analog-Bass - Saege, Rechteck und Sub (Glide)',
+    '132 FM - Pluck-Arp - Saege, Rechteck und Sub (Echo)',
+    '134 FM - Sync-Lead - schneidend und gleitend',
+    '147 FM - Lead mit Biss (Glide)',
+    '149 FM - Kreisch-Lead (Modrad = schaerfer)');
+  MELODY: array[0..9] of Integer = (36, 43, 48, 55, 60, 67, 72, 79, 84, 91);
+var
+  Dir, OutDir, Path, Res, Name: string;
+  P, M, K, B, F, NBlk: Integer;
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  Smp: TSampleData;
+  Lines: TStringList;
+begin
+  Dir := IncludeTrailingPathDelimiter(ProjectDir);
+  OutDir := Dir + 'Hoerprobe Wavetable' + PathDelim;
+  ForceDirectories(OutDir);
+  Lines := TStringList.Create;
+  try
+    for P := 0 to High(PRESETS) do
+      for M := 0 to 1 do                   // 0 = klassisch, 1 = Wavetable
+      begin
+        E := TGranularEngine.Create;
+        Smp := TSampleData.Create;
+        try
+          E.SetSampleRate(SR);
+          if not LoadChunkFromFile(E, Dir + 'Presets' + PathDelim + PRESETS[P] + '.gspreset', Path) then
+          begin
+            Lines.Add('fehlt: ' + PRESETS[P]);
+            Continue;
+          end;
+          Res := ResolveSamplePath(Path, Dir);
+          if FileExists(Res) then
+            E.LoadSample(LoadAudioFile(Res))
+          else
+            E.LoadSample(CreateDemoSample(SR));
+          LoadMorphSample(E, Dir);
+          LoadZoneSamples(E, Dir);
+          E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), 1 - M));
+          // Phrase: jede Note 0,4 s, dann ein Akkord 2,5 s, 1,5 s Ausklang
+          NBlk := Round((Length(MELODY) * 0.4 + 4.0) * SR / 512);
+          Smp.Frames := NBlk * 512;
+          Smp.SampleRate := SR;
+          Smp.Channels := 2;
+          SetLength(Smp.L, Smp.Frames);
+          SetLength(Smp.R, Smp.Frames);
+          for B := 0 to NBlk - 1 do
+          begin
+            F := B * 512;
+            K := Trunc(F / (0.4 * SR));
+            if (K < Length(MELODY)) and (F mod Round(0.4 * SR) < 512) then
+            begin
+              if K > 0 then E.NoteOff(MELODY[K - 1]);
+              E.NoteOn(MELODY[K], 0.8);
+            end
+            else if (K = Length(MELODY)) and (F mod Round(0.4 * SR) < 512) then
+            begin
+              E.NoteOff(MELODY[K - 1]);
+              E.NoteOn(48, 0.8); E.NoteOn(55, 0.8); E.NoteOn(60, 0.8); E.NoteOn(64, 0.8);
+            end;
+            if F = Round((Length(MELODY) * 0.4 + 2.5) * SR) div 512 * 512 then
+            begin
+              E.NoteOff(48); E.NoteOff(55); E.NoteOff(60); E.NoteOff(64);
+            end;
+            E.Process(nil, nil, @L[0], @R[0], 512);
+            Move(L[0], Smp.L[F], 512 * SizeOf(Single));
+            Move(R[0], Smp.R[F], 512 * SizeOf(Single));
+          end;
+          Name := Copy(PRESETS[P], 1, Pos(' ', PRESETS[P]) - 1);
+          if M = 0 then
+            Name := OutDir + PRESETS[P] + ' - A klassisch.wav'
+          else
+            Name := OutDir + PRESETS[P] + ' - B wavetable.wav';
+          SaveWaveFile(Smp, Name);
+          Lines.Add(ExtractFileName(Name));
+        finally
+          Smp.Free;
+          E.Free;
+        end;
+      end;
+    Result := Format('%d Hoerproben in %s', [Lines.Count, OutDir]) + sLineBreak + Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
+
 { Klang-Regression: jedes Preset spielt einen Akkord (1,5 s halten, 1 s Ausklang); Summe und Spitze des
   Ausgangs je Preset werden mit Demos\regress_ref.txt verglichen. Fehlt die Datei, wird sie angelegt
   (Referenz VOR einem Umbau erzeugen, danach muss jedes Preset gleich klingen). }
-function CheckRegression(OsOn: Boolean = False): string;
+function CheckRegression(OsOn: Boolean = False; Classic: Boolean = True): string;
 const
   CHORD: array[0..3] of Integer = (48, 55, 60, 64);
 var
@@ -2687,7 +3109,8 @@ begin
   FS := TFormatSettings.Invariant;
   Dir := IncludeTrailingPathDelimiter(ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..'));
   // ohne Oversampling: Referenz von vor dem Oversampling (Nov. 2026); mit: eigene Referenz
-  RefFile := Dir + 'Demos' + PathDelim + IfThen(OsOn, 'regress_ref_os.txt', 'regress_ref.txt');
+  // klassisches Modell: Referenzen von vor den Wavetables; Wavetable-Modell: eigene Referenz
+  RefFile := Dir + 'Demos' + PathDelim + IfThen(not Classic, 'regress_ref_wt.txt', IfThen(OsOn, 'regress_ref_os.txt', 'regress_ref.txt'));
   Names := TStringList.Create;
   Ref := TStringList.Create;
   Outp := TStringList.Create;
@@ -2719,6 +3142,7 @@ begin
         LoadMorphSample(E, Dir);
         LoadZoneSamples(E, Dir);
         E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(OsOn)));
+        E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(Classic)));
         for K := 0 to High(CHORD) do
           E.NoteOn(CHORD[K], 0.8);
         Sum := 0; Peak := 0;
@@ -2765,12 +3189,12 @@ begin
     begin
       ForceDirectories(ExtractFilePath(RefFile));
       Outp.SaveToFile(RefFile, TEncoding.UTF8);
-      Result := IfThen(OsOn, '[Oversampling] ', '') + Format('Klang-Regression: Referenz fuer %d Presets angelegt (%s)', [Cnt, RefFile]);
+      Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: Referenz fuer %d Presets angelegt (%s)', [Cnt, RefFile]);
     end
     else if NBad = 0 then
-      Result := IfThen(OsOn, '[Oversampling] ', '') + Format('Klang-Regression: %d Presets wie die Referenz -> OK', [Cnt])
+      Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: %d Presets wie die Referenz -> OK', [Cnt])
     else
-      Result := IfThen(OsOn, '[Oversampling] ', '') + Format('Klang-Regression: FEHLER %d von %d Presets weichen ab:%s', [NBad, Cnt, Bad]);
+      Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: FEHLER %d von %d Presets weichen ab:%s', [NBad, Cnt, Bad]);
   finally
     Names.Free;
     Ref.Free;
@@ -3037,7 +3461,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckOversample + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;
 

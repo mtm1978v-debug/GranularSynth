@@ -28,7 +28,7 @@ uses
   Granular.Lang,
   Winapi.Windows, System.Classes, System.SysUtils, System.Math, System.Types, Vcl.Controls,
   GR32, GR32_Image,
-  Granular.Params, Granular.Engine, Granular.GfxAsm;
+  Granular.Params, Granular.Engine, Granular.GfxAsm, Granular.DSP;
 
 type
   TFreeLfoView = class(TCustomPaintBox32)
@@ -74,6 +74,27 @@ type
     procedure Tick;
     property Range: Integer read FRange write SetRange;
     property Root: Integer read FRoot write SetRoot;
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+  end;
+
+  { Zeichenflaeche fuer eine Oszillator-Welle (eine Periode): blau die Zeichnung, gelb der Klang, wie ihn
+    der Oszillator wirklich spielt (bandbegrenzt, mit Glaettung). Ziehen zeichnet, Rechtsklick setzt 0. }
+  TOscWaveView = class(TCustomPaintBox32)
+  private
+    FEngine: TGranularEngine;
+    FOsc: Integer;
+    FDrawing, FErase: Boolean;
+    FLastIdx: Integer;
+    FLastVal: Single;
+    FOnChange: TNotifyEvent;
+    procedure EditAt(X, Y: Integer; First: Boolean);
+  protected
+    procedure DoPaintBuffer; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+  public
+    constructor Create(AOwner: TComponent; AEngine: TGranularEngine; AOsc: Integer); reintroduce;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
@@ -598,6 +619,135 @@ begin
   else
     F.Step[Idx] := EnsureRange(F.Step[Idx] + Dir * 0.02, -1, 1);
   Changed;
+end;
+
+{ TOscWaveView }
+
+constructor TOscWaveView.Create(AOwner: TComponent; AEngine: TGranularEngine; AOsc: Integer);
+begin
+  inherited Create(AOwner);
+  BufferOversize := 0;
+  FEngine := AEngine;
+  FOsc := AOsc;
+  FLastIdx := -1;
+end;
+
+procedure TOscWaveView.DoPaintBuffer;
+type
+  TSA = array[0..$FFFFFF] of Single;
+var
+  B: TBitmap32;
+  W, H, Mid, Amp, Px, Y, I: Integer;
+  D: POscDraw;
+  T: ^TSA;
+  V, YF, YPrevF: Single;
+begin
+  B := Buffer;
+  B.BeginUpdate;
+  try
+    W := B.Width;
+    H := B.Height;
+    B.Clear(COL_BG);
+    if (W < 20) or (H < 20) then
+      Exit;
+    Mid := H div 2;
+    Amp := Mid - TOP_PAD;
+    B.HorzLineS(0, Mid - Amp div 2, W - 1, COL_LINE);
+    B.HorzLineS(0, Mid + Amp div 2, W - 1, COL_LINE);
+    for I := 1 to 3 do
+      B.VertLineS(I * W div 4, 0, H - 1, COL_SEP);
+    B.HorzLineS(0, Mid, W - 1, COL_ZERO);
+    D := FEngine.OscDraw[FOsc];
+    // Zeichnung: Flaeche zur Mittellinie + Kontur
+    YPrevF := Mid - EnsureRange(D.Pt[0], -1, 1) * Amp;
+    for Px := 0 to W - 1 do
+    begin
+      V := D.Pt[Min(Px * OSC_DRAW_N div W, OSC_DRAW_N - 1)];
+      YF := Mid - EnsureRange(V, -1, 1) * Amp;
+      Y := Round(YF);
+      if Y < Mid then
+        B.VertLineS(Px, Y, Mid - 1, COL_FILLC)
+      else if Y > Mid then
+        B.VertLineS(Px, Mid + 1, Y, COL_FILLC);
+      AASpan(B, Px, YPrevF, YF, COL_CURVE);
+      YPrevF := YF;
+    end;
+    // Klang: volle Bandbreite der Wavetable (gelb)
+    T := Pointer(FEngine.OscWaveTable(FOsc));
+    YPrevF := Mid - EnsureRange(T[0], -1.2, 1.2) * Amp;
+    for Px := 0 to W - 1 do
+    begin
+      YF := Mid - EnsureRange(T[Px * WT_LEN[0] div W], -1.2, 1.2) * Amp;
+      AASpan(B, Px, YPrevF, YF, COL_SMOOTH);
+      YPrevF := YF;
+    end;
+  finally
+    B.EndUpdate;
+  end;
+  inherited;
+end;
+
+procedure TOscWaveView.EditAt(X, Y: Integer; First: Boolean);
+var
+  D: POscDraw;
+  Idx, I, A, Bi, Mid, Amp: Integer;
+  V: Single;
+  T: Double;
+begin
+  D := FEngine.OscDraw[FOsc];
+  Mid := Height div 2;
+  Amp := Max(1, Mid - TOP_PAD);
+  if FErase then
+    V := 0
+  else
+    V := EnsureRange((Mid - Y) / Amp, -1, 1);
+  Idx := EnsureRange(X * OSC_DRAW_N div Max(1, Width), 0, OSC_DRAW_N - 1);
+  // Luecke zur letzten Mausposition linear fuellen
+  if First or (FLastIdx < 0) then
+    D.Pt[Idx] := V
+  else
+  begin
+    A := Min(FLastIdx, Idx);
+    Bi := Max(FLastIdx, Idx);
+    for I := A to Bi do
+    begin
+      if Bi = A then T := 1 else T := (I - FLastIdx) / (Idx - FLastIdx);
+      D.Pt[I] := FLastVal + (V - FLastVal) * T;
+    end;
+  end;
+  FLastIdx := Idx;
+  FLastVal := V;
+  if Assigned(FOnChange) then
+    FOnChange(Self);
+  Invalidate;
+end;
+
+procedure TOscWaveView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button in [mbLeft, mbRight] then
+  begin
+    FDrawing := True;
+    FErase := Button = mbRight;
+    FLastIdx := -1;
+    MouseCapture := True;
+    EditAt(X, Y, True);
+  end;
+end;
+
+procedure TOscWaveView.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if FDrawing then
+    EditAt(EnsureRange(X, 0, Width - 1), EnsureRange(Y, 0, Height - 1), False);
+end;
+
+procedure TOscWaveView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  FDrawing := False;
+  FErase := False;
+  MouseCapture := False;
 end;
 
 { TArpPatternView }

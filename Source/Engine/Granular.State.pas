@@ -100,7 +100,8 @@ const
   TGAT_MAGIC: array[0..3] of AnsiChar = ('T', 'G', 'A', 'T');
   ZONE_MAGIC: array[0..3] of AnsiChar = ('Z', 'O', 'N', 'E');
   FLF8_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'F', '8');   // freie Formen LFO 5..8
-  FLSM_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'S', 'M');   // Nov. 2026: Glaettung je freier Form (ganz hinten)
+  FLSM_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'S', 'M');   // Nov. 2026: Glaettung je freier Form
+  OSCW_MAGIC: array[0..3] of AnsiChar = ('O', 'S', 'C', 'W');   // Nov. 2026: gezeichnete Oszillator-Wellen (ganz hinten)
   MAX_STR = 4096;
 
 procedure WriteStr(S: TStream; const Value: string);
@@ -226,6 +227,17 @@ begin
     S.WriteBuffer(N, 4);
     for I := 0 to FREE_LFO_COUNT - 1 do
       S.WriteBuffer(Engine.FreeLfo[I].Smooth, 4);
+    // gezeichnete Oszillator-Wellen: je Oszillator Punktzahl, Punkte, Glaettung
+    S.WriteBuffer(OSCW_MAGIC, 4);
+    N := OSC_COUNT;
+    S.WriteBuffer(N, 4);
+    for I := 0 to OSC_COUNT - 1 do
+    begin
+      N := OSC_DRAW_N;
+      S.WriteBuffer(N, 4);
+      S.WriteBuffer(Engine.OscDraw[I].Pt[0], OSC_DRAW_N * SizeOf(Single));
+      S.WriteBuffer(Engine.OscDraw[I].Smooth, 4);
+    end;
     Result := Copy(S.Bytes, 0, S.Size);
   finally
     S.Free;
@@ -250,6 +262,9 @@ var
   Info: TParamInfo;
   Entries: TArray<TEntry>;
   Free: array[0..FREE_LFO_COUNT - 1] of TFreeLfo;
+  Ow: array[0..OSC_COUNT - 1] of TOscDraw;
+  Pos, Frac: Double;
+  J: Integer;
   MB: array[0..NAMED_COUNT - 1] of Single;
   HasMorph: Boolean;
   ArpMaskV: Integer;
@@ -560,19 +575,52 @@ begin
         Inc(P, 4);
       end;
   end;
+  for K := 0 to OSC_COUNT - 1 do
+    OscDrawDefault(Ow[K]);
+  if (P + 8 <= Length(Data)) and CompareMem(@Data[P], @OSCW_MAGIC[0], 4) then
+  begin
+    Inc(P, 4);
+    if ReadInt(ZN) then
+      for K := 0 to Min(ZN, 16) - 1 do
+      begin
+        if not ReadInt(ZL) or (ZL < 0) or (ZL > 4096) or (P + ZL * 4 + 4 > Length(Data)) then
+          Break;
+        if (K < OSC_COUNT) and (ZL > 0) then
+          for I := 0 to OSC_DRAW_N - 1 do
+          begin
+            // andere Punktzahl (aeltere Zwischenstaende): zyklisch linear umrechnen
+            Pos := I * ZL / OSC_DRAW_N;
+            J := Trunc(Pos);
+            Frac := Pos - J;
+            Ow[K].Pt[I] := EnsureRange(PSingle(@Data[P + J * 4])^ * (1 - Frac) +
+              PSingle(@Data[P + ((J + 1) mod ZL) * 4])^ * Frac, -1, 1);
+          end;
+        Inc(P, ZL * 4);
+        if K < OSC_COUNT then
+          Ow[K].Smooth := EnsureRange(PSingle(@Data[P])^, 0, 1);
+        Inc(P, 4);
+      end;
+  end;
 
   // Regler, die das Preset nicht kennt (aeltere Presets): Standardwert statt Rest vom vorigen
   // Preset. Master und Tempo gehoeren nicht zum Klang und bleiben.
   for I := 0 to NAMED_COUNT - 1 do
-    if not IdIn(TGranularParamId(I), [gpMaster, gpTempo, gpPerformance, gpRenderHQ, gpOversample]) then
+    if not IdIn(TGranularParamId(I), [gpMaster, gpTempo, gpPerformance, gpRenderHQ, gpOversample, gpOscModel]) then
       Engine.SetParam(I, PlainToParam(TGranularParamId(I), GetParamInfo(I).DefV));
   // Leistungsstufe gehoert zum Rechner, nicht zum Klang: Presets aendern sie nicht
   for I := 0 to High(Entries) do
     if (Entries[I].Index <> Ord(gpPerformance)) and (Entries[I].Index <> Ord(gpRenderHQ)) and
-      (Entries[I].Index <> Ord(gpOversample)) then
+      (Entries[I].Index <> Ord(gpOversample)) and (Entries[I].Index <> Ord(gpOscModel)) then
       Engine.SetParam(Entries[I].Index, Entries[I].Value);
   for I := 0 to FREE_LFO_COUNT - 1 do
     Engine.FreeLfo[I]^ := Free[I];
+  // Wavetables nur neu rechnen, wenn sich die Zeichnung geaendert hat
+  for I := 0 to OSC_COUNT - 1 do
+    if not CompareMem(Engine.OscDraw[I], @Ow[I], SizeOf(TOscDraw)) then
+    begin
+      Engine.OscDraw[I]^ := Ow[I];
+      Engine.OscDrawChanged(I);
+    end;
   Engine.ArpMask := Cardinal(ArpMaskV);
   Engine.TgMask := Cardinal(TgMaskV);
   for K := 1 to ZONE_COUNT do

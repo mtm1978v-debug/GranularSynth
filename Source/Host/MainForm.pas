@@ -457,6 +457,14 @@ begin
     Application.Terminate;
     Exit;
   end;
+  if FindCmdLineSwitch('abrender') then
+  begin
+    // GranularHost.exe -abrender <Projektordner>: Hoerprobe Oszillator-Modell klassisch / Wavetable
+    TFile.WriteAllText(ExtractFilePath(ParamStr(0)) + 'abrender.txt', RenderAB(ParamStr(ParamCount)));
+    Application.ShowMainForm := False;
+    Application.Terminate;
+    Exit;
+  end;
   if FindCmdLineSwitch('renderdemos') then
   begin
     // GranularHost.exe -renderdemos <Projektordner>: alle Presets mit passender Demo rendern + analysieren
@@ -1171,6 +1179,17 @@ begin
   end;
 end;
 
+{ Hat ein Eingabefeld die Tastatur? Per Windows-Klassenname geprueft: Felder im Plugin-Fenster gehoeren
+  zur VCL der Plugin-DLL, 'is TCustomEdit' erkennt sie im Host nicht (Suchfeld der Presetliste). }
+function FocusIsEdit: Boolean;
+var
+  C: array[0..63] of Char;
+begin
+  Result := False;
+  if GetClassName(GetFocus, C, Length(C)) > 0 then
+    Result := (Pos('Edit', string(C)) > 0) or (Pos('Memo', string(C)) > 0);
+end;
+
 procedure TfrmMain.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 var
   Semi: Integer;
@@ -1179,7 +1198,7 @@ begin
     Exit;
   if (Screen.ActiveControl is TComboBox) and TComboBox(Screen.ActiveControl).DroppedDown then
     Exit;
-  if Screen.ActiveControl is TCustomEdit then
+  if (Screen.ActiveControl is TCustomEdit) or FocusIsEdit then
     Exit;
   case Key of
     VK_ADD, VK_OEM_PLUS:   begin OctaveClick(FOctUp); Key := 0; Exit; end;

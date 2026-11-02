@@ -159,6 +159,8 @@ type
     gpLfo8Rate, gpLfo8Shape, gpLfo8Sync, gpLfo8Trig, gpLfo8Once, gpLfo8Stop, gpLfo8StopMs, gpLfo8StopSync, gpLfo8Partner,
     // freie Makros (Okt. 2026): je ein Regler + Kurve; Ziele ueber die Matrix (Quelle 'Makro 1..4')
     gpUMac1, gpUMac2, gpUMac3, gpUMac4, gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve,
+    gpOscDraw, gpOsc2Draw, gpOsc3Draw,   // Nov. 2026: Oszillator spielt die gezeichnete Welle (statt 'Welle')
+    gpOscModel,    // Nov. 2026: Oszillator-Modell Wavetable (bandbegrenzt) / klassisch (bis 2.9); gehoert zum Rechner
     gpOversample,  // Nov. 2026: 2x-Oversampling bei HQ (Oszillatoren, Saettigung); gehoert zum Rechner, nicht zum Preset
     gpPerformance, // Leistungsstufe: begrenzt Stimmen/Grains (gehoert nicht zum Klang, bleibt beim Presetwechsel)
     gpMaster,      // Master-Lautstaerke (gehoert nicht zum Klang: bleibt beim Presetwechsel)
@@ -184,8 +186,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 9;
-  APP_VERSION = '2.9';
+  APP_VERSION_MINOR = 10;
+  APP_VERSION = '2.10';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -227,6 +229,7 @@ const
   FLT_LADDER = 3; FLT_COMB = 4; FLT_FORMANT = 5;
   RENDER_HQ_NAMES: array[0..1] of string = ('wie Echtzeit', 'Höchste Qualität');
   OVERSAMPLE_NAMES: array[0..1] of string = ('Aus', '2x bei HQ');
+  OSC_MODEL_NAMES: array[0..1] of string = ('Wavetable (sauber)', 'Klassisch (bis 2.9)');
   ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 -> 2)', 'Parallel (1 + 2)');
   AUTOPITCH_NAMES: array[0..2] of string = ('Aus', 'Frei', 'Halbtöne');
   SCALE_NAMES: array[0..8] of string = ('Aus (chromatisch frei)', 'Dur', 'Moll', 'Harmonisch Moll', 'Dorisch',
@@ -285,6 +288,7 @@ type
     Attack, Decay, Sustain, Release,
     FltOn, FltType, FltCutoff, FltReso, FltContour, FltEnvAmt,
     FmEnvOn, FmAttack, FmDecay, FmSustain, FmRelease: TGranularParamId;
+    Draw: TGranularParamId;   // gezeichnete Welle statt 'Welle'
   end;
 
 const
@@ -300,21 +304,21 @@ const
      FltOn: gpOscFltOn; FltType: gpOscFltType; FltCutoff: gpOscFltCutoff; FltReso: gpOscFltReso;
      FltContour: gpOscFltContour; FltEnvAmt: gpOscFltEnvAmt;
      FmEnvOn: gpOscFmEnvOn; FmAttack: gpOscFmAttack; FmDecay: gpOscFmDecay; FmSustain: gpOscFmSustain;
-     FmRelease: gpOscFmRelease),
+     FmRelease: gpOscFmRelease; Draw: gpOscDraw),
     (On_: gpOsc2On; Wave: gpOsc2Wave; Oct: gpOsc2Oct; Fine: gpOsc2Fine; Level: gpOsc2Level; Pan: gpOsc2Pan;
      FmRatio: gpOsc2FmRatio; FmAmt: gpOsc2FmAmt; Sync: gpOsc2Sync;
      Attack: gpOsc2Attack; Decay: gpOsc2Decay; Sustain: gpOsc2Sustain; Release: gpOsc2Release;
      FltOn: gpOsc2FltOn; FltType: gpOsc2FltType; FltCutoff: gpOsc2FltCutoff; FltReso: gpOsc2FltReso;
      FltContour: gpOsc2FltContour; FltEnvAmt: gpOsc2FltEnvAmt;
      FmEnvOn: gpOsc2FmEnvOn; FmAttack: gpOsc2FmAttack; FmDecay: gpOsc2FmDecay; FmSustain: gpOsc2FmSustain;
-     FmRelease: gpOsc2FmRelease),
+     FmRelease: gpOsc2FmRelease; Draw: gpOsc2Draw),
     (On_: gpOsc3On; Wave: gpOsc3Wave; Oct: gpOsc3Oct; Fine: gpOsc3Fine; Level: gpOsc3Level; Pan: gpOsc3Pan;
      FmRatio: gpOsc3FmRatio; FmAmt: gpOsc3FmAmt; Sync: gpOsc3Sync;
      Attack: gpOsc3Attack; Decay: gpOsc3Decay; Sustain: gpOsc3Sustain; Release: gpOsc3Release;
      FltOn: gpOsc3FltOn; FltType: gpOsc3FltType; FltCutoff: gpOsc3FltCutoff; FltReso: gpOsc3FltReso;
      FltContour: gpOsc3FltContour; FltEnvAmt: gpOsc3FltEnvAmt;
      FmEnvOn: gpOsc3FmEnvOn; FmAttack: gpOsc3FmAttack; FmDecay: gpOsc3FmDecay; FmSustain: gpOsc3FmSustain;
-     FmRelease: gpOsc3FmRelease));
+     FmRelease: gpOsc3FmRelease; Draw: gpOsc3Draw));
   LFO_SHAPE_FREE = 5;   // frei programmierbarer LFO (Stufen oder gezeichnet, s. TFreeLfo)
   MOD_SOURCE_NAMES: array[TModSource] of string =
     ('Aus', 'LFO 1', 'LFO 2', 'Sidechain', 'Velocity', 'Zufall je Note', 'Notenhöhe', 'Filter-Hüllk.', 'Grain-Hüllk.', 'SC-Tonhöhe', 'Modrad', 'Aftertouch', 'Pitchbend', 'Schwellen-Tor', 'LFO 3', 'LFO 4', 'Sidechain 2',
@@ -640,6 +644,10 @@ const
     (Name: 'Makro 2 Kurve'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
     (Name: 'Makro 3 Kurve'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
     (Name: 'Makro 4 Kurve'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
+    (Name: 'Osz Gezeichnet'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Osz2 Gezeichnet'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Osz3 Gezeichnet'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Oszillator-Modell'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
     (Name: 'Oversampling'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 1; Curve: pcStepped; Steps: 2),
     (Name: 'Leistung'; UnitStr: ''; MinV: 0; MaxV: 2; DefV: 0; Curve: pcStepped; Steps: 3),
     (Name: 'Master';        UnitStr: 'dB'; MinV: -60;  MaxV: 6;     DefV: 0;    Curve: pcDecibel; Steps: 0),
@@ -683,7 +691,7 @@ const
     gpOsc3FmAmt, gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn,
     gpOsc3FltType, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn,
     gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease, gpMaster, gpTempo);
-  VST_ADDED_COUNT = 116;   // Anzahl der Eintraege in VST_ADDED
+  VST_ADDED_COUNT = 120;   // Anzahl der Eintraege in VST_ADDED
   VST_ADDED: array[0..VST_ADDED_COUNT - 1] of TGranularParamId = (
     // Okt. 2026: Ereignis-Verzoegerung
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
@@ -720,7 +728,11 @@ const
     gpLfo8Rate, gpLfo8Shape, gpLfo8Sync, gpLfo8Trig, gpLfo8Once, gpLfo8Stop, gpLfo8StopMs, gpLfo8StopSync, gpLfo8Partner,
     gpUMac1, gpUMac2, gpUMac3, gpUMac4, gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve,
     // Nov. 2026: Oversampling
-    gpOversample);
+    gpOversample,
+    // Nov. 2026: gezeichnete Oszillator-Wellen
+    gpOscDraw, gpOsc2Draw, gpOsc3Draw,
+    // Nov. 2026: Oszillator-Modell
+    gpOscModel);
 
 
 { VST-Nummer -> interner Index und zurueck (-1 = ungueltig) }
@@ -783,7 +795,19 @@ type
   end;
   PFreeLfo = ^TFreeLfo;
 
+const
+  OSC_DRAW_N = 1024;       // Punkte einer gezeichneten Oszillator-Welle (eine Periode, bis 511 Obertoene)
+
+type
+  { gezeichnete Oszillator-Welle: eine Periode, -1..1; Glaettung 0..1 rundet die Obertoene ab }
+  TOscDraw = record
+    Pt: array[0..OSC_DRAW_N - 1] of Single;
+    Smooth: Single;
+  end;
+  POscDraw = ^TOscDraw;
+
 procedure FreeLfoDefault(var F: TFreeLfo);
+procedure OscDrawDefault(var D: TOscDraw);
 function FreeLfoValue(const F: TFreeLfo; Phase: Double): Single;
 function FreeQuantize(V: Single): Single;   // auf Halbtonraster
 
@@ -1049,6 +1073,7 @@ begin
     gpTgSteps: Result := IntToStr(EnsureRange(Step, 0, 15) + 1);
     gpRenderHQ: Result := RENDER_HQ_NAMES[EnsureRange(Step, 0, 1)];
     gpOversample: Result := OVERSAMPLE_NAMES[EnsureRange(Step, 0, 1)];
+    gpOscModel: Result := OSC_MODEL_NAMES[EnsureRange(Step, 0, 1)];
     gpLoopMode: if Step = 0 then Result := 'Vorwärts' else Result := 'Hin und her';
     gpFltRouting: Result := ROUTING_NAMES[EnsureRange(Step, 0, 1)];
     gpScPitchMode: Result := AUTOPITCH_NAMES[EnsureRange(Step, 0, 2)];
@@ -1152,6 +1177,16 @@ end;
 function FreeQuantize(V: Single): Single;
 begin
   Result := EnsureRange(Round(V * FREE_SEMIS), -FREE_SEMIS, FREE_SEMIS) / FREE_SEMIS;
+end;
+
+procedure OscDrawDefault(var D: TOscDraw);
+var
+  I: Integer;
+begin
+  // Start: Saegezahn mit weicher Flanke (klingt anders als die eingebauten Wellen, gut zum Umzeichnen)
+  for I := 0 to OSC_DRAW_N - 1 do
+    D.Pt[I] := Sin(Pi * I / OSC_DRAW_N) * (1 - 2 * I / OSC_DRAW_N);
+  D.Smooth := 0;
 end;
 
 function FreeLfoValue(const F: TFreeLfo; Phase: Double): Single;

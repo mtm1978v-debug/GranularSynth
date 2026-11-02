@@ -6,6 +6,28 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.10 – 02.11.2026
+
+### Neu
+- **Gezeichnete Oszillator-Wellen:** Jeder der drei Oszillatoren kann eine selbst gezeichnete Welle spielen (Haken *Gezeichnet* neben *Welle*, Knopf *Zeichnen ...*). Im Zeichenfenster: eine Periode mit der Maus zeichnen, Grundformen als Ausgangspunkt (Sinus, Dreieck, Säge, Rechteck, Puls 25 %, Zufall, Umkehren) und *Glättung* 0–100 % (rundet die Obertöne ab, 100 % = fast Sinus). Blau ist die Zeichnung, gelb der Klang, wie er gespielt wird.
+- **Profi-Qualität:** Die Zeichnung wird in eine bandbegrenzte Wavetable mit 14 Stufen (je halbe Oktave) umgerechnet. Der Oszillator spielt immer nur die Obertöne, die bei der Tonhöhe unter die halbe Abtastrate passen – gemessen: −84 dB Spiegelanteil bei einer gezeichneten Säge in hoher Lage (die eingebaute Säge liegt bei −42 dB). Sync, Unison, Hüllkurve, eigener Filter und Oversampling wirken wie bei den anderen Wellen.
+
+### Geändert
+- **Weniger Rechenlast bei HQ:** Oversampling läuft nur noch, wenn ein Oszillator Spiegelfrequenzen erzeugen kann (Dreieck, Säge, Rechteck, FM oder Sync). Klänge nur mit Sinus- oder gezeichneten Oszillatoren (beide schon bandbegrenzt) sparen damit die doppelte Rechenzeit der Oszillatoren, ohne Klangverlust. Die Entscheidung gilt für alle Oszillatoren gemeinsam (sie bleiben phasengleich) und wechselt nie mitten im Ton.
+
+- **Eingebaute Wellen als Wavetable (Standard):** Dreieck, Säge und Rechteck kommen jetzt ebenfalls aus bandbegrenzten Tabellen – 61 Stufen im Abstand einer Sechstel-Oktave, stufenlos überblendet. Gemessen: Spiegelanteil Säge in hoher Lage −84 dB statt −42 dB, Rechteck −85 statt −47 dB; im Bass klingen alle Obertöne bis 17 kHz voll (die klassische Säge dämpft sie leicht); beim Pitch-Bend über 4 Oktaven ändern sich die Höhen so gleichmäßig wie bisher. Diese Wellen brauchen kein Oversampling mehr – mit HQ dadurch sogar etwas weniger Rechenzeit als vorher.
+- **Schalter *Oszillatoren: Wavetable / Klassisch*** im Reiter *Leistung*: *Klassisch* ist bitgenau der Oszillator bis Version 2.9 (für Projekte, die exakt wie früher klingen sollen). Gehört zum Rechner, nicht zum Preset.
+- Die Zeichenfläche hat jetzt 1024 Punkte (bis 511 Obertöne) statt 256.
+
+### Hinweis
+- Presets und Projekte mit Dreieck, Säge oder Rechteck klingen mit dem neuen Standard etwas sauberer in den Höhen; Pegel und Grundcharakter bleiben gleich. Wer den alten Klang exakt braucht: *Leistung › Oszillatoren: Klassisch*.
+- Die Zeichnung wird mit dem Preset gespeichert. Ältere Versionen laden solche Presets, spielen dort aber die unter *Welle* gewählte Form.
+
+### Behoben
+- **Test-Host: Suchfeld der Presetliste:** Buchstaben im Feld „Filter“ (z. B. „FM“) wurden vom Host als Noten der PC-Klaviatur abgefangen und kamen nicht an. Der Host erkennt Eingabefelder im Plugin-Fenster jetzt zuverlässig.
+
+---
+
 ## Version 2.9 – 01.11.2026
 
 ### Neu

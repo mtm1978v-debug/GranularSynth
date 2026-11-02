@@ -181,6 +181,58 @@ type
 
 procedure HbFirPas(Args: PHbArgs);
 procedure HbFirSSE(Args: PHbArgs);
+
+const
+  { Bandbegrenzte Wavetables (eingebaute Wellen Dreieck/Saege/Rechteck und gezeichnete Wellen):
+    WT_MIPS Stufen im Abstand einer Sechstel-Oktave; Stufe m enthaelt nur die Obertoene 1..WT_HARM[m].
+    Jede Stufe hat mindestens 16 Punkte je Periode ihres hoechsten Obertons (WT_LEN, Zweierpotenz, mind.
+    2048), damit die lineare Interpolation auch bei tiefen Toenen sauber bleibt. Ablage hintereinander
+    ab WT_OFS[m], je WT_LEN[m] + 2 Werte (2 Schutzwerte = Anfang wiederholt).
+    Auswahl (siehe Engine): Stufe a = floor(Mf), Mf = 6 log2(WT_HARM[0] * 2 * Schritt / WT_MARGIN), ueberblendet
+    zur naechsten. Mit WT_MARGIN = 0,87 bleibt die reichere Stufe unter 0,98 der halben Abtastrate (keine
+    Spiegelungen), und alle Obertoene bis 0,78 der halben Abtastrate (17 kHz bei 44,1 kHz) klingen voll. }
+  WT_MIPS = 61;
+  WT_HARM: array[0..WT_MIPS - 1] of Integer = (
+    1023, 911, 812, 723, 644, 574, 512, 456, 406, 362, 322, 287, 256, 228, 203, 181, 161, 144, 128,
+    114, 101, 90, 81, 72, 64, 57, 51, 45, 40, 36, 32, 28, 25, 23, 20, 18, 16, 14, 13, 11, 10, 9, 8, 7,
+    6, 6, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1);
+  WT_LEN: array[0..WT_MIPS - 1] of Integer = (
+    16384, 16384, 16384, 16384, 16384, 16384, 8192, 8192, 8192, 8192, 8192, 8192, 4096, 4096, 4096,
+    4096, 4096, 4096, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048,
+    2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048,
+    2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048);
+  WT_OFS: array[0..WT_MIPS - 1] of Integer = (
+    0, 16386, 32772, 49158, 65544, 81930, 98316, 106510, 114704, 122898, 131092, 139286, 147480,
+    151578, 155676, 159774, 163872, 167970, 172068, 174118, 176168, 178218, 180268, 182318, 184368,
+    186418, 188468, 190518, 192568, 194618, 196668, 198718, 200768, 202818, 204868, 206918, 208968,
+    211018, 213068, 215118, 217168, 219218, 221268, 223318, 225368, 227418, 229468, 231518, 233568,
+    235618, 237668, 239718, 241768, 243818, 245868, 247918, 249968, 252018, 254068, 256118, 258168);
+  WT_TOTAL = 260218;
+  WT_MARGIN = 0.87;
+
+type
+  { Wavetable-Oszillator einer Stimme ueber einen Block (Stereo interleaved, addierend):
+      w = frac(Ph * SyncR); a = Tab A linear bei w * CSizeA; b = Tab B linear bei w * CSizeB;
+      Wert = a + (b - a) * Mix (Ueberblenden zweier benachbarter Stufen, kein Sprung beim Gleiten);
+      Out += Wert * Env * GL/GR; danach Ph += DtP (Ph < 1). }
+  PWtArgs = ^TWtArgs;
+  TWtArgs = record
+    Out, Env, TabA, TabB: PSingle;
+    Count: Integer;
+    Ph, DtP, SyncR, GL, GR, CSizeA, CSizeB, Mix, One: Single;
+  end;
+  TWtProc = procedure(Args: PWtArgs);
+
+procedure WtBlockPas(Args: PWtArgs);
+procedure WtBlockSSE(Args: PWtArgs);
+{ schneller Pfad ohne Sync (SyncR = 1) und mit gleich langen Tabellen (CSizeA = CSizeB): ein Index fuer beide }
+procedure WtFastPas(Args: PWtArgs);
+procedure WtFastSSE(Args: PWtArgs);
+{ alle Stufen aus Obertoenen bauen: x(w) = Summe k  A[k] cos(2 pi k w) + B[k] sin(2 pi k w), k = 1..NH
+  (Index 0 von A/B ungenutzt). Normalize: Spitze der reichsten Stufe = 1. Nicht im Audio-Thread. }
+procedure WtBuild(const A, B: array of Double; NH: Integer; Dst: PSingle; Normalize: Boolean);
+{ Obertoene einer Periode aus N Punkten (N Zweierpotenz): A[k], B[k] fuer k = 1..N div 2 - 1 }
+procedure WtAnalyze(const X: array of Single; N: Integer; var A, B: array of Double);
 { Koeffizienten setzen: Scale 1 = Abwaerts, 2 = Aufwaerts (Nullen eingefuegt -> Pegel x2) }
 procedure HbInitArgs(var A: THbArgs; Scale, Center: Single);
 
@@ -262,12 +314,14 @@ var
   RenderPhaser: TPhaserProc = PhaserBlockPas;
   RenderChorus: TChorusProc = ChorusBlockPas;
   RenderHbFir: THbProc = HbFirPas;
+  RenderWt: TWtProc = WtBlockPas;
+  RenderWtFast: TWtProc = WtFastPas;
   DSPPathName: string = 'Pascal';
 
 implementation
 
 uses
-  Granular.Reverb, Granular.Eq;
+  System.Math, Granular.Reverb, Granular.Eq;
 
 {$POINTERMATH ON}
 
@@ -2540,6 +2594,458 @@ begin
   end;
 end;
 
+{ ---------- Wavetable-Oszillator (gezeichnete Welle) ---------- }
+
+procedure WtBlockPas(Args: PWtArgs);
+type
+  TSA = array[0..$FFFFFF] of Single;
+  PSA = ^TSA;
+var
+  N, I: Integer;
+  Ph, W, X, F, Va, Vb, E: Single;
+  O, En, Ta, Tb: PSA;
+begin
+  O := PSA(Args.Out);
+  En := PSA(Args.Env);
+  Ta := PSA(Args.TabA);
+  Tb := PSA(Args.TabB);
+  Ph := Args.Ph;
+  for N := 0 to Args.Count - 1 do
+  begin
+    W := Ph * Args.SyncR;
+    W := W - Trunc(W);
+    X := W * Args.CSizeA;
+    I := Trunc(X);
+    F := X - I;
+    Va := Ta[I] + (Ta[I + 1] - Ta[I]) * F;
+    X := W * Args.CSizeB;
+    I := Trunc(X);
+    F := X - I;
+    Vb := Tb[I] + (Tb[I + 1] - Tb[I]) * F;
+    Va := Va + (Vb - Va) * Args.Mix;
+    E := Va * En[N];
+    O[N * 2] := O[N * 2] + E * Args.GL;
+    O[N * 2 + 1] := O[N * 2 + 1] + E * Args.GR;
+    Ph := Ph + Args.DtP;
+    if Ph >= Args.One then
+      Ph := Ph - Args.One;
+  end;
+  Args.Ph := Ph;
+end;
+
+{ SSE skalar, gleiche Rechenreihenfolge wie die Pascal-Referenz; nur xmm0-xmm5 }
+{$IF Defined(CPUX86)}
+procedure WtBlockSSE(Args: PWtArgs);
+asm
+        push    ebx
+        push    esi
+        push    edi
+        push    ebp
+        mov     ecx, [eax].TWtArgs.Count
+        test    ecx, ecx
+        jle     @Done
+        mov     esi, [eax].TWtArgs.Out
+        mov     edi, [eax].TWtArgs.Env
+        mov     ebx, [eax].TWtArgs.TabA
+        mov     ebp, [eax].TWtArgs.TabB
+        movss   xmm5, [eax].TWtArgs.Ph
+@Loop:
+        movaps  xmm0, xmm5
+        mulss   xmm0, [eax].TWtArgs.SyncR
+        cvttss2si edx, xmm0
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, edx
+        subss   xmm0, xmm1                 // w
+        movaps  xmm4, xmm0
+        mulss   xmm0, [eax].TWtArgs.CSizeA
+        cvttss2si edx, xmm0
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, edx
+        subss   xmm0, xmm1                 // f
+        movss   xmm2, [ebx+edx*4]
+        movss   xmm3, [ebx+edx*4+4]
+        subss   xmm3, xmm2
+        mulss   xmm3, xmm0
+        addss   xmm2, xmm3                 // a
+        mulss   xmm4, [eax].TWtArgs.CSizeB
+        cvttss2si edx, xmm4
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, edx
+        subss   xmm4, xmm1
+        movss   xmm3, [ebp+edx*4]
+        movss   xmm0, [ebp+edx*4+4]
+        subss   xmm0, xmm3
+        mulss   xmm0, xmm4
+        addss   xmm3, xmm0                 // b
+        subss   xmm3, xmm2
+        mulss   xmm3, [eax].TWtArgs.Mix
+        addss   xmm2, xmm3                 // a + (b - a) * Mix
+        mulss   xmm2, [edi]
+        movaps  xmm3, xmm2
+        mulss   xmm3, [eax].TWtArgs.GL
+        addss   xmm3, [esi]
+        movss   [esi], xmm3
+        mulss   xmm2, [eax].TWtArgs.GR
+        addss   xmm2, [esi+4]
+        movss   [esi+4], xmm2
+        addss   xmm5, [eax].TWtArgs.DtP
+        comiss  xmm5, [eax].TWtArgs.One
+        jb      @NoWrap
+        subss   xmm5, [eax].TWtArgs.One
+@NoWrap:
+        add     esi, 8
+        add     edi, 4
+        dec     ecx
+        jnz     @Loop
+        movss   [eax].TWtArgs.Ph, xmm5
+@Done:
+        pop     ebp
+        pop     edi
+        pop     esi
+        pop     ebx
+end;
+{$ELSEIF Defined(CPUX64)}
+procedure WtBlockSSE(Args: PWtArgs);
+asm
+        push    rbx
+        mov     r9d, [rcx].TWtArgs.Count
+        test    r9d, r9d
+        jle     @Done
+        mov     r8, [rcx].TWtArgs.Out
+        mov     r10, [rcx].TWtArgs.Env
+        mov     r11, [rcx].TWtArgs.TabA
+        mov     rbx, [rcx].TWtArgs.TabB
+        movss   xmm5, [rcx].TWtArgs.Ph
+@Loop:
+        movaps  xmm0, xmm5
+        mulss   xmm0, [rcx].TWtArgs.SyncR
+        cvttss2si eax, xmm0
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, eax
+        subss   xmm0, xmm1
+        movaps  xmm4, xmm0
+        mulss   xmm0, [rcx].TWtArgs.CSizeA
+        cvttss2si eax, xmm0
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, eax
+        subss   xmm0, xmm1
+        movsxd  rdx, eax
+        movss   xmm2, [r11+rdx*4]
+        movss   xmm3, [r11+rdx*4+4]
+        subss   xmm3, xmm2
+        mulss   xmm3, xmm0
+        addss   xmm2, xmm3
+        mulss   xmm4, [rcx].TWtArgs.CSizeB
+        cvttss2si eax, xmm4
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, eax
+        subss   xmm4, xmm1
+        movsxd  rdx, eax
+        movss   xmm3, [rbx+rdx*4]
+        movss   xmm0, [rbx+rdx*4+4]
+        subss   xmm0, xmm3
+        mulss   xmm0, xmm4
+        addss   xmm3, xmm0
+        subss   xmm3, xmm2
+        mulss   xmm3, [rcx].TWtArgs.Mix
+        addss   xmm2, xmm3
+        mulss   xmm2, [r10]
+        movaps  xmm3, xmm2
+        mulss   xmm3, [rcx].TWtArgs.GL
+        addss   xmm3, [r8]
+        movss   [r8], xmm3
+        mulss   xmm2, [rcx].TWtArgs.GR
+        addss   xmm2, [r8+4]
+        movss   [r8+4], xmm2
+        addss   xmm5, [rcx].TWtArgs.DtP
+        comiss  xmm5, [rcx].TWtArgs.One
+        jb      @NoWrap
+        subss   xmm5, [rcx].TWtArgs.One
+@NoWrap:
+        add     r8, 8
+        add     r10, 4
+        dec     r9d
+        jnz     @Loop
+        movss   [rcx].TWtArgs.Ph, xmm5
+@Done:
+        pop     rbx
+end;
+{$ELSE}
+procedure WtBlockSSE(Args: PWtArgs);
+begin
+  WtBlockPas(Args);
+end;
+{$IFEND}
+
+procedure WtFastPas(Args: PWtArgs);
+type
+  TSA = array[0..$FFFFFF] of Single;
+  PSA = ^TSA;
+var
+  N, I: Integer;
+  Ph, X, F, Va, Vb, E: Single;
+  O, En, Ta, Tb: PSA;
+begin
+  O := PSA(Args.Out);
+  En := PSA(Args.Env);
+  Ta := PSA(Args.TabA);
+  Tb := PSA(Args.TabB);
+  Ph := Args.Ph;
+  for N := 0 to Args.Count - 1 do
+  begin
+    X := Ph * Args.CSizeA;
+    I := Trunc(X);
+    F := X - I;
+    Va := Ta[I] + (Ta[I + 1] - Ta[I]) * F;
+    Vb := Tb[I] + (Tb[I + 1] - Tb[I]) * F;
+    Va := Va + (Vb - Va) * Args.Mix;
+    E := Va * En[N];
+    O[N * 2] := O[N * 2] + E * Args.GL;
+    O[N * 2 + 1] := O[N * 2 + 1] + E * Args.GR;
+    Ph := Ph + Args.DtP;
+    if Ph >= Args.One then
+      Ph := Ph - Args.One;
+  end;
+  Args.Ph := Ph;
+end;
+
+{$IF Defined(CPUX86)}
+procedure WtFastSSE(Args: PWtArgs);
+asm
+        push    ebx
+        push    esi
+        push    edi
+        push    ebp
+        mov     ecx, [eax].TWtArgs.Count
+        test    ecx, ecx
+        jle     @Done
+        mov     esi, [eax].TWtArgs.Out
+        mov     edi, [eax].TWtArgs.Env
+        mov     ebx, [eax].TWtArgs.TabA
+        mov     ebp, [eax].TWtArgs.TabB
+        movss   xmm5, [eax].TWtArgs.Ph
+        movss   xmm4, [eax].TWtArgs.Mix
+@Loop:
+        movaps  xmm0, xmm5
+        mulss   xmm0, [eax].TWtArgs.CSizeA
+        cvttss2si edx, xmm0
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, edx
+        subss   xmm0, xmm1                 // f
+        movss   xmm2, [ebx+edx*4]
+        movss   xmm3, [ebx+edx*4+4]
+        subss   xmm3, xmm2
+        mulss   xmm3, xmm0
+        addss   xmm2, xmm3                 // a
+        movss   xmm3, [ebp+edx*4]
+        movss   xmm1, [ebp+edx*4+4]
+        subss   xmm1, xmm3
+        mulss   xmm1, xmm0
+        addss   xmm3, xmm1                 // b
+        subss   xmm3, xmm2
+        mulss   xmm3, xmm4
+        addss   xmm2, xmm3
+        mulss   xmm2, [edi]
+        movaps  xmm3, xmm2
+        mulss   xmm3, [eax].TWtArgs.GL
+        addss   xmm3, [esi]
+        movss   [esi], xmm3
+        mulss   xmm2, [eax].TWtArgs.GR
+        addss   xmm2, [esi+4]
+        movss   [esi+4], xmm2
+        addss   xmm5, [eax].TWtArgs.DtP
+        comiss  xmm5, [eax].TWtArgs.One
+        jb      @NoWrap
+        subss   xmm5, [eax].TWtArgs.One
+@NoWrap:
+        add     esi, 8
+        add     edi, 4
+        dec     ecx
+        jnz     @Loop
+        movss   [eax].TWtArgs.Ph, xmm5
+@Done:
+        pop     ebp
+        pop     edi
+        pop     esi
+        pop     ebx
+end;
+{$ELSEIF Defined(CPUX64)}
+procedure WtFastSSE(Args: PWtArgs);
+asm
+        push    rbx
+        mov     r9d, [rcx].TWtArgs.Count
+        test    r9d, r9d
+        jle     @Done
+        mov     r8, [rcx].TWtArgs.Out
+        mov     r10, [rcx].TWtArgs.Env
+        mov     r11, [rcx].TWtArgs.TabA
+        mov     rbx, [rcx].TWtArgs.TabB
+        movss   xmm5, [rcx].TWtArgs.Ph
+        movss   xmm4, [rcx].TWtArgs.Mix
+@Loop:
+        movaps  xmm0, xmm5
+        mulss   xmm0, [rcx].TWtArgs.CSizeA
+        cvttss2si eax, xmm0
+        xorps   xmm1, xmm1
+        cvtsi2ss xmm1, eax
+        subss   xmm0, xmm1
+        movsxd  rdx, eax
+        movss   xmm2, [r11+rdx*4]
+        movss   xmm3, [r11+rdx*4+4]
+        subss   xmm3, xmm2
+        mulss   xmm3, xmm0
+        addss   xmm2, xmm3
+        movss   xmm3, [rbx+rdx*4]
+        movss   xmm1, [rbx+rdx*4+4]
+        subss   xmm1, xmm3
+        mulss   xmm1, xmm0
+        addss   xmm3, xmm1
+        subss   xmm3, xmm2
+        mulss   xmm3, xmm4
+        addss   xmm2, xmm3
+        mulss   xmm2, [r10]
+        movaps  xmm3, xmm2
+        mulss   xmm3, [rcx].TWtArgs.GL
+        addss   xmm3, [r8]
+        movss   [r8], xmm3
+        mulss   xmm2, [rcx].TWtArgs.GR
+        addss   xmm2, [r8+4]
+        movss   [r8+4], xmm2
+        addss   xmm5, [rcx].TWtArgs.DtP
+        comiss  xmm5, [rcx].TWtArgs.One
+        jb      @NoWrap
+        subss   xmm5, [rcx].TWtArgs.One
+@NoWrap:
+        add     r8, 8
+        add     r10, 4
+        dec     r9d
+        jnz     @Loop
+        movss   [rcx].TWtArgs.Ph, xmm5
+@Done:
+        pop     rbx
+end;
+{$ELSE}
+procedure WtFastSSE(Args: PWtArgs);
+begin
+  WtFastPas(Args);
+end;
+{$IFEND}
+
+{ komplexe FFT (radix 2, an Ort und Stelle), Sign = +1 ruecklaeufig ohne 1/N, -1 vorwaerts }
+procedure WtFft(var Re, Im: array of Double; N, Sign: Integer);
+var
+  I, J, K, M, Step: Integer;
+  T, Wr, Wi, Ar, Ai, Tr, Ti, Ang: Double;
+begin
+  J := 0;
+  for I := 0 to N - 2 do
+  begin
+    if I < J then
+    begin
+      T := Re[I]; Re[I] := Re[J]; Re[J] := T;
+      T := Im[I]; Im[I] := Im[J]; Im[J] := T;
+    end;
+    K := N shr 1;
+    while (K >= 1) and (J >= K) do
+    begin
+      Dec(J, K);
+      K := K shr 1;
+    end;
+    Inc(J, K);
+  end;
+  Step := 1;
+  while Step < N do
+  begin
+    for M := 0 to Step - 1 do
+    begin
+      Ang := Sign * Pi * M / Step;
+      Wr := Cos(Ang);
+      Wi := Sin(Ang);
+      I := M;
+      while I < N do
+      begin
+        J := I + Step;
+        Ar := Re[J] * Wr - Im[J] * Wi;
+        Ai := Re[J] * Wi + Im[J] * Wr;
+        Tr := Re[I];
+        Ti := Im[I];
+        Re[J] := Tr - Ar;
+        Im[J] := Ti - Ai;
+        Re[I] := Tr + Ar;
+        Im[I] := Ti + Ai;
+        Inc(I, Step * 2);
+      end;
+    end;
+    Step := Step * 2;
+  end;
+end;
+
+procedure WtAnalyze(const X: array of Single; N: Integer; var A, B: array of Double);
+var
+  Re, Im: array of Double;
+  K: Integer;
+begin
+  SetLength(Re, N);
+  SetLength(Im, N);
+  for K := 0 to N - 1 do
+  begin
+    Re[K] := X[K];
+    Im[K] := 0;
+  end;
+  WtFft(Re, Im, N, -1);
+  // X[k] = Summe x e^(-i 2 pi k n / N)  ->  a_k = 2 Re / N, b_k = -2 Im / N
+  for K := 1 to N div 2 - 1 do
+  begin
+    A[K] := 2 * Re[K] / N;
+    B[K] := -2 * Im[K] / N;
+  end;
+end;
+
+procedure WtBuild(const A, B: array of Double; NH: Integer; Dst: PSingle; Normalize: Boolean);
+type
+  TSA = array[0..$FFFFFF] of Single;
+var
+  Re, Im: array of Double;
+  M, L, K, H, I: Integer;
+  T: ^TSA;
+  Peak, Sc: Double;
+begin
+  Sc := 1;
+  for M := 0 to WT_MIPS - 1 do
+  begin
+    L := WT_LEN[M];
+    H := Min(Min(WT_HARM[M], NH), L div 2 - 1);
+    SetLength(Re, L);
+    SetLength(Im, L);
+    for I := 0 to L - 1 do
+    begin
+      Re[I] := 0;
+      Im[I] := 0;
+    end;
+    // x(n) = Summe (a cos + b sin) = Summe X[k] e^(+i...), X[k] = (a - i b)/2, X[L-k] = konjugiert
+    for K := 1 to H do
+    begin
+      Re[K] := A[K] / 2;
+      Im[K] := -B[K] / 2;
+      Re[L - K] := A[K] / 2;
+      Im[L - K] := B[K] / 2;
+    end;
+    WtFft(Re, Im, L, 1);
+    if (M = 0) and Normalize then
+    begin
+      Peak := 0;
+      for I := 0 to L - 1 do
+        Peak := Max(Peak, Abs(Re[I]));
+      if Peak > 1E-9 then Sc := 1 / Peak else Sc := 0;
+    end;
+    T := Pointer(PByte(Dst) + WT_OFS[M] * SizeOf(Single));
+    for I := 0 to L - 1 do
+      T[I] := Re[I] * Sc;
+    T[L] := T[0];
+    T[L + 1] := T[1];
+  end;
+end;
+
 function CpuHasSSE: Boolean;
 {$IFDEF CPUX86}
 var
@@ -2612,6 +3118,8 @@ begin
     RenderPhaser := PhaserBlockSSE;
     RenderChorus := ChorusBlockSSE;
     RenderHbFir := HbFirSSE;
+    RenderWt := WtBlockSSE;
+    RenderWtFast := WtFastSSE;
     {$IFDEF CPUX64}
     DSPPathName := 'SSE x64';
     {$ELSE}
@@ -2630,6 +3138,8 @@ begin
     RenderPhaser := PhaserBlockPas;
     RenderChorus := ChorusBlockPas;
     RenderHbFir := HbFirPas;
+    RenderWt := WtBlockPas;
+    RenderWtFast := WtFastPas;
     DSPPathName := 'Pascal';
   end;
 end;

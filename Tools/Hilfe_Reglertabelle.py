@@ -82,6 +82,7 @@ TABS = [
 ("Reiter Osz 1 / Osz 2 / Osz 3", [
  ("Oszillator an", "drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte S\u00e4gez\u00e4hne + Sub-Sinus)."),
  ("Welle", "Sinus, Dreieck, S\u00e4ge, Rechteck, FM (zwei Sinus), Rauschen."),
+ ("Gezeichnet / Zeichnen ...", "eigene Welle: Haken an = der Oszillator spielt statt \"Welle\" die gezeichnete Form. \"Zeichnen ...\" \u00f6ffnet die Zeichenfl\u00e4che: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, S\u00e4ge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Gl\u00e4ttung 0-100 % rundet die Obert\u00f6ne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, H\u00fcllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert."),
  ("Sync (Obert\u00f6ne)", "Hard Sync: 0 = saubere Welle, h\u00f6her = immer mehr Obert\u00f6ne, schneidend (nicht bei Rauschen)."),
  ("Oktave / Feinstimmung / Pegel / Panorama", "Tonlage, Feinabstimmung in Cent, Lautst\u00e4rke (bis 200 %) und Position."),
  ("FM-Verh\u00e4ltnis / FM-Menge", "nur bei Welle FM: Frequenz des Modulators und St\u00e4rke - Glocken, E-Piano, Bass."),
@@ -159,6 +160,7 @@ TABS = [
 ("Reiter Leistung", [
  ("Rendern in H\u00f6chstqualit\u00e4t", "beim Export der DAW immer HQ und volle Stimmenzahl."),
  ("Oversampling 2x (bei HQ)", "Standard an: Bei HQ rechnen Oszillatoren und S\u00e4ttigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Kl\u00e4nge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Kl\u00e4ngen bis etwa die doppelte Rechenzeit der Oszillatoren. Geh\u00f6rt zum Rechner, nicht zum Preset."),
+ ("Oszillatoren: Wavetable / Klassisch", "Wavetable (Standard): Dreieck, S\u00e4ge und Rechteck kommen aus bandbegrenzten Tabellen (61 Stufen je Sechstel-Oktave) - praktisch ohne Spiegelfrequenzen (-84 dB statt -42 dB), volle H\u00f6hen bis 17 kHz auch im Bass, ohne Oversampling und daher nicht teurer. Klassisch: genau der Oszillator bis Version 2.9, f\u00fcr alte Projekte, die bitgleich klingen sollen. Geh\u00f6rt zum Rechner, nicht zum Preset."),
  ("Lastliste", "welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall ...)."),
  ("Zeiger / Laufzeit", "geschätzte Gesamtlast und gemessene Rechenzeit im Host (Aufrufe/s, Anteil am Puffer, Spitzenwert)."),
 ]),]
@@ -195,7 +197,7 @@ PNAMES = {
  "Phaser: Tempo / Tiefe / R\u00fcckkopplung / Mix": "Phaser an, Phaser Tempo, Phaser Tiefe, Phaser Rückkopplung, Phaser Mix",
  "Bitcrusher: Bits / Abtastrate / Mix": "Bitcrusher an, Bitcrusher Bits, Bitcrusher Rate, Bitcrusher Mix",
  "Unison / Verstimmung / Breite": "Osz Unison, Osz Unison Verstimmung, Osz Unison Breite (Osz2, Osz3 entsprechend)",
- "Rendern in H\u00f6chstqualit\u00e4t": "Rendern in Höchstqualität", "Oversampling 2x (bei HQ)": "Oversampling",
+ "Rendern in H\u00f6chstqualit\u00e4t": "Rendern in Höchstqualität", "Gezeichnet / Zeichnen ...": "Osz Gezeichnet (Osz2, Osz3 entsprechend)", "Oversampling 2x (bei HQ)": "Oversampling", "Oszillatoren: Wavetable / Klassisch": "Oszillator-Modell",
  "Filter 2": "Filter2 an, Filter-Verschaltung, Filter2 Typ, Filter2 Cutoff, Filter2 Resonanz, Filter2 Kontur, Filter2 Hüllk.",
  "EQ an, B\u00e4sse, H\u00f6hen": "EQ an, EQ Bässe, EQ Höhen", "Band A / B": "EQ Band A Freq, EQ Band A Pegel, EQ Band B Freq, EQ Band B Pegel",
  "Arpeggiator": "Arp an, Arp Richtung, Arp Oktaven, Arp Notenwert, Arp Länge, Arp Swing, Arp Schritte",

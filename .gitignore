@@ -29,3 +29,6 @@ Tools/Setup/dcu/
 
 # lokale Einstellungen (z.B. GR32_DIR)
 build.local.bat
+
+# Hoervergleich Oszillator-Modell (GranularHost -abrender)
+Hoerprobe Wavetable/

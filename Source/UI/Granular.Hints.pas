@@ -25,7 +25,7 @@ uses
   System.SysUtils, Granular.Params;
 
 const
-  PARAM_HINTS: array[0..301, 0..1] of string = (
+  PARAM_HINTS: array[0..305, 0..1] of string = (
     ('Anlauf an', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Anlauf-Start', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Arp Latch', 'Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".'),
@@ -201,6 +201,7 @@ const
     ('Osz FM-Menge', 'FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Osz FM-Verh.', 'FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Osz Fein', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
+    ('Osz Gezeichnet', 'Gezeichnet / Zeichnen ...: Eigene Welle: Haken an = der Oszillator spielt statt "Welle" die gezeichnete Form. "Zeichnen ..." öffnet die Zeichenfläche: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, Säge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Glättung 0-100 % rundet die Obertöne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, Hüllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert.'),
     ('Osz Oktave', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Osz Panorama', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Osz Release', 'Lautstärke-Hüllkurve: ADSR des Oszillators, mit Grafik.'),
@@ -228,6 +229,7 @@ const
     ('Osz2 FM-Menge', 'FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Osz2 FM-Verh.', 'FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Osz2 Fein', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
+    ('Osz2 Gezeichnet', 'Gezeichnet / Zeichnen ...: Eigene Welle: Haken an = der Oszillator spielt statt "Welle" die gezeichnete Form. "Zeichnen ..." öffnet die Zeichenfläche: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, Säge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Glättung 0-100 % rundet die Obertöne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, Hüllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert.'),
     ('Osz2 Oktave', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Osz2 Panorama', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Osz2 Release', 'Lautstärke-Hüllkurve: ADSR des Oszillators, mit Grafik.'),
@@ -255,6 +257,7 @@ const
     ('Osz3 FM-Menge', 'FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Osz3 FM-Verh.', 'FM-Verhältnis / FM-Menge: Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Osz3 Fein', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
+    ('Osz3 Gezeichnet', 'Gezeichnet / Zeichnen ...: Eigene Welle: Haken an = der Oszillator spielt statt "Welle" die gezeichnete Form. "Zeichnen ..." öffnet die Zeichenfläche: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, Säge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Glättung 0-100 % rundet die Obertöne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, Hüllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert.'),
     ('Osz3 Oktave', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Osz3 Panorama', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Osz3 Release', 'Lautstärke-Hüllkurve: ADSR des Oszillators, mit Grafik.'),
@@ -272,6 +275,7 @@ const
     ('Osz3-Filter Typ', 'Eigener Filter: Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).'),
     ('Osz3-Filter an', 'Eigener Filter: Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).'),
     ('Osz3-Pegel', 'Oktave / Feinstimmung / Pegel / Panorama: Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
+    ('Oszillator-Modell', 'Oszillatoren: Wavetable / Klassisch: Wavetable (Standard): Dreieck, Säge und Rechteck kommen aus bandbegrenzten Tabellen (61 Stufen je Sechstel-Oktave) - praktisch ohne Spiegelfrequenzen (-84 dB statt -42 dB), volle Höhen bis 17 kHz auch im Bass, ohne Oversampling und daher nicht teurer. Klassisch: genau der Oszillator bis Version 2.9, für alte Projekte, die bitgleich klingen sollen. Gehört zum Rechner, nicht zum Preset.'),
     ('Oversampling', 'Oversampling 2x (bei HQ): Standard an: Bei HQ rechnen Oszillatoren und Sättigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Klängen bis etwa die doppelte Rechenzeit der Oszillatoren. Gehört zum Rechner, nicht zum Preset.'),
     ('Phaser Mix', 'Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im Spektrum.'),
     ('Phaser Rückkopplung', 'Phaser: Tempo / Tiefe / Rückkopplung / Mix: Sechs Allpässe, wandernde Kerben im Spektrum.'),
@@ -329,7 +333,7 @@ const
     ('Verz. Tor', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).'),
     ('Verz. Tor Takt', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).')
   );
-  CAPTION_HINTS: array[0..103, 0..1] of string = (
+  CAPTION_HINTS: array[0..105, 0..1] of string = (
     ('A <-> B tauschen', 'Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.'),
     ('A/B', 'Zwischen zwei Fassungen hin- und herschalten und vergleichen.'),
     ('Alle Noten aus', 'Beendet sofort alle klingenden Noten (Notbremse).'),
@@ -367,6 +371,7 @@ const
     ('Freeze', 'Leseposition steht still, der Klang friert ein.'),
     ('Freie Form: Klaviatur, Glättung', 'Im Fenster der freien Form (Klick auf die LFO-Grafik): im Modus Halbtöne zeigt links eine Klaviatur, welche Note jede Stufe spielt (Bezugston = die Taste, die du spielst; jedes C mit Oktave), die Stufen tragen den Notennamen. Glättung 0-100 %: 0 % = harte Stufen (jeder Ton steht), wenig = kurzes Gleiten von Ton zu Ton, 100 % = runde Kurve; die gelbe Linie zeigt den echten Verlauf. Wird mit dem Preset gespeichert.'),
     ('Freie Makros', 'Rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle "Makro n"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal für die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37.'),
+    ('Gezeichnet / Zeichnen ...', 'Eigene Welle: Haken an = der Oszillator spielt statt "Welle" die gezeichnete Form. "Zeichnen ..." öffnet die Zeichenfläche: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, Säge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Glättung 0-100 % rundet die Obertöne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, Hüllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert.'),
     ('Glide / Zeit', 'Portamento: Töne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens.'),
     ('Grain-Panorama', 'Schiebt die Grains nach links oder rechts (die Streuung bleibt um die neue Mitte); der Oszillator hat sein eigenes Panorama.'),
     ('Graingröße', 'Länge eines Grains: kurz = körnig, lang = glatt.'),
@@ -399,6 +404,7 @@ const
     ('Oktave', 'Verschiebt die Grains um ganze Oktaven (-4 bis +4), zusätzlich zu Pitch.'),
     ('Oktave / Feinstimmung / Pegel / Panorama', 'Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Oszillator an', 'Drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte Sägezähne + Sub-Sinus).'),
+    ('Oszillatoren: Wavetable / Klassisch', 'Wavetable (Standard): Dreieck, Säge und Rechteck kommen aus bandbegrenzten Tabellen (61 Stufen je Sechstel-Oktave) - praktisch ohne Spiegelfrequenzen (-84 dB statt -42 dB), volle Höhen bis 17 kHz auch im Bass, ohne Oversampling und daher nicht teurer. Klassisch: genau der Oszillator bis Version 2.9, für alte Projekte, die bitgleich klingen sollen. Gehört zum Rechner, nicht zum Preset.'),
     ('Oversampling 2x (bei HQ)', 'Standard an: Bei HQ rechnen Oszillatoren und Sättigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Klängen bis etwa die doppelte Rechenzeit der Oszillatoren. Gehört zum Rechner, nicht zum Preset.'),
     ('Partner', 'Welcher LFO mit seinem Einmal-Ende das Ereignis "Ende Partner-LFO (Einmal)" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf "Einmal" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt.'),
     ('Phaser: Tempo / Tiefe / Rückkopplung / Mix', 'Sechs Allpässe, wandernde Kerben im Spektrum.'),

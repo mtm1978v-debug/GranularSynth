@@ -2,7 +2,7 @@
 {\colortbl;\red230\green230\blue230;\red255\green200\blue90;\red110\green200\blue255;\red150\green230\blue150;\red180\green180\blue180;\red40\green46\blue60;\red34\green34\blue38;\red40\green42\blue48;}
 \f0\fs20\cf1
 {\cf2\b\fs34 GRANULAR - Help\par}
-{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.9\par}\par
+{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.10\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 free software under the GNU GPL version 3 or later, without warranty \'b7 licence text: LICENSE.txt in the plugin folder\par}\par
 {\cf3\b\fs26 Foreword\par}
 GranularSynth is a highly optimised granular synthesizer with a clear goal: {\b professional sound} on the level of commercial digital synthesizers, followed by low CPU load and easy operation. With HQ, oscillators and saturation use {\b 2x oversampling}, so even harsh FM and drive sounds stay free of metallic aliasing (can be switched off in the Performance tab). The CPU-heavy parts (grains, oscillator, reverb, equalizer, displays) are written in {\b assembler} (SSE, Win32 and Win64), each with a Pascal version for cross-checking. The result: {\b very low CPU load} with {\b high sound quality} - even on older computers and in old hosts. The interface language can be switched between Deutsch and English in the Extras tab ("Sprache / Language") or by clicking the small flag at the right end of the tab row.\par\par
@@ -196,18 +196,20 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Wave}\cell\pard\intbl{Sine, triangle, saw, square, FM (two sines), noise.}\cell\pard\intbl{\cf4 yes (Osc Wave (Osc2, Osc3 likewise))}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Drawn / Draw ...}\cell\pard\intbl{own wave: checked = the oscillator plays the drawn shape instead of "Wave". "Draw ..." opens the drawing area: draw one period with the mouse (right-click = 0), basic shapes (sine, triangle, saw, square, pulse, random, invert) as a starting point, smoothing 0-100 % rounds off the overtones (100 % = almost sine). It is played band-limited - no aliasing, even very high up; sync, unison, envelope and filter work as usual. Saved with the preset.}\cell\pard\intbl{\cf4 yes (Osc Drawn (Osc2, Osc3 likewise))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Sync (overtones)}\cell\pard\intbl{Hard Sync: 0 = clean wave, higher = more and more harmonics, cutting (not with noise).}\cell\pard\intbl{\cf4 yes (Osc Sync (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Octave / Fine tune / Level / Pan}\cell\pard\intbl{Transpose, fine tune in cents, volume (up to 200 %) and position.}\cell\pard\intbl{\cf4 yes (Osc Octave, Osc Fine, Osc Level, Osc Pan (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 FM ratio / FM amount}\cell\pard\intbl{FM wave only: modulator frequency and strength - bells, e-piano, bass.}\cell\pard\intbl{\cf4 yes (Osc FM Ratio, Osc FM amount (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 FM tone}\cell\pard\intbl{its own envelope for the FM amount (not the volume): bright on the attack, then soft.}\cell\pard\intbl{\cf4 yes (Own FM env., FM Attack, FM Decay, FM Sustain, FM Release (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Volume envelope}\cell\pard\intbl{Oscillator ADSR, with graph.}\cell\pard\intbl{\cf4 yes (Osc Attack, Osc Decay, Osc Sustain, Osc Release (Osc2, Osc3 likewise))}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Custom filter}\cell\pard\intbl{Filter for this oscillator only, bypassing Filter 1/2 (e.g. noise hats via high-pass).}\cell\pard\intbl{\cf4 yes (Osc Filter On, Osc Filter Type, Osc Filter Cutoff, Osc Filter Resonance, Osc Filter Contour, Osc filter Env. (Osc2 filter, Osc3 filter likewise))}\cell\row
+\pard\intbl{\cf2 Volume envelope}\cell\pard\intbl{Oscillator ADSR, with graph.}\cell\pard\intbl{\cf4 yes (Osc Attack, Osc Decay, Osc Sustain, Osc Release (Osc2, Osc3 likewise))}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Custom filter}\cell\pard\intbl{Filter for this oscillator only, bypassing Filter 1/2 (e.g. noise hats via high-pass).}\cell\pard\intbl{\cf4 yes (Osc Filter On, Osc Filter Type, Osc Filter Cutoff, Osc Filter Resonance, Osc Filter Contour, Osc filter Env. (Osc2 filter, Osc3 filter likewise))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Unison / Detune / Width}\cell\pard\intbl{2 to 7 detuned voices per note, spread across the stereo field (fat pads and leads).}\cell\pard\intbl{\cf4 yes (Osc Unison, Osc Unison Detune, Osc Unison width (Osc2, Osc3 likewise))}\cell\row
 \pard\par
 {\cf3\b\fs22 Filter tab\par}
@@ -350,8 +352,10 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Oversampling 2x (with HQ)}\cell\pard\intbl{On by default: with HQ, oscillators and saturation run internally at twice the sample rate. Harsh FM, sync and drive sounds stay clean, without metallic aliasing. For oscillator-heavy sounds the oscillators need up to about twice the CPU time. Belongs to the computer, not to the preset.}\cell\pard\intbl{\cf4 yes (Oversampling)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Load list}\cell\pard\intbl{which sound components in the current sound cost how much CPU (grains, HQ, oscillators, filters, matrix, echo, reverb ...).}\cell\pard\intbl{\cf5 no}\cell\row
+\pard\intbl{\cf2 Oscillators: wavetable / classic}\cell\pard\intbl{Wavetable (default): triangle, saw and square come from band-limited tables (61 levels, one per sixth of an octave) - practically free of aliasing (-84 dB instead of -42 dB), full highs up to 17 kHz even in the bass, without oversampling and therefore not more expensive. Classic: exactly the oscillator up to version 2.9, for old projects that must sound bit-identical. Belongs to the computer, not to the preset.}\cell\pard\intbl{\cf4 yes (Oscillator model)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Load list}\cell\pard\intbl{which sound components in the current sound cost how much CPU (grains, HQ, oscillators, filters, matrix, echo, reverb ...).}\cell\pard\intbl{\cf5 no}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Pointer / Runtime}\cell\pard\intbl{estimated total load and measured processing time in the host (calls/s, share of buffer, peak value).}\cell\pard\intbl{\cf5 no}\cell\row
 \pard\par
 }

@@ -301,6 +301,9 @@ begin
   // Testhilfe: GRANULAR_FREELFO=1..9 oeffnet das Fenster 'freie Form' (1 = LFO 1); fuer Bildschirmfotos
   if StrToIntDef(GetEnvironmentVariable('GRANULAR_FREELFO'), 0) > 0 then
     FEditor.OpenFreeEditor(StrToIntDef(GetEnvironmentVariable('GRANULAR_FREELFO'), 1) - 1);
+  // Testhilfe: GRANULAR_WAVEEDIT=1..3 oeffnet 'Welle zeichnen' des Oszillators
+  if StrToIntDef(GetEnvironmentVariable('GRANULAR_WAVEEDIT'), 0) > 0 then
+    FEditor.OpenWaveEditor(EnsureRange(StrToIntDef(GetEnvironmentVariable('GRANULAR_WAVEEDIT'), 1) - 1, 0, 2));
   // Testhilfe: GRANULAR_LANGTEST=<Kuerzel> schaltet nach dem Oeffnen die Sprache um (wie die Auswahl im Reiter Extras)
   if GetEnvironmentVariable('GRANULAR_LANGTEST') <> '' then
   begin

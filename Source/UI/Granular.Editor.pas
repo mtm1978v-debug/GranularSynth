@@ -152,6 +152,12 @@ type
     FFreeRoot: array[0..FREE_LFO_COUNT - 1] of TComboBox;     // Bezugston der Klaviatur
     FFreeSmooth: array[0..FREE_LFO_COUNT - 1] of TTrackBar;   // Glaettung 0..100 %
     FFreeSmoothLbl: array[0..FREE_LFO_COUNT - 1] of TLabel;
+    // Fenster "Welle zeichnen" je Oszillator
+    FWaveForm: array[0..OSC_COUNT - 1] of TForm;
+    FWaveView: array[0..OSC_COUNT - 1] of TOscWaveView;
+    FWaveSmooth: array[0..OSC_COUNT - 1] of TTrackBar;
+    FWaveSmoothLbl: array[0..OSC_COUNT - 1] of TLabel;
+    FWaveUse: array[0..OSC_COUNT - 1] of TCheckBox;
     FFreeSteps: array[0..FREE_LFO_COUNT - 1] of TTrackBar;
     FFreeStepsLbl: array[0..FREE_LFO_COUNT - 1] of TLabel;
     FWave: TWaveView;
@@ -257,6 +263,13 @@ type
     procedure FreeSmoothClick(Sender: TObject);
     procedure FreeSmoothChange(Sender: TObject);
     procedure FreeRootChange(Sender: TObject);
+    procedure WaveEditClick(Sender: TObject);
+    procedure WaveFormClose(Sender: TObject; var Action: TCloseAction);
+    procedure WaveShapeClick(Sender: TObject);
+    procedure WaveSmoothChange(Sender: TObject);
+    procedure WaveUseClick(Sender: TObject);
+    procedure WaveViewChange(Sender: TObject);
+    procedure WaveChanged(O: Integer; TurnOn: Boolean);
     procedure FreeResetClick(Sender: TObject);
     procedure BuildModMenu;
     function TakeSnapshot: TArray<Single>;
@@ -420,6 +433,7 @@ type
     procedure ShowMatrixPage(Page: Integer);
     { Fenster 'freie Form' eines LFOs (0/1) oeffnen }
     procedure OpenFreeEditor(K: Integer);
+    procedure OpenWaveEditor(O: Integer);
     { Info-Fenster (Klartext-Uebersicht) zeigen }
     procedure ShowInfo;
     procedure ShowPage(Index: Integer);
@@ -2261,6 +2275,20 @@ begin
       FSyncIdx[O] := AddParam(P0, Ord(Col0[I]), 8, 24 + I * ROW_H, 110, 62, 150, CAP0[I])
     else
       AddParam(P0, Ord(Col0[I]), 8, 24 + I * ROW_H, 110, 62, 150, CAP0[I]);
+  // gezeichnete Welle: Haken ersetzt die Auswahl 'Welle', Knopf oeffnet die Zeichenflaeche
+  AddParam(P0, Ord(Op.Draw), 286, 24 + ROW_H, 0, 0, 0, Tr('Gezeichnet'));
+  with TButton.Create(Self) do
+  begin
+    Parent := P0;
+    SetBounds(384, 24 + ROW_H, 88, 24);
+    Caption := Tr('Zeichnen ...');
+    Tag := O;
+    TabStop := False;
+    OnClick := WaveEditClick;
+    Hint := Tr('Eigene Welle zeichnen: eine Periode mit der Maus, dazu Grundformen und Glättung. ' +
+      'Der Oszillator spielt sie bandbegrenzt (ohne Spiegelfrequenzen).');
+    ShowHint := True;
+  end;
   // FM-Klangfarbe: eigene Huellkurve fuer die FM-MENGE (nicht die Lautstaerke - die regelt die
   // Lautstaerke-Huellkurve in der Mitte). Wirkt nur bei Welle FM mit Haken; sonst ausgegraut.
   L := TLabel.Create(Self);
@@ -2924,6 +2952,23 @@ begin
   L.Transparent := True;
   L.Caption := Tr('An (Standard): Oszillatoren und Sättigung rechnen intern mit doppelter Abtastrate. ' +
     'Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet etwas mehr Rechenzeit.');
+  // Oszillator-Modell: Wavetable (bandbegrenzt, Standard) oder klassisch (bitgenau wie bis 2.9)
+  L := TLabel.Create(Self);
+  L.Parent := PR;
+  L.SetBounds(404, 274, 100, 16);
+  L.Caption := Tr('Oszillatoren:');
+  L.Font.Color := COL_NAME;
+  L.Transparent := True;
+  AddParam(PR, Ord(gpOscModel), 404, 292, 0, 0, 200);
+  L := TLabel.Create(Self);
+  L.Parent := PR;
+  L.SetBounds(404, 292 + ROW_H, 220, 100);
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Font.Color := $00A0A0A0;
+  L.Transparent := True;
+  L.Caption := Tr('Wavetable (Standard): Dreieck, Säge und Rechteck bandbegrenzt aus Tabellen - sauberer und ohne ' +
+    'Oversampling. Klassisch: genau der Klang bis Version 2.9 (für alte Projekte).');
 end;
 
 { --- Reiter EQ --- }
@@ -3362,6 +3407,213 @@ begin
     SyncFreeUi;
     Frm.Show;
   end;
+end;
+
+{ --- Fenster "Welle zeichnen": eine Periode frei zeichnen, Grundformen, Glaettung (nicht modal, wirkt sofort) --- }
+
+procedure TGranularEditor.WaveEditClick(Sender: TObject);
+begin
+  OpenWaveEditor((Sender as TComponent).Tag);
+end;
+
+procedure TGranularEditor.OpenWaveEditor(O: Integer);
+const
+  SHAPES: array[0..6] of string = ('Sinus', 'Dreieck', 'Säge', 'Rechteck', 'Puls 25 %', 'Zufall', 'Umkehren');
+var
+  Frm: TForm;
+  P: TPanel;
+  L: TLabel;
+  I: Integer;
+  B: TButton;
+begin
+  if FWaveForm[O] <> nil then
+  begin
+    FWaveForm[O].BringToFront;
+    Exit;
+  end;
+  Frm := TForm.CreateNew(Self);
+  FWaveForm[O] := Frm;
+  Frm.Tag := O;
+  Frm.OnClose := WaveFormClose;
+  Frm.OnKeyDown := FreeFormKeyDown;
+  Frm.OnKeyUp := FreeFormKeyUp;
+  Frm.KeyPreview := True;
+  Frm.FormStyle := fsStayOnTop;
+  Frm.Caption := Format(Tr('Osz %d - Welle zeichnen'), [O + 1]);
+  Frm.BorderStyle := bsSizeToolWin;
+  Frm.BorderIcons := [biSystemMenu];
+  Frm.Position := poScreenCenter;
+  Frm.ClientWidth := 820;
+  Frm.ClientHeight := 400;
+  Frm.Constraints.MinWidth := 700;
+  Frm.Constraints.MinHeight := 300;
+  Frm.Color := BG_MAIN;
+  Frm.Font.Assign(Font);
+
+  P := TPanel.Create(Frm);
+  P.Parent := Frm;
+  P.Align := alClient;
+  P.BevelOuter := bvNone;
+  P.ParentBackground := False;
+  P.Color := BG_MAIN;
+
+  // Grundformen als Ausgangspunkt
+  for I := 0 to High(SHAPES) do
+  begin
+    B := TButton.Create(Frm);
+    B.Parent := P;
+    B.SetBounds(8 + I * 100, 8, 94, 25);
+    B.Caption := Tr(SHAPES[I]);
+    B.Tag := O * 100 + I;
+    B.TabStop := False;
+    B.OnClick := WaveShapeClick;
+  end;
+
+  L := TLabel.Create(Frm);
+  L.Parent := P;
+  L.SetBounds(8, 46, 70, 16);
+  L.Caption := Tr('Glättung');
+  L.Font.Color := COL_NAME;
+  L.Transparent := True;
+  FWaveSmooth[O] := TTrackBar.Create(Frm);
+  FWaveSmooth[O].Parent := P;
+  FWaveSmooth[O].SetBounds(80, 42, 200, 26);
+  FWaveSmooth[O].Min := 0;
+  FWaveSmooth[O].Max := 100;
+  FWaveSmooth[O].TickStyle := tsNone;
+  FWaveSmooth[O].ThumbLength := 16;
+  FWaveSmooth[O].Tag := O;
+  FWaveSmooth[O].TabStop := False;
+  FWaveSmooth[O].Position := Round(FEngine.OscDraw[O].Smooth * 100);
+  FWaveSmooth[O].OnChange := WaveSmoothChange;
+  FWaveSmooth[O].Hint := Tr('Glättung: rundet die Obertöne der Zeichnung ab. 0 % = genau die gezeichnete Form, ' +
+    '100 % = fast ein Sinus. Die gelbe Linie zeigt, was der Oszillator spielt.');
+  FWaveSmooth[O].ShowHint := True;
+  FWaveSmoothLbl[O] := TLabel.Create(Frm);
+  FWaveSmoothLbl[O].Parent := P;
+  FWaveSmoothLbl[O].SetBounds(284, 46, 40, 16);
+  FWaveSmoothLbl[O].Font.Color := COL_VAL;
+  FWaveSmoothLbl[O].Transparent := True;
+  FWaveSmoothLbl[O].Caption := IntToStr(FWaveSmooth[O].Position) + ' %';
+  FWaveUse[O] := TCheckBox.Create(Frm);
+  FWaveUse[O].Parent := P;
+  FWaveUse[O].SetBounds(340, 44, 300, 20);
+  FWaveUse[O].Caption := Format(Tr('Oszillator %d spielt die gezeichnete Welle'), [O + 1]);
+  FWaveUse[O].Checked := FEngine.GetParam(Ord(OSC_P[O].Draw)) >= 0.5;
+  FWaveUse[O].Tag := O;
+  FWaveUse[O].TabStop := False;
+  FWaveUse[O].OnClick := WaveUseClick;
+
+  L := TLabel.Create(Frm);
+  L.Parent := P;
+  L.Align := alBottom;
+  L.AlignWithMargins := True;
+  L.Margins.SetBounds(10, 2, 10, 6);
+  L.AutoSize := False;
+  L.Height := 56;
+  L.WordWrap := True;
+  L.Font.Color := $00A0A0A0;
+  L.Transparent := True;
+  L.Caption :=
+    Tr('Ziehen zeichnet eine Periode der Welle, Rechtsklick setzt 0. Blau = deine Zeichnung, gelb = was der ' +
+    'Oszillator spielt: bandbegrenzt (keine Spiegelfrequenzen, auch in hohen Lagen) und mit Glättung. ' +
+    'Sync, Unison, Hüllkurve und Filter wirken wie bei den anderen Wellen; wird mit dem Preset gespeichert.');
+
+  FWaveView[O] := TOscWaveView.Create(Frm, FEngine, O);
+  FWaveView[O].Parent := P;
+  FWaveView[O].SetBounds(8, 76, P.ClientWidth - 16, P.ClientHeight - 76 - 64);
+  FWaveView[O].Anchors := [akLeft, akTop, akRight, akBottom];
+  FWaveView[O].Tag := O;
+  FWaveView[O].OnChange := WaveViewChange;
+  Frm.Show;
+end;
+
+procedure TGranularEditor.WaveFormClose(Sender: TObject; var Action: TCloseAction);
+var
+  O: Integer;
+begin
+  O := (Sender as TForm).Tag;
+  FWaveView[O] := nil;
+  FWaveSmooth[O] := nil;
+  FWaveSmoothLbl[O] := nil;
+  FWaveUse[O] := nil;
+  FWaveForm[O] := nil;
+  Action := caFree;
+end;
+
+{ Tabellen neu rechnen; beim Zeichnen den Oszillator auf "Gezeichnet" stellen (man will hoeren, was man malt) }
+procedure TGranularEditor.WaveChanged(O: Integer; TurnOn: Boolean);
+begin
+  FEngine.OscDrawChanged(O);
+  if TurnOn and (FEngine.GetParam(Ord(OSC_P[O].Draw)) < 0.5) then
+  begin
+    FEngine.SetParamById(OSC_P[O].Draw, 1);
+    if FEngine.GetParam(Ord(OSC_P[O].On_)) < 0.5 then
+      FEngine.SetParamById(OSC_P[O].On_, 1);
+    UpdateFromEngine;
+  end;
+  if FWaveUse[O] <> nil then
+  begin
+    FUpdating := True;
+    try
+      FWaveUse[O].Checked := FEngine.GetParam(Ord(OSC_P[O].Draw)) >= 0.5;
+    finally
+      FUpdating := False;
+    end;
+  end;
+  if FWaveView[O] <> nil then
+    FWaveView[O].Invalidate;
+end;
+
+procedure TGranularEditor.WaveViewChange(Sender: TObject);
+begin
+  WaveChanged((Sender as TComponent).Tag, True);
+end;
+
+procedure TGranularEditor.WaveShapeClick(Sender: TObject);
+var
+  O, K, I: Integer;
+  D: POscDraw;
+  X: Double;
+begin
+  O := (Sender as TComponent).Tag div 100;
+  K := (Sender as TComponent).Tag mod 100;
+  D := FEngine.OscDraw[O];
+  for I := 0 to OSC_DRAW_N - 1 do
+  begin
+    X := I / OSC_DRAW_N;
+    case K of
+      0: D.Pt[I] := Sin(2 * Pi * X);
+      1: if X < 0.25 then D.Pt[I] := 4 * X else if X < 0.75 then D.Pt[I] := 2 - 4 * X else D.Pt[I] := 4 * X - 4;
+      2: D.Pt[I] := 1 - 2 * X;
+      3: if X < 0.5 then D.Pt[I] := 1 else D.Pt[I] := -1;
+      4: if X < 0.25 then D.Pt[I] := 1 else D.Pt[I] := -1;
+      5: D.Pt[I] := EnsureRange(D.Pt[I] * 0.5 + (Random * 2 - 1) * 0.5, -1, 1);   // Zufall: aufrauen, Form bleibt erkennbar
+      6: D.Pt[I] := -D.Pt[I];
+    end;
+  end;
+  WaveChanged(O, True);
+end;
+
+procedure TGranularEditor.WaveSmoothChange(Sender: TObject);
+var
+  O: Integer;
+begin
+  O := (Sender as TComponent).Tag;
+  FEngine.OscDraw[O].Smooth := FWaveSmooth[O].Position / 100;
+  FWaveSmoothLbl[O].Caption := IntToStr(FWaveSmooth[O].Position) + ' %';
+  WaveChanged(O, False);
+end;
+
+procedure TGranularEditor.WaveUseClick(Sender: TObject);
+var
+  O: Integer;
+begin
+  if FUpdating then
+    Exit;
+  O := (Sender as TComponent).Tag;
+  FEngine.SetParamById(OSC_P[O].Draw, Ord(FWaveUse[O].Checked));
+  UpdateFromEngine;
 end;
 
 procedure TGranularEditor.FreeFormClose(Sender: TObject; var Action: TCloseAction);

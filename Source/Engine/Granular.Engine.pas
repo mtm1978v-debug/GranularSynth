@@ -266,6 +266,14 @@ type
     // Oszillatoren ohne eigenes Filter: alle einer Stimme in einen 2x-Puffer, nur EIN Abwaerts-Filter je Stimme
     FOsVW: array[0..MAX_VOICES - 1, 0..(HB_HIST * 2 + SUB_BLOCK * 2) * 2 - 1] of Single;   // Vorlauf + Block
     FOsVUsed: array[0..MAX_VOICES - 1] of Boolean;
+    FOscOsGroup: Boolean;   // Oszillatoren rechnen mit Oversampling (alle gemeinsam, haelt solange einer klingt)
+    // gezeichnete Oszillator-Wellen: Zeichnung + bandbegrenzte Wavetables (doppelt gepuffert: die
+    // Oberflaeche rechnet in den freien Satz und schaltet dann um, der Audio-Thread liest nur)
+    FOscDraw: array[0..OSC_COUNT - 1] of TOscDraw;
+    FWtBuf: array[0..OSC_COUNT - 1, 0..1] of TArray<Single>;   // nur angelegt, wenn wirklich gezeichnet wurde
+    FWtPtr: array[0..OSC_COUNT - 1] of PSingle;                  // aktive Tabelle (Startwelle: gemeinsame)
+    FWtCur: array[0..OSC_COUNT - 1] of Integer;
+    FWtArgs: TWtArgs;
     FDrvMode: Integer;                                                // Saettigung: 0 aus, 1 normal, 2 mit Oversampling
     FDrvU: array[0..(HB_HIST + SUB_BLOCK) * 2 - 1] of Single;         // Vorlauf + Block (1x) fuer das Aufwaerts-Filter
     FDrvW: array[0..(HB_HIST * 2 + SUB_BLOCK * 2) * 2 - 1] of Single; // 2x: Vorlauf + Block
@@ -487,6 +495,8 @@ type
     procedure SatBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
     procedure DriveOs(N: Integer; Drive, Make: Single);
     procedure HbDecimate(W: PSingle; N: Integer; Dst: PSingle);
+    procedure RenderWtOsc(Tab: PSingle);
+    function GetOscDraw(O: Integer): POscDraw;
     procedure ProcessEq(N: Integer);
     procedure ProcessStereo(N: Integer);
     procedure RenderOsc(N: Integer);
@@ -601,6 +611,11 @@ type
     property SourceValue[Src: TModSource]: Single read GetSourceValue;
     { Daten der Form 'Frei' je LFO; die Oberflaeche schreibt direkt hinein (einzelne Singles, lockfrei) }
     property FreeLfo[Index: Integer]: PFreeLfo read GetFreeLfo;
+    { gezeichnete Oszillator-Welle O (0..2); nach Aenderungen OscDrawChanged aufrufen (nicht im Audio-Thread) }
+    property OscDraw[O: Integer]: POscDraw read GetOscDraw;
+    procedure OscDrawChanged(O: Integer);
+    { reichste Stufe der aktuellen Wavetable (Anzeige), WT_LEN[0] + 2 Werte }
+    function OscWaveTable(O: Integer): PSingle;
     { Morph-Ziel B: aktuelle Einstellung merken / setzen / lesen (benannte Parameter, normalisiert) }
     procedure StoreMorphTarget;
     procedure SetMorphTarget(const Values: array of Single);
@@ -673,6 +688,68 @@ type
   PFloatArr = ^TFloatArr;
   TFloatArr = array[0..$FFFFFF] of Single;
 
+var
+  GWtDefault: array[0..WT_TOTAL - 1] of Single;   // Wavetable der Startwelle (gezeichnet)
+  GWtDefaultReady: Boolean;
+  // eingebaute Wellen als bandbegrenzte Wavetables: 0 Dreieck, 1 Saege, 2 Rechteck (Form, Phase und
+  // Pegel exakt wie im klassischen Kern: Dreieck 1 - 4|w - 0,5|, Saege 2w - 1, Rechteck +1 / -1)
+  GWtBuiltin: array[0..2, 0..WT_TOTAL - 1] of Single;
+
+{ Zeichnung -> Obertoene (FFT der Punkte, ohne Gleichanteil) -> Glaettung (Obertoene weich abrunden)
+  -> bandbegrenzte Stufen. Pegel: Spitze der reichsten Stufe = 1. }
+procedure BuildDrawTable(const D: TOscDraw; Dst: PSingle);
+var
+  A, B: array of Double;
+  K, NH: Integer;
+  Sm, W: Double;
+begin
+  NH := OSC_DRAW_N div 2 - 1;
+  SetLength(A, OSC_DRAW_N div 2 + 1);
+  SetLength(B, OSC_DRAW_N div 2 + 1);
+  WtAnalyze(D.Pt, OSC_DRAW_N, A, B);
+  Sm := EnsureRange(D.Smooth, 0, 1);
+  if Sm > 0 then
+    for K := 1 to NH do
+    begin
+      // Glaettung: hoehere Obertoene sanft daempfen (100 % = fast Sinus)
+      W := Exp(-1.2 * Sqr((K - 1) * Sm));
+      A[K] := A[K] * W;
+      B[K] := B[K] * W;
+    end;
+  WtBuild(A, B, NH, Dst, True);
+end;
+
+{ Fourier-Reihen der eingebauten Wellen, einmal je Programmlauf }
+procedure BuildBuiltinWaves;
+var
+  A, B: array of Double;
+  K: Integer;
+begin
+  SetLength(A, WT_HARM[0] + 1);
+  SetLength(B, WT_HARM[0] + 1);
+  // Dreieck 1 - 4|w - 0,5| = -(8/pi^2) Summe ungerade k cos(2 pi k w) / k^2
+  for K := 1 to WT_HARM[0] do
+  begin
+    B[K] := 0;
+    if Odd(K) then A[K] := -8 / Sqr(Pi) / Sqr(K) else A[K] := 0;
+  end;
+  WtBuild(A, B, WT_HARM[0], @GWtBuiltin[0, 0], False);
+  // Saege 2w - 1 = -(2/pi) Summe sin(2 pi k w) / k
+  for K := 1 to WT_HARM[0] do
+  begin
+    A[K] := 0;
+    B[K] := -2 / Pi / K;
+  end;
+  WtBuild(A, B, WT_HARM[0], @GWtBuiltin[1, 0], False);
+  // Rechteck (+1 erste Haelfte) = (4/pi) Summe ungerade k sin(2 pi k w) / k
+  for K := 1 to WT_HARM[0] do
+  begin
+    A[K] := 0;
+    if Odd(K) then B[K] := 4 / Pi / K else B[K] := 0;
+  end;
+  WtBuild(A, B, WT_HARM[0], @GWtBuiltin[2, 0], False);
+end;
+
 { Abschnitts-Profil (nur Pruefstand, GSectProfOn = True): 0 Modulation/Arp, 1 Stimmen/Huellkurven,
   2 Grains, 3 Oszillatoren, 4 Filter je Note, 5 Echo, 6 Hall, 7 Rest (Summe, Drive, EQ, Limiter, Pegel) }
 procedure SectMark(K: Integer; var T: Int64);
@@ -730,8 +807,23 @@ begin
   for I := 1 to 3 do
   begin
     FSat.Hi4[I] := 3; FSat.Lo4[I] := -3; FSat.C27[I] := 27; FSat.C9[I] := 9;
+  end;
   HbInitArgs(FHbDown, 1, HB_CENTER);
   HbInitArgs(FHbUp, 2, 0);
+  FWtArgs.One := 1;
+  // Startwelle: Tabellen nur einmal je Programmlauf rechnen, danach kopieren (viele Engines im Pruefstand)
+  for I := 0 to OSC_COUNT - 1 do
+    OscDrawDefault(FOscDraw[I]);
+  if not GWtDefaultReady then
+  begin
+    BuildBuiltinWaves;
+    BuildDrawTable(FOscDraw[0], @GWtDefault[0]);
+    GWtDefaultReady := True;
+  end;
+  for I := 0 to OSC_COUNT - 1 do
+  begin
+    FWtPtr[I] := @GWtDefault[0];
+    FWtCur[I] := 0;
   end;
   FGainPrev := -1;
   FGrainGainPrev := -1;
@@ -1023,6 +1115,68 @@ begin
     Result := FEff[Index]
   else
     Result := GetParam(Index);
+end;
+
+function TGranularEngine.GetOscDraw(O: Integer): POscDraw;
+begin
+  Result := @FOscDraw[EnsureRange(O, 0, OSC_COUNT - 1)];
+end;
+
+function TGranularEngine.OscWaveTable(O: Integer): PSingle;
+begin
+  O := EnsureRange(O, 0, OSC_COUNT - 1);
+  Result := FWtPtr[O];
+end;
+
+{ Wavetable-Welle mit den Werten aus FOscArgs (Ausgabe, Huellkurve, Phase, Panorama, Sync). Stufe nach der
+  erlaubten Obertonzahl WT_MARGIN / Schritt (Oversampling: Schritt halb), zwischen zwei Stufen stufenlos
+  ueberblendet: beim Gleiten kommen Obertoene weich dazu bzw. gehen weich - kein Sprung an Stufengrenzen.
+  Die reichere Stufe reicht dabei hoechstens bis knapp ueber die halbe Abtastrate (Spiegelungen > 20 kHz). }
+procedure TGranularEngine.RenderWtOsc(Tab: PSingle);
+var
+  M0, M1: Integer;
+  Hal, Mf: Double;
+begin
+  // Mf = 6 log2(H0 / erlaubte Obertoene), erlaubt = WT_MARGIN * halbe Abtastrate / Schritt
+  Hal := WT_MARGIN * 0.5 / Max(FOscArgs.DtP * FOscArgs.SyncR, 1E-9);
+  Mf := 6 * Log2(WT_HARM[0] / Max(Hal, 1E-9));
+  if Mf < 0 then Mf := 0;
+  if Mf > WT_MIPS - 1 then Mf := WT_MIPS - 1;
+  M0 := Trunc(Mf);
+  M1 := Min(M0 + 1, WT_MIPS - 1);
+  FWtArgs.Out := FOscArgs.Out;
+  FWtArgs.Env := FOscArgs.Env;
+  FWtArgs.TabA := @PFloatArr(Tab)[WT_OFS[M0]];
+  FWtArgs.TabB := @PFloatArr(Tab)[WT_OFS[M1]];
+  FWtArgs.CSizeA := WT_LEN[M0];
+  FWtArgs.CSizeB := WT_LEN[M1];
+  FWtArgs.Mix := Mf - M0;
+  FWtArgs.Count := FOscArgs.Count;
+  FWtArgs.Ph := FOscArgs.Ph;
+  FWtArgs.DtP := FOscArgs.DtP;
+  FWtArgs.SyncR := FOscArgs.SyncR;
+  FWtArgs.GL := FOscArgs.GL;
+  FWtArgs.GR := FOscArgs.GR;
+  if (FOscArgs.SyncR = 1) and (WT_LEN[M0] = WT_LEN[M1]) then
+    RenderWtFast(@FWtArgs)       // ohne Sync, gleich lange Stufen: ein Index fuer beide
+  else
+    RenderWt(@FWtArgs);
+  FOscArgs.Ph := FWtArgs.Ph;
+end;
+
+{ Tabellen der gezeichneten Welle O neu: in den freien Puffer (beim ersten Mal angelegt - nie im
+  Audio-Thread), dann umschalten; der Audio-Thread liest nur die aktive Tabelle. }
+procedure TGranularEngine.OscDrawChanged(O: Integer);
+var
+  Nxt: Integer;
+begin
+  O := EnsureRange(O, 0, OSC_COUNT - 1);
+  Nxt := 1 - FWtCur[O];
+  if Length(FWtBuf[O, Nxt]) <> WT_TOTAL then
+    SetLength(FWtBuf[O, Nxt], WT_TOTAL);
+  BuildDrawTable(FOscDraw[O], @FWtBuf[O, Nxt][0]);
+  FWtPtr[O] := @FWtBuf[O, Nxt][0];
+  FWtCur[O] := Nxt;
 end;
 
 function TGranularEngine.GetFreeLfo(Index: Integer): PFreeLfo;
@@ -3336,6 +3490,7 @@ begin
       FLayerB.FParams[Ord(gpTempo)] := FParams[Ord(gpTempo)];
       FLayerB.FParams[Ord(gpMaster)] := FParams[Ord(gpMaster)];
       FLayerB.FParams[Ord(gpOversample)] := FParams[Ord(gpOversample)];
+      FLayerB.FParams[Ord(gpOscModel)] := FParams[Ord(gpOscModel)];
       FLayerB.FParams[Ord(gpPerformance)] := FParams[Ord(gpPerformance)];
       FLayerB.FOutPeak := FOutPeak;
       // B rechnet den ganzen Block am Stueck (vorab); hoerbar, wenn B
@@ -4249,7 +4404,8 @@ var
   VFine, VLvl, VPn, VRatio: Double;
   FAtt, FDec, FSus, FRel: Double;
   E, F: Single;
-  OwnFm, OwnFlt, OsV: Boolean;
+  OwnFm, OwnFlt, OsV, DrawOn, UseWt: Boolean;
+  WtTab: PSingle;
   Dst: PSingle;
   G0, R0: Single;
   P: TOscParamIds;
@@ -4266,6 +4422,22 @@ begin
     Exit;
   end;
   Wave := EnsureRange(Round(Eff(P.Wave)), 0, 5);
+  DrawOn := Eff(P.Draw) >= 0.5;                  // gezeichnete Welle ersetzt 'Welle'
+  if DrawOn then
+  begin
+    Wave := 0;
+    UseWt := True;
+    WtTab := FWtPtr[O];
+  end
+  else
+  begin
+    // Modell Wavetable: Dreieck, Saege, Rechteck bandbegrenzt aus Tabellen (klassisch: PolyBLEP-Kern)
+    UseWt := (Wave in [1, 2, 3]) and (FParams[Ord(gpOscModel)] < 0.5);
+    if UseWt then
+      WtTab := @GWtBuiltin[Wave - 1, 0]
+    else
+      WtTab := nil;
+  end;
   OwnFlt := Eff(P.FltOn) >= 0.5;
   Uni := EnsureRange(Round(Eff(OSC_UNI[O, 0])), 1, UNI_MAX);
   if Wave = 5 then
@@ -4340,7 +4512,7 @@ begin
       FOscArgs.GR := Sqrt((1 + VPn) / 2) * Sqrt(2);
       Hz := 440 * Power(2, (Note - 69 + FGlideOfs[V] + (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 +
         FBend * FBendRange) / 12);
-      OsV := FOsOn and (Wave <> 5);              // Rauschen hat keine Obertoene, die spiegeln koennten
+      OsV := FOsOn and FOscOsGroup and ((Wave <> 5) or DrawOn);   // Rauschen: nichts zu spiegeln
       if OsV then
         Dt := Min(Hz / (FSampleRate * 2), 0.45)
       else
@@ -4420,7 +4592,10 @@ begin
         FOscArgs.DtP := Dt;
         FOscArgs.Dt := Min(Dt * FOscArgs.SyncR, 0.45);   // PolyBLEP-Breite der schnelleren Folgewelle
         FOscArgs.DtM := Min(Dt * VRatio, 0.45);
-        RenderOscBlock(@FOscArgs);
+        if UseWt then
+          RenderWtOsc(WtTab)
+        else
+          RenderOscBlock(@FOscArgs);
         Ph := FOscArgs.Ph;
         PhM := FOscArgs.PhM;
       end
@@ -4446,7 +4621,10 @@ begin
           FOscArgs.DtP := UDt;
           FOscArgs.Dt := Min(UDt * FOscArgs.SyncR, 0.45);
           FOscArgs.DtM := Min(UDt * VRatio, 0.45);
-          RenderOscBlock(@FOscArgs);
+          if UseWt then
+            RenderWtOsc(WtTab)
+          else
+            RenderOscBlock(@FOscArgs);
           if K = 0 then
           begin
             Ph := FOscArgs.Ph; PhM := FOscArgs.PhM;
@@ -4651,10 +4829,44 @@ end;
 { alle Oszillatoren; FOscMix sammelt die mit eigenem Filter (an Filter 1/2 vorbei) }
 procedure TGranularEngine.RenderOsc(N: Integer);
 var
-  O, V, I: Integer;
+  O, V, I, Wave: Integer;
+  NeedOs, Active, Draw: Boolean;
 begin
   FOscOwnFlt := False;
   FillChar(FOsVUsed, SizeOf(FOsVUsed), 0);
+  // Oversampling nur, wo Spiegelfrequenzen entstehen koennen: FM, klassische Dreieck/Saege/Rechteck und
+  // alles mit Sync. Sinus und Wavetable-Wellen (schon bandbegrenzt) ohne Sync brauchen es nicht, Rauschen nie.
+  // Gemeinsam fuer alle Oszillatoren (sonst waeren sie um die Filterlaufzeit gegeneinander verschoben) und
+  // haltend, solange einer klingt (ein Wechsel mitten im Ton waere ein Sprung).
+  if FOsOn then
+  begin
+    NeedOs := False;
+    Active := False;
+    for O := 0 to OSC_COUNT - 1 do
+    begin
+      if Eff(OSC_P[O].On_) < 0.5 then
+        Continue;
+      Draw := Eff(OSC_P[O].Draw) >= 0.5;
+      Wave := EnsureRange(Round(Eff(OSC_P[O].Wave)), 0, 5);
+      if not Draw and ((Wave = 4) or ((Wave in [1, 2, 3]) and (FParams[Ord(gpOscModel)] >= 0.5))) then
+        NeedOs := True;     // FM; klassische Dreieck/Saege/Rechteck (Wavetable-Wellen sind schon bandbegrenzt)
+      if Eff(OSC_P[O].Sync) > 0.001 then
+        NeedOs := True;     // Sync: harter Neustart der Welle
+      for V := 0 to MAX_VOICES - 1 do
+        if FOsc[O, V].Stage <> esIdle then
+        begin
+          Active := True;
+          if FVModOn[V] and (FVPlain[V, OSC_PND[O, OP_SYNC]] > 0.001) then
+            NeedOs := True;
+        end;
+    end;
+    if NeedOs then
+      FOscOsGroup := True
+    else if not Active then
+      FOscOsGroup := False;
+  end
+  else
+    FOscOsGroup := False;
   for O := 0 to OSC_COUNT - 1 do
     RenderOscOne(O, N);
   // Oversampling: je Stimme einmal zurueck auf die normale Rate, in den Puffer der Stimme
@@ -4863,6 +5075,14 @@ begin
     Dst.FEff[I] := FParams[I];     // gilt sofort (Arp an/aus) - auch fuer den ersten Anschlag
   for I := 0 to 4 do
     Dst.FFree[I] := FFree[I];
+  for I := 0 to OSC_COUNT - 1 do
+  begin
+    Dst.FOscDraw[I] := FOscDraw[I];
+    if FWtPtr[I] = @GWtDefault[0] then
+      Dst.FWtPtr[I] := @GWtDefault[0]       // Startwelle: gemeinsame Tabelle, nichts zu rechnen
+    else
+      Dst.OscDrawChanged(I);
+  end;
   Dst.FArpMask := FArpMask;
   Dst.EqCurve^ := EqCurve^;
   Dst.EqChanged;
@@ -4939,6 +5159,10 @@ var
   I: Integer;
   T: Single;
   F: TFreeLfo;
+  Dw: TOscDraw;
+  Wb: TArray<Single>;
+  Wp: PSingle;
+  Wc: Integer;
   M: Cardinal;
   Eq: TEqCurve;
   Smp: TSampleData;
@@ -4966,6 +5190,15 @@ begin
         FLayerB.FFree[I] := F;
       end;
     M := FArpMask; FArpMask := FLayerB.FArpMask; FLayerB.FArpMask := M;
+    for I := 0 to OSC_COUNT - 1 do
+    begin
+      // Zeichnung und fertige Tabellen tauschen die Plaetze (nichts neu zu rechnen)
+      Dw := FOscDraw[I]; FOscDraw[I] := FLayerB.FOscDraw[I]; FLayerB.FOscDraw[I] := Dw;
+      Wb := FWtBuf[I, 0]; FWtBuf[I, 0] := FLayerB.FWtBuf[I, 0]; FLayerB.FWtBuf[I, 0] := Wb;
+      Wb := FWtBuf[I, 1]; FWtBuf[I, 1] := FLayerB.FWtBuf[I, 1]; FLayerB.FWtBuf[I, 1] := Wb;
+      Wp := FWtPtr[I]; FWtPtr[I] := FLayerB.FWtPtr[I]; FLayerB.FWtPtr[I] := Wp;
+      Wc := FWtCur[I]; FWtCur[I] := FLayerB.FWtCur[I]; FLayerB.FWtCur[I] := Wc;
+    end;
     Eq := EqCurve^; EqCurve^ := FLayerB.EqCurve^; FLayerB.EqCurve^ := Eq;
     EqChanged;
     FLayerB.EqChanged;
