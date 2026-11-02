@@ -2,7 +2,7 @@
 {\colortbl;\red230\green230\blue230;\red255\green200\blue90;\red110\green200\blue255;\red150\green230\blue150;\red180\green180\blue180;\red40\green46\blue60;\red34\green34\blue38;\red40\green42\blue48;}
 \f0\fs20\cf1
 {\cf2\b\fs34 GRANULAR - Help\par}
-{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.12\par}\par
+{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.13\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 free software under the GNU GPL version 3 or later, without warranty \'b7 licence text: LICENSE.txt in the plugin folder\par}\par
 {\cf3\b\fs26 Foreword\par}
 GranularSynth is a highly optimised granular synthesizer with a clear goal: {\b professional sound} on the level of commercial digital synthesizers, followed by low CPU load and easy operation. With HQ, oscillators and saturation use {\b 2x oversampling}, so even harsh FM and drive sounds stay free of metallic aliasing (can be switched off in the Performance tab). The CPU-heavy parts (grains, oscillator, reverb, equalizer, displays) are written in {\b assembler} (SSE, Win32 and Win64), each with a Pascal version for cross-checking. The result: {\b very low CPU load} with {\b high sound quality} - even on older computers and in old hosts. The interface language can be switched between Deutsch and English in the Extras tab ("Sprache / Language") or by clicking the small flag at the right end of the tab row.\par\par
@@ -187,6 +187,8 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \pard\intbl{\cf2 Zones 1-3}\cell\pard\intbl{additional samples per key range (from the start key); load, clear, drag a file onto the row.}\cell\pard\intbl{\cf5 no}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Recording}\cell\pard\intbl{records the sidechain input (up to 60 s) and loads it as the main sample (WAV in Eigene Toene).}\cell\pard\intbl{\cf5 no}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Feedback resampling: on / new share / pass / in time / hold}\cell\pard\intbl{while a key is held, whatever is sounding (with effects and reverb) becomes the new grain source after every pass - the longer you hold, the more the sound evolves. Every new key press starts again from the original. Pass: length free (0.25-8 s) or in time (1/4 to 2 bars). New share: 100 % replaces completely each time, less blends in gently. Pitch stays put (the played key is compensated), level and bass are balanced, the loop is crossfaded seamlessly. Hold freezes the current state, "Keep current state as sample" saves it as WAV in Eigene Toene.}\cell\pard\intbl{\cf4 yes (Resampling, Resampling share, Resampling time, Resampling sync)}\cell\row
 \pard\par
 {\cf3\b\fs22 Osc 1 / Osc 2 / Osc 3 tab\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200

@@ -1890,6 +1890,56 @@ begin
   B.Hall(55, 1.8, 40, 10, 16);
   B.P(gpMorph, 0); B.MorphLfoSync(1, D_1_1, 100);
   B.Save('169 Grains + FM - Marimba wird Roehrenglocke (Doppel)');
+
+  // --- Feedback-Resampling (Nov. 2026): der eigene Klang wird Durchlauf fuer Durchlauf zur Grain-Quelle ---
+
+  // 170: Klavier zerfliesst - jeder Durchlauf mischt 60 % des Gespielten (mit Hall) ins Sample
+  B.Start('Klavier_C4.wav');
+  B.P(gpGrainSize, 260); B.P(gpDensity, 30); B.P(gpSpray, 6); B.P(gpScan, 0.15); B.P(gpSpread, 80);
+  B.P(gpWindow, W_GAUSS); B.P(gpAttack, 600); B.P(gpSustain, 100); B.P(gpRelease, 3000);
+  B.Hall(85, 5, 40, 25, 30);
+  B.Eq(120, 0, -2, 0, 1);
+  B.P(gpResOn, 1); B.P(gpResMix, 60); B.P(gpResSync, 3);
+  B.Save('170 Grains - Resampling - Klavier zerfliesst zur Flaeche');
+
+  // 171: Chor wird endloser Nebel - wenig Anteil neu, das Original verschwindet langsam
+  B.Start('Chor_Aah.wav');
+  B.P(gpGrainSize, 320); B.P(gpDensity, 28); B.P(gpSpray, 10); B.P(gpScan, 0.05); B.P(gpPosition, 30); B.P(gpSpread, 90);
+  B.P(gpWindow, W_GAUSS); B.P(gpAttack, 1200); B.P(gpSustain, 100); B.P(gpRelease, 4000);
+  B.LfoFree(1, 0.05, SINUS); B.M(msLfo1, gpPosition, 15);
+  B.Hall(100, 8, 45, 30, 40);
+  B.Eq(150, 0, -2, -1, 2);
+  B.P(gpResOn, 1); B.P(gpResMix, 35); B.P(gpResTime, 1500);
+  B.Save('171 Grains - Resampling - Chor wird endloser Nebel');
+
+  // 172: Glocken verwischen - das Echo wandert mit in die Aufnahme und baut eine Wolke
+  B.Start('Roehrenglocke_C5.wav');
+  B.P(gpGrainSize, 180); B.P(gpDensity, 40); B.P(gpSpray, 3); B.P(gpScan, 0.4); B.P(gpSpread, 85);
+  B.P(gpWindow, W_HANN); B.P(gpAttack, 10); B.P(gpSustain, 100); B.P(gpRelease, 3500);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8T); B.P(gpEchoFeedback, 45); B.P(gpEchoMix, 25);
+  B.Hall(90, 6, 35, 30, 32);
+  B.Eq(200, 0, -1, -1, 0);
+  B.P(gpResOn, 1); B.P(gpResMix, 70); B.P(gpResSync, 2);
+  B.Save('172 Grains - Resampling - Glocken verwischen mit Echo');
+
+  // 173: Deep House - der Moll9-Stab wird zum warmen Teppich (Tiefpass, Pumpen)
+  B.Start('Deep_Stab_Cm9.wav');
+  B.P(gpGrainSize, 200); B.P(gpDensity, 35); B.P(gpSpray, 8); B.P(gpScan, 0.1); B.P(gpSpread, 85);
+  B.P(gpWindow, W_GAUSS); B.P(gpAttack, 400); B.P(gpSustain, 100); B.P(gpRelease, 2500);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 2500); B.P(gpFltReso, 10);
+  B.Hall(80, 4, 50, 20, 28);
+  B.Eq(140, 0, -3, 1, 1);
+  B.P(gpResOn, 1); B.P(gpResMix, 50); B.P(gpResSync, 3);
+  B.Save('173 Grains - Deep House - Resampling - Moll9-Stab wird Teppich');
+
+  // 174: Stimme verdampft - 100 % neu: jeder Durchlauf ersetzt ganz, aus Worten wird Klang
+  B.Start('Armstrong_Mondlandung.wav');
+  B.P(gpGrainSize, 150); B.P(gpDensity, 45); B.P(gpSpray, 15); B.P(gpScan, 0.3); B.P(gpSpread, 75);
+  B.P(gpWindow, W_HANN); B.P(gpAttack, 300); B.P(gpSustain, 100); B.P(gpRelease, 3000);
+  B.Hall(95, 7, 40, 35, 38);
+  B.Eq(160, 0, -2, 1, 1);
+  B.P(gpResOn, 1); B.P(gpResMix, 100); B.P(gpResTime, 700);
+  B.Save('174 Grains - Resampling - Stimme verdampft');
 end;
 
 { ------------------------------------------------------------------------------

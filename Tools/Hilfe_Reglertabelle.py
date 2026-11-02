@@ -78,6 +78,7 @@ TABS = [
 ("Reiter Samples", [
  ("Zonen 1-3", "weitere Samples je Tastenbereich (ab Starttaste); Laden, Leeren, Datei auf die Zeile ziehen."),
  ("Aufnahme", "nimmt den Sidechain-Eingang auf (bis 60 s) und l\u00e4dt ihn als Hauptsample (WAV in Eigene Toene)."),
+ ("Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt", "solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je l\u00e4nger man h\u00e4lt. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: L\u00e4nge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonh\u00f6he bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos \u00fcberblendet."),
 ]),
 ("Reiter Osz 1 / Osz 2 / Osz 3", [
  ("Oszillator an", "drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte S\u00e4gez\u00e4hne + Sub-Sinus)."),
@@ -197,7 +198,7 @@ PNAMES = {
  "Phaser: Tempo / Tiefe / R\u00fcckkopplung / Mix": "Phaser an, Phaser Tempo, Phaser Tiefe, Phaser Rückkopplung, Phaser Mix",
  "Bitcrusher: Bits / Abtastrate / Mix": "Bitcrusher an, Bitcrusher Bits, Bitcrusher Rate, Bitcrusher Mix",
  "Unison / Verstimmung / Breite": "Osz Unison, Osz Unison Verstimmung, Osz Unison Breite (Osz2, Osz3 entsprechend)",
- "Rendern in H\u00f6chstqualit\u00e4t": "Rendern in Höchstqualität", "Gezeichnet / Zeichnen ...": "Osz Gezeichnet (Osz2, Osz3 entsprechend)", "Oversampling 2x (bei HQ)": "Oversampling", "Oszillatoren: Wavetable / Klassisch": "Oszillator-Modell",
+ "Rendern in H\u00f6chstqualit\u00e4t": "Rendern in Höchstqualität", "Gezeichnet / Zeichnen ...": "Osz Gezeichnet (Osz2, Osz3 entsprechend)", "Oversampling 2x (bei HQ)": "Oversampling", "Oszillatoren: Wavetable / Klassisch": "Oszillator-Modell", "Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt": "Resampling, Resampling Anteil, Resampling Tempo, Resampling Sync",
  "Filter 2": "Filter2 an, Filter-Verschaltung, Filter2 Typ, Filter2 Cutoff, Filter2 Resonanz, Filter2 Kontur, Filter2 Hüllk.",
  "EQ an, B\u00e4sse, H\u00f6hen": "EQ an, EQ Bässe, EQ Höhen", "Band A / B": "EQ Band A Freq, EQ Band A Pegel, EQ Band B Freq, EQ Band B Pegel",
  "Arpeggiator": "Arp an, Arp Richtung, Arp Oktaven, Arp Notenwert, Arp Länge, Arp Swing, Arp Schritte",

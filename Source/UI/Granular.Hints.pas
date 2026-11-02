@@ -25,7 +25,7 @@ uses
   System.SysUtils, Granular.Params;
 
 const
-  PARAM_HINTS: array[0..305, 0..1] of string = (
+  PARAM_HINTS: array[0..309, 0..1] of string = (
     ('Anlauf an', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Anlauf-Start', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Arp Latch', 'Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".'),
@@ -289,6 +289,10 @@ const
     ('Raum', 'Makros: Textur, Bewegung, Helligkeit, Raum, Streuung, Hüllkurven-Länge: jeder Regler verändert mehrere Einstellungen auf einmal. 50 % = Preset unverändert; „Makros auf 50 %“ setzt alle zurück.'),
     ('Release', 'Attack / Decay / Sustain / Release: Wie jede Note einschwillt, auf den Haltepegel abfällt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note.'),
     ('Rendern in Höchstqualität', 'Rendern in Höchstqualität: Beim Export der DAW immer HQ und volle Stimmenzahl.'),
+    ('Resampling', 'Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt: Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: Länge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet.'),
+    ('Resampling Anteil', 'Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt: Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: Länge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet.'),
+    ('Resampling Sync', 'Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt: Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: Länge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet.'),
+    ('Resampling Tempo', 'Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt: Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: Länge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet.'),
     ('Resonanz', 'Cutoff / Resonanz: Eckfrequenz und Betonung an der Eckfrequenz.'),
     ('Ruhe-Dauer', 'Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer: Wird 1, sobald eine beliebige Quelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.'),
     ('Rückwärts', 'Rückwärts: Anteil der Grains, die rückwärts abgespielt werden.'),
@@ -333,7 +337,7 @@ const
     ('Verz. Tor', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).'),
     ('Verz. Tor Takt', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).')
   );
-  CAPTION_HINTS: array[0..105, 0..1] of string = (
+  CAPTION_HINTS: array[0..106, 0..1] of string = (
     ('A <-> B tauschen', 'Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.'),
     ('A/B', 'Zwischen zwei Fassungen hin- und herschalten und vergleichen.'),
     ('Alle Noten aus', 'Beendet sofort alle klingenden Noten (Notbremse).'),
@@ -365,6 +369,7 @@ const
     ('FM-Klangfarbe', 'Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.'),
     ('FM-Verhältnis / FM-Menge', 'Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Fader', 'Alle Lautstärken an einem Ort: Grains, Osz 1-3, Echo, Hall, die Effekte Gate (Tiefe), Crusher, Chorus und Phaser (Mix; ihre Anzeige zeigt, wie stark der Effekt den Klang verändert), Morph, Panorama, Summe (Grains + Oszillatoren), Master. Es sind dieselben Regler wie in den anderen Reitern - wer hier schiebt, sieht es dort und umgekehrt.'),
+    ('Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt', 'Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: Länge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet.'),
     ('Fenster', 'Form, mit der jedes Grain ein- und ausgeblendet wird (weich bis knackig).'),
     ('Filter 2', 'Zweites Filter mit denselben Reglern; in Reihe (nacheinander) oder parallel (gemischt).'),
     ('Filter an, Typ', 'Tiefpass, Bandpass, Hochpass, Ladder 24 dB (warm angezerrt, steil), Kamm (metallisch, Cutoff = Tonhöhe), Formant (Vokale A-E-I-O-U über den Cutoff).'),

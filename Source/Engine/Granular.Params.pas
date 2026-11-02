@@ -161,6 +161,8 @@ type
     gpUMac1, gpUMac2, gpUMac3, gpUMac4, gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve,
     gpOscDraw, gpOsc2Draw, gpOsc3Draw,   // Nov. 2026: Oszillator spielt die gezeichnete Welle (statt 'Welle')
     gpOscModel,    // Nov. 2026: Oszillator-Modell Wavetable (bandbegrenzt) / klassisch (bis 2.9); gehoert zum Rechner
+    gpResOn, gpResMix,              // Nov. 2026: Feedback-Resampling (eigener Ausgang wird zur Grain-Quelle)
+    gpResTime, gpResSync,           // Laenge eines Resampling-Durchlaufs (frei in ms oder im Takt)
     gpOversample,  // Nov. 2026: 2x-Oversampling bei HQ (Oszillatoren, Saettigung); gehoert zum Rechner, nicht zum Preset
     gpPerformance, // Leistungsstufe: begrenzt Stimmen/Grains (gehoert nicht zum Klang, bleibt beim Presetwechsel)
     gpMaster,      // Master-Lautstaerke (gehoert nicht zum Klang: bleibt beim Presetwechsel)
@@ -186,8 +188,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 12;
-  APP_VERSION = '2.12';
+  APP_VERSION_MINOR = 13;
+  APP_VERSION = '2.13';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -230,6 +232,8 @@ const
   RENDER_HQ_NAMES: array[0..1] of string = ('wie Echtzeit', 'Höchste Qualität');
   OVERSAMPLE_NAMES: array[0..1] of string = ('Aus', '2x bei HQ');
   OSC_MODEL_NAMES: array[0..1] of string = ('Wavetable (sauber)', 'Klassisch (bis 2.9)');
+  RES_SYNC_NAMES: array[0..4] of string = ('Frei', '1/4', '1/2', '1 Takt', '2 Takte');
+  RES_SYNC_BEATS: array[1..4] of Double = (1, 2, 4, 8);
   ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 -> 2)', 'Parallel (1 + 2)');
   AUTOPITCH_NAMES: array[0..2] of string = ('Aus', 'Frei', 'Halbtöne');
   SCALE_NAMES: array[0..8] of string = ('Aus (chromatisch frei)', 'Dur', 'Moll', 'Harmonisch Moll', 'Dorisch',
@@ -648,6 +652,10 @@ const
     (Name: 'Osz2 Gezeichnet'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
     (Name: 'Osz3 Gezeichnet'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
     (Name: 'Oszillator-Modell'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Resampling'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Resampling Anteil'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 50; Curve: pcLinear; Steps: 0),
+    (Name: 'Resampling Tempo'; UnitStr: 'ms'; MinV: 250; MaxV: 8000; DefV: 1000; Curve: pcLinear; Steps: 0),
+    (Name: 'Resampling Sync'; UnitStr: ''; MinV: 0; MaxV: 4; DefV: 0; Curve: pcStepped; Steps: 5),
     (Name: 'Oversampling'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 1; Curve: pcStepped; Steps: 2),
     (Name: 'Leistung'; UnitStr: ''; MinV: 0; MaxV: 2; DefV: 0; Curve: pcStepped; Steps: 3),
     (Name: 'Master';        UnitStr: 'dB'; MinV: -60;  MaxV: 6;     DefV: 0;    Curve: pcDecibel; Steps: 0),
@@ -691,7 +699,7 @@ const
     gpOsc3FmAmt, gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn,
     gpOsc3FltType, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn,
     gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease, gpMaster, gpTempo);
-  VST_ADDED_COUNT = 120;   // Anzahl der Eintraege in VST_ADDED
+  VST_ADDED_COUNT = 124;   // Anzahl der Eintraege in VST_ADDED
   VST_ADDED: array[0..VST_ADDED_COUNT - 1] of TGranularParamId = (
     // Okt. 2026: Ereignis-Verzoegerung
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
@@ -732,7 +740,9 @@ const
     // Nov. 2026: gezeichnete Oszillator-Wellen
     gpOscDraw, gpOsc2Draw, gpOsc3Draw,
     // Nov. 2026: Oszillator-Modell
-    gpOscModel);
+    gpOscModel,
+    // Nov. 2026: Feedback-Resampling
+    gpResOn, gpResMix, gpResTime, gpResSync);
 
 
 { VST-Nummer -> interner Index und zurueck (-1 = ungueltig) }
@@ -1074,6 +1084,7 @@ begin
     gpRenderHQ: Result := RENDER_HQ_NAMES[EnsureRange(Step, 0, 1)];
     gpOversample: Result := OVERSAMPLE_NAMES[EnsureRange(Step, 0, 1)];
     gpOscModel: Result := OSC_MODEL_NAMES[EnsureRange(Step, 0, 1)];
+    gpResSync: Result := RES_SYNC_NAMES[EnsureRange(Step, 0, 4)];
     gpLoopMode: if Step = 0 then Result := 'Vorwärts' else Result := 'Hin und her';
     gpFltRouting: Result := ROUTING_NAMES[EnsureRange(Step, 0, 1)];
     gpScPitchMode: Result := AUTOPITCH_NAMES[EnsureRange(Step, 0, 2)];

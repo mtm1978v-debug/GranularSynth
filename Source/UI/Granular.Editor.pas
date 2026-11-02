@@ -135,6 +135,7 @@ type
     FTabSamples: TTabSheet;       // Zonen und Aufnahme
     FRecButton: TButton;
     FRecLabel: TLabel;
+    FResLabel: TLabel;            // Feedback-Resampling: Stand (Durchlauf)
     FZoneRow: array[1..ZONE_COUNT] of TPanel;
     FZoneName: array[1..ZONE_COUNT] of TLabel;
     FZoneNote: array[1..ZONE_COUNT] of TComboBox;
@@ -2338,7 +2339,7 @@ end;
 { --- Reiter Samples: Zonen (weitere Samples je Tastenbereich) und Aufnahme des Sidechain-Eingangs --- }
 procedure TGranularEditor.BuildSampleTab;
 var
-  Area, PZ, PR: TPanel;
+  Area, PZ, PR, PF: TPanel;
   Z, N: Integer;
   L: TLabel;
   B: TButton;
@@ -2351,7 +2352,7 @@ begin
   Area.Color := BG_MAIN;
   PZ := MakePanel(Area, alLeft, Tr('Zonen: weitere Samples je Tastenbereich'));
   PZ.Width := 640;
-  PR := MakePanel(Area, alClient, Tr('Aufnahme (Resampling)'));
+  PR := MakePanel(Area, alClient, Tr('Aufnahme vom Eingang'));
 
   L := TLabel.Create(Self);
   L.Parent := PZ;
@@ -2446,6 +2447,33 @@ begin
   L.Caption := Tr('Nimmt den Sidechain-Eingang auf (in der DAW: Eingang des Plugins, im Host: Mikrofon/Eingang) ' +
     'und lädt das Ergebnis als neues Hauptsample - so lässt sich eine Spur, die Stimme oder der eigene ' +
     'Klang live granulieren. Die Aufnahme wird als WAV in "Eigene Toene" gespeichert und ist damit Teil des Presets.');
+  AddStretch(L, 10);
+
+  // Feedback-Resampling: der eigene Klang wird Durchlauf fuer Durchlauf zur neuen Grain-Quelle
+  PF := MakePanel(PR, alNone, Tr('Feedback-Resampling'));
+  PF.SetBounds(0, 196, 440, 290);
+  PF.Anchors := [akLeft, akTop, akRight];
+  AddParam(PF, Ord(gpResOn), 8, 24, 0, 0, 0, Tr('Resampling an'));
+  AddParam(PF, Ord(gpResMix), 8, 24 + ROW_H, 90, 66, 0, Tr('Anteil neu'));
+  AddParam(PF, Ord(gpResTime), 8, 24 + 2 * ROW_H, 90, 66, 0, Tr('Durchlauf'));
+  AddParam(PF, Ord(gpResSync), 8, 24 + 3 * ROW_H, 90, 0, 100, Tr('Im Takt'));
+  FResLabel := TLabel.Create(Self);
+  FResLabel.Parent := PF;
+  FResLabel.SetBounds(8, 24 + 4 * ROW_H + 4, 420, 16);
+  FResLabel.AutoSize := False;
+  FResLabel.Font.Color := COL_VAL;
+  FResLabel.Transparent := True;
+  L := TLabel.Create(Self);
+  L.Parent := PF;
+  L.SetBounds(8, 24 + 5 * ROW_H, 420, 110);
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Font.Color := $00A0A0A0;
+  L.Transparent := True;
+  L.Caption := Tr('Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf ' +
+    'zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim ' +
+    'Original. Durchlauf: Länge frei in ms oder im Takt. Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt ' +
+    'behutsam bei. Tonhöhe und Pegel bleiben stehen.');
   AddStretch(L, 10);
 end;
 
@@ -5452,9 +5480,17 @@ var
   AnimInfo, SmpA, SmpB, SmpInfo, SmpFull: string;
   MorphB: Single;
 begin
+  FEngine.ResPrepare;                          // Resampling eingeschaltet: Puffer anlegen (nicht im Audio-Thread)
   if FAnimPaused then
     Exit;                                      // minimiert/unsichtbar: nichts zeichnen
   Inc(FMainTick);
+  if (FResLabel <> nil) and (FPages.ActivePage = FTabSamples) then
+    if FEngine.GetParam(Ord(gpResOn)) < 0.5 then
+      FResLabel.Caption := ''
+    else if FEngine.ResActive then
+      FResLabel.Caption := Format(Tr('Durchlauf %d'), [FEngine.ResPasses])
+    else
+      FResLabel.Caption := Tr('Spielt das Original - der erste Durchlauf läuft ...');
   if (FUpdHost <> nil) and not FUpdHost.Visible and UpdateAvailable(FUpdVersion, FUpdPage) then
   begin
     if UpdateSetupPath <> '' then

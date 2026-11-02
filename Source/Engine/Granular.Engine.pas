@@ -112,6 +112,10 @@ type
     CombUsed: Boolean;     // Ring enthaelt Signal -> beim Zuruecksetzen leeren
   end;
 
+const
+  RES_BUFS = 3;          // Feedback-Resampling: spielend, vorig, Ziel
+
+type
   TGrain = record
     Zone: Integer;       // 0 = Hauptsample, 1..ZONE_COUNT = Zonen-Sample
     Active: Boolean;
@@ -119,6 +123,7 @@ type
     Delay: Integer;      // Startversatz im aktuellen Subblock
     Remaining: Integer;
     UseB: Boolean;       // Grain stammt aus dem Sample des Morph-Ziels B
+    Src: TSampleData;    // Hauptsample beim Start (Resampling tauscht es; das Grain liest bis zum Ende daraus)
     Args: TGrainRenderArgs;
   end;
 
@@ -329,6 +334,26 @@ type
     FSel0B, FSelLenB, FSrRatioB: Double;
     FTuneA, FTuneB: Double;         // Auto-Stimmung: Korrektur in Halbtoenen (-6..+6) fuer Sample A / B
     FRootA, FRootB: Double;         // erkannter Grundton (MIDI, 0 = keiner)
+    // Feedback-Resampling: der eigene Ausgang wird Durchlauf fuer Durchlauf zur neuen Grain-Quelle.
+    // Zwei vorab angelegte Puffer wechseln sich ab (im Audio-Thread wird nichts angefordert).
+    FResSmp: array[0..RES_BUFS - 1] of TSampleData;
+    FResPrevBuf: Integer;           // voriger Puffer (ausklingende Grains), -1 = keiner
+    FResKeySerial, FResKeySeen: Integer;   // Tastenanschlaege: neuer Anschlag = zurueck zum Original
+    FResCap: Integer;               // Platz je Puffer in Frames (0 = nicht angelegt)
+    FResCur: Integer;               // spielender Puffer, -1 = das Original spielt
+    FResOrig: TSampleData;          // Original, solange ein Puffer spielt
+    FResTuneOrig: Double;           // Auto-Stimmung des Originals (im Puffer schon enthalten)
+    FResOfs: Double;                // Tonlage des spielenden Puffers in Halbtoenen zu C4
+    FResRecOfs: Double;             // Tonlage der laufenden Aufnahme
+    FResPhase: Integer;             // 0 = Aufnahme, 1 = vorigen Stand kopieren, 2 = Gemisch messen, 3 = schreiben
+    FResPos, FResLen: Integer;
+    FResRawSq, FResPrevSq: Double;
+    FResPrevP, FResPrevStep, FResPrevS0, FResPrevLen: Double;
+    FResNote, FResLastNote: Integer;
+    FResGain, FResNorm: Single;
+    FResMixSq: Double;
+    FResHpY, FResHpX: array[0..1] of Single;
+    FResPasses: Integer;            // Anzahl getauschter Durchlaeufe (Anzeige, Pruefstand)
     FAutoTune: Boolean;
     FStepped: array[0..NAMED_COUNT - 1] of Boolean;
     FSamplePath: string;
@@ -524,6 +549,14 @@ type
     procedure SetSampleRate(Value: Double);
     { Uebernimmt den Besitz von Data. Altes Sample wird freigegeben. }
     procedure LoadSample(Data: TSampleData);
+    { Feedback-Resampling: Puffer anlegen (ausserhalb des Audio-Threads, z.B. beim Einschalten) }
+    procedure ResPrepare;
+    procedure ResRestore;
+    procedure ResTick(OutL, OutR: PSingle; N: Integer);
+    function ResActive: Boolean;
+    function ResPasses: Integer;
+    function ResOffset: Double;
+    function GetSampleOrig: TSampleData;
 
     procedure NoteOn(Note: Integer; Velocity: Single; DeltaFrames: Integer = 0);
     procedure NoteOff(Note: Integer; DeltaFrames: Integer = 0);
@@ -599,7 +632,7 @@ type
     { Summe vor dem Equalizer (fuer die Filteransicht) }
     procedure GetScopePreEq(var Buf: array of Single; Count: Integer);
 
-    property Sample: TSampleData read FSample;
+    property Sample: TSampleData read GetSampleOrig;   // Original (auch waehrend Resampling)
     property SampleRate: Double read FSampleRate;
     property ActiveGrains: Integer read FActiveGrains;
     property IdleSkips: Int64 read FIdleSkips;
@@ -858,6 +891,10 @@ begin
   FPitchTrk2 := TPitchTracker.Create;
   FReverb := TReverb.Create;
   FEq := TEqProcessor.Create;
+  FResCur := -1;
+  FResPrevBuf := -1;
+  FResNote := -1;
+  FResLastNote := -1;
   SetSampleRate(44100);
   for I := 0 to GRAIN_HISTORY - 1 do
     FHistory[I] := -1;
@@ -870,7 +907,11 @@ begin
     FLayerB.FSample := nil;      // geliehen (Sample A oder B dieser Engine)
     FLayerB.Free;
   end;
+  ResRestore;
   FSample.Free;
+  FResSmp[0].Free;
+  FResSmp[1].Free;
+  FResSmp[2].Free;
   FSampleB.Free;
   FPitchTrk.Free;
   FPitchTrk2.Free;
@@ -928,6 +969,14 @@ begin
     Exit;
   FLock.Enter;
   try
+    if (FSampleRate <> Value) and (FResCap > 0) then
+    begin
+      ResRestore;                 // Puffer passen zur alten Rate: neu anlegen
+      FreeAndNil(FResSmp[0]);
+      FreeAndNil(FResSmp[1]);
+      FreeAndNil(FResSmp[2]);
+      FResCap := 0;
+    end;
     FSampleRate := Value;
     FPitchTrk.SetSampleRate(Value);
     FPitchTrk2.SetSampleRate(Value);
@@ -1020,6 +1069,7 @@ begin
   FLock.Enter;
   try
     ResetAll;
+    ResRestore;
     Old := FSample;
     FSample := Data;
     FRootA := Root;
@@ -1032,6 +1082,303 @@ begin
     FLock.Leave;
   end;
   Old.Free;
+end;
+
+{ --- Feedback-Resampling ---
+  Nur solange eine Taste gehalten wird: alle 'Resampling Tempo' (0,25..4 s) wird das Gespielte zur neuen
+  Grain-Quelle. Jeder neue Tastenanschlag beginnt wieder beim Original.
+  Ablauf je Durchlauf: Ausgang aufnehmen (Laenge + Ueberblendstueck), dann in Stuecken (keine Lastspitze)
+  den vorigen Stand tonhoehenrichtig dazukopieren, Gemisch messen und mit Pegelausgleich und Hochpass
+  schreiben. Das Ende wird in den Anfang geblendet -> nahtlose Schleife ohne Delle an den Raendern.
+  Drei Puffer: spielend, vorig (noch klingende Grains lesen ihn zu Ende), Ziel der Aufnahme.
+  Die Tonlage der Aufnahme (Taste + Tonhoehe + Oktave) wird gemerkt und beim Abspielen abgezogen,
+  sonst wuerde der Klang mit jedem Durchlauf weiter nach oben oder unten wandern. }
+
+const
+  RES_MAX_SEC = 8;
+  RES_MIN_SEC = 0.25;
+  RES_XFADE_SEC = 0.03;  // Ueberblendung Ende -> Anfang
+  RES_CHUNK = 16384;     // Frames je Block in den Nacharbeits-Phasen
+
+function TGranularEngine.GetSampleOrig: TSampleData;
+begin
+  if FResCur >= 0 then Result := FResOrig else Result := FSample;
+end;
+
+function TGranularEngine.ResActive: Boolean;
+begin
+  Result := FResCur >= 0;
+end;
+
+function TGranularEngine.ResPasses: Integer;
+begin
+  Result := FResPasses;
+end;
+
+function TGranularEngine.ResOffset: Double;
+begin
+  if FResCur >= 0 then Result := FResOfs else Result := 0;
+end;
+
+procedure TGranularEngine.ResPrepare;
+var
+  Cap, I: Integer;
+  Nw: array[0..RES_BUFS - 1] of TSampleData;
+begin
+  if (FParams[Ord(gpResOn)] < 0.5) or (FResCap > 0) then
+    Exit;
+  Cap := Round((RES_MAX_SEC + RES_XFADE_SEC) * FSampleRate) + 8;
+  for I := 0 to RES_BUFS - 1 do
+  begin
+    Nw[I] := TSampleData.Create;
+    SetLength(Nw[I].L, Cap);
+    SetLength(Nw[I].R, Cap);
+    SetLength(Nw[I].LR, (Cap + 1) * 2);
+    Nw[I].Frames := 16;
+    Nw[I].SampleRate := FSampleRate;
+    Nw[I].Channels := 2;
+  end;
+  FLock.Enter;
+  try
+    if FResCap = 0 then
+    begin
+      for I := 0 to RES_BUFS - 1 do
+      begin
+        FResSmp[I] := Nw[I];
+        Nw[I] := nil;
+      end;
+      FResCap := Cap;
+      FResPhase := 0;
+      FResPos := 0;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  for I := 0 to RES_BUFS - 1 do
+    Nw[I].Free;
+end;
+
+procedure TGranularEngine.ResRestore;
+begin
+  if FResCur >= 0 then
+  begin
+    FSample := FResOrig;
+    FResOrig := nil;
+    FTuneA := FResTuneOrig;
+    FResPrevBuf := FResCur;  // ausklingende Grains lesen ihn noch zu Ende
+    FResCur := -1;
+    if FSample <> nil then
+      UpdateBlockParams;     // Auswahl wieder auf das Original
+  end;
+  FResPhase := 0;
+  FResPos := 0;
+  FResPasses := 0;
+end;
+
+procedure TGranularEngine.ResTick(OutL, OutR: PSingle; N: Integer);
+var
+  V, Lo, I, Cnt, Ip, Tg, C, Xf: Integer;
+  Dst, Prev: TSampleData;
+  P, Fr, Mix, G, A, W: Double;
+  X, Y: Single;
+  Wr: Boolean;
+begin
+  if (Eff(gpResOn) < 0.5) or (FResCap = 0) then
+  begin
+    if FResCur >= 0 then
+      ResRestore;
+    FResPhase := 0;
+    FResPos := 0;
+    FResKeySeen := FResKeySerial;
+    Exit;
+  end;
+  // neuer Tastenanschlag: zurueck zum Original, die Entwicklung beginnt von vorn
+  if FResKeySeen <> FResKeySerial then
+  begin
+    FResKeySeen := FResKeySerial;
+    ResRestore;
+  end;
+  // tiefste gehaltene Taste: bestimmt die Tonlage der Aufnahme
+  Lo := -1;
+  for V := 0 to MAX_VOICES - 1 do
+    if (FVoices[V].Stage in [esAttack, esDecay, esSustain]) and ((Lo < 0) or (FVoices[V].Note < Lo)) then
+      Lo := FVoices[V].Note;
+  if (Lo < 0) and (FResPhase = 0) then
+  begin
+    FResPos := 0;          // keine Taste gehalten: nichts entwickelt sich weiter
+    Exit;
+  end;
+  // Ziel: weder der spielende noch der vorige Puffer (den lesen ausklingende Grains noch)
+  Tg := 0;
+  while (Tg = FResCur) or (Tg = FResPrevBuf) do
+    Inc(Tg);
+  Dst := FResSmp[Tg];
+  Xf := Max(16, Round(RES_XFADE_SEC * FSampleRate));
+  case FResPhase of
+    0:
+      begin
+        if FResPos = 0 then
+        begin
+          C := EnsureRange(Round(Eff(gpResSync)), 0, 4);
+          if C > 0 then
+            W := RES_SYNC_BEATS[C] * 60 / Max(20.0, Eff(gpTempo))
+          else
+            W := Eff(gpResTime) / 1000;
+          FResLen := EnsureRange(Round(W * FSampleRate),
+            Round(RES_MIN_SEC * FSampleRate), Round(RES_MAX_SEC * FSampleRate));
+          FResRawSq := 0;
+          FResNote := Lo;
+        end;
+        Cnt := Min(N, FResLen + Xf - FResPos);
+        for I := 0 to Cnt - 1 do
+        begin
+          X := OutL[I];
+          Y := OutR[I];
+          Dst.LR[(FResPos + I) * 2] := X;
+          Dst.LR[(FResPos + I) * 2 + 1] := Y;
+          FResRawSq := FResRawSq + X * X + Y * Y;
+        end;
+        Inc(FResPos, Cnt);
+        if FResPos >= FResLen + Xf then
+        begin
+          FResPos := 0;
+          if FResRawSq / (FResLen + Xf) < 1E-9 then
+            Exit;                                    // nichts zu hoeren: Durchlauf verwerfen
+          FResRecOfs := FPitch + FGrainOct;
+          if FKeyTrack then
+            FResRecOfs := FResRecOfs + FResNote - ROOT_NOTE;
+          // vorigen Stand so lesen, dass er in der Tonlage der Aufnahme klingt
+          if FResCur < 0 then
+          begin
+            if FAutoTune and FKeyTrack then A := -FTuneA else A := 0;
+          end
+          else
+            A := FResOfs;
+          FResPrevStep := FSample.SampleRate / FSampleRate * Power(2, (FResRecOfs - A) / 12);
+          FResPrevS0 := FSel0;
+          FResPrevLen := Max(16.0, Min(FSelLen, FSample.Frames - 2 - FSel0));
+          FResPrevP := FResPrevS0;
+          FResPrevSq := 0;
+          FResPhase := 1;
+        end;
+      end;
+    1:
+      begin
+        // vorigen Stand (Laenge + Ueberblendstueck) kopieren
+        Prev := FSample;
+        Cnt := Min(RES_CHUNK, FResLen + Xf - FResPos);
+        P := FResPrevP;
+        for I := FResPos to FResPos + Cnt - 1 do
+        begin
+          Ip := Trunc(P);
+          Fr := P - Ip;
+          X := Prev.L[Ip] + (Prev.L[Ip + 1] - Prev.L[Ip]) * Fr;
+          Y := Prev.R[Ip] + (Prev.R[Ip + 1] - Prev.R[Ip]) * Fr;
+          Dst.L[I] := X;
+          Dst.R[I] := Y;
+          if I < FResLen then
+            FResPrevSq := FResPrevSq + X * X + Y * Y;
+          P := P + FResPrevStep;
+          while P >= FResPrevS0 + FResPrevLen do
+            P := P - FResPrevLen;
+        end;
+        FResPrevP := P;
+        Inc(FResPos, Cnt);
+        if FResPos >= FResLen + Xf then
+        begin
+          FResPos := 0;
+          // Pegel der Aufnahme an den vorigen Stand angleichen (sonst laeuft die Rueckkopplung weg)
+          if FResPrevSq > 1E-6 then
+            FResGain := EnsureRange(Sqrt(FResPrevSq / FResRawSq), 0.1, 10)
+          else
+            FResGain := EnsureRange(0.2 * Sqrt(FResLen / FResRawSq), 0.1, 10);
+          for C := 0 to 1 do
+          begin
+            FResHpX[C] := 0;
+            FResHpY[C] := 0;
+          end;
+          FResMixSq := 0;
+          FResPhase := 2;
+        end;
+      end;
+    2, 3:
+      begin
+        // 2: Gemisch nur messen, 3: mit Pegelausgleich schreiben (gleiche Rechnung, Hochpass neu gestartet).
+        // Am Anfang wird das Ende (Frames Len..Len+Xf) eingeblendet: der Sprung vom letzten Frame zum
+        // ersten ist so die natuerliche Fortsetzung des Klangs.
+        Wr := FResPhase = 3;
+        Mix := EnsureRange(Eff(gpResMix) / 100, 0, 1);
+        G := Mix * FResGain;
+        A := Exp(-2 * Pi * 30 / FSampleRate);        // Hochpass 30 Hz in der Rueckfuehrung
+        Cnt := Min(RES_CHUNK, FResLen - FResPos);
+        for I := FResPos to FResPos + Cnt - 1 do
+        begin
+          if I < Xf then W := I / Xf else W := 1;
+          for C := 0 to 1 do
+          begin
+            X := Dst.LR[I * 2 + C] * W;
+            if C = 0 then Y := Dst.L[I] * W else Y := Dst.R[I] * W;
+            if W < 1 then
+            begin
+              X := X + Dst.LR[(FResLen + I) * 2 + C] * (1 - W);
+              if C = 0 then Y := Y + Dst.L[FResLen + I] * (1 - W)
+              else Y := Y + Dst.R[FResLen + I] * (1 - W);
+            end;
+            FResHpY[C] := A * (FResHpY[C] + X - FResHpX[C]);
+            FResHpX[C] := X;
+            Y := G * FResHpY[C] + (1 - Mix) * Y;
+            if Wr then
+              Dst.LR[I * 2 + C] := Y * FResNorm
+            else
+              FResMixSq := FResMixSq + Y * Y;
+          end;
+          if Wr then
+          begin
+            Dst.L[I] := Dst.LR[I * 2];
+            Dst.R[I] := Dst.LR[I * 2 + 1];
+          end;
+        end;
+        Inc(FResPos, Cnt);
+        if (FResPos >= FResLen) and not Wr then
+        begin
+          // Gemisch auf den Pegel des vorigen Stands (unkorreliert verliert es sonst je Durchlauf bis 3 dB)
+          if FResPrevSq > 1E-6 then
+            FResNorm := EnsureRange(Sqrt(FResPrevSq / Max(1E-12, FResMixSq)), 0.25, 4)
+          else
+            FResNorm := 1;
+          for C := 0 to 1 do
+          begin
+            FResHpX[C] := 0;
+            FResHpY[C] := 0;
+          end;
+          FResPos := 0;
+          FResPhase := 3;
+        end
+        else if FResPos >= FResLen then
+        begin
+          Dst.LR[FResLen * 2] := Dst.LR[0];          // Interpolation am Ende: weiter mit dem Anfang
+          Dst.LR[FResLen * 2 + 1] := Dst.LR[1];
+          Dst.L[FResLen] := Dst.L[0];
+          Dst.R[FResLen] := Dst.R[0];
+          Dst.Frames := FResLen + 1;
+          Dst.SampleRate := FSampleRate;
+          if FResCur < 0 then
+          begin
+            FResOrig := FSample;
+            FResTuneOrig := FTuneA;
+            FTuneA := 0;
+          end;
+          FSample := Dst;                            // neue Grains lesen ab jetzt den neuen Stand
+          FResPrevBuf := FResCur;
+          FResCur := Tg;
+          FResOfs := FResRecOfs;
+          Inc(FResPasses);
+          UpdateBlockParams;
+          FResPos := 0;
+          FResPhase := 0;
+        end;
+      end;
+  end;
 end;
 
 procedure TGranularEngine.ResetAll;
@@ -1349,7 +1696,10 @@ begin
   case E.Kind of
     neOn:
       if E.Velocity > 0 then
-        KeyDown(E.Note, E.Velocity)
+      begin
+        Inc(FResKeySerial);         // Resampling beginnt wieder beim Original
+        KeyDown(E.Note, E.Velocity);
+      end
       else
         KeyUp(E.Note);
     neOff:
@@ -2776,6 +3126,11 @@ begin
   begin
     T := A; A := B; B := T;
   end;
+  if FResCur >= 0 then
+  begin
+    A := 0;       // Resampling-Puffer enthaelt schon genau die Auswahl
+    B := 1;
+  end;
   FSel0 := A * Last;
   FSelLen := Max((B - A) * Last, 16.0);
   FSrRatio := FSample.SampleRate / FSampleRate;
@@ -2960,11 +3315,15 @@ begin
     // Grain-Ueberblendung: Anteil = Morph-Stellung kommt aus dem Sample von Ziel B
     UseB := FMorphValid and not FLayerOn and (FSampleB <> nil) and (Rand < EnsureRange(FEff[Ord(gpMorph)], 0, 1));
     if UseB then Zone := 0 else Zone := ZoneOfNote(FVoices[V].Note);
+    Src := FSample;
     // Auto-Stimmung (nur mit Key Tracking): je Quelle die eigene Korrektur -> beim Morphen kein Gleiten
     if FAutoTune and FKeyTrack and not ((FAutoPitch > 0) and FScInput) then
       if UseB then Semis := Semis + FTuneB
       else if Zone > 0 then Semis := Semis + FZoneTune[Zone]
       else Semis := Semis + FTuneA;
+    // Resampling-Puffer: seine Aufnahme-Tonlage abziehen -> keine Tonhoehen-Drift von Durchlauf zu Durchlauf
+    if (FResCur >= 0) and not UseB and (Zone = 0) then
+      Semis := Semis - FResOfs;
     if Zone > 0 then
     begin
       Args.PosFix := Round((FZoneSel0[Zone] + P * FZoneSelLen[Zone]) * FIX_ONE);
@@ -3132,7 +3491,7 @@ end;
 procedure TGranularEngine.RenderGrains(N: Integer);
 var
   K, Start, Cnt, Pad, V: Integer;
-  Src, SrcB: PSingle;
+  SrcA, SrcB: PSingle;
   SrcLast, SrcLastB: Integer;
 begin
   FillChar(FMix, N * 2 * SizeOf(Single), 0);
@@ -3145,7 +3504,7 @@ begin
   end;
   // HQ (Hermite) braucht einen Frame mehr Vorlauf/Nachlauf als linear
   if FHQ then Pad := 3 else Pad := 2;
-  Src := @FSample.LR[0];
+  SrcA := @FSample.LR[0];
   SrcLast := FSample.Frames - Pad;
   SrcB := nil;
   SrcLastB := 0;
@@ -3173,9 +3532,14 @@ begin
           Args.Src := SrcB;
           Args.SrcLast := SrcLastB;
         end
+        else if (Src <> nil) and (Src <> FSample) then
+        begin
+          Args.Src := @Src.LR[0];
+          Args.SrcLast := Src.Frames - Pad;
+        end
         else
         begin
-          Args.Src := Src;
+          Args.Src := SrcA;
           Args.SrcLast := SrcLast;
         end;
         Args.Env := @FEnvBuf[Voice, Start];
@@ -3594,6 +3958,10 @@ begin
         Inc(Done, N);
       end;
     end;
+    if not FLayerOn and (FSample <> nil) then
+      ResTick(OutL, OutR, Frames)
+    else if FResCur >= 0 then
+      ResRestore;
     // Stille-Zaehler: nur wenn nichts aktiv ist und der ganze Block unter -100 dB liegt
     if (FEventCount = 0) and EngineIdle and (not FLayerOn or FLayerB.EngineIdle) and
        InputSilent(OutL, OutR, Frames) and InputSilent(InL, InR, Frames) then
@@ -5203,6 +5571,7 @@ begin
     EqChanged;
     FLayerB.EqChanged;
     // eigenes B-Sample: Plaetze tauschen (sonst spielen beide dasselbe Sample)
+    ResRestore;
     if FSampleB <> nil then
     begin
       Smp := FSample; FSample := FSampleB; FSampleB := Smp;

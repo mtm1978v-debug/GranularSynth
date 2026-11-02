@@ -645,6 +645,7 @@ begin
   end
   else
     Engine.ClearMorphTarget;
+  Engine.ResPrepare;     // Resampling-Puffer anlegen, falls das Preset es nutzt
   Result := True;
 end;
 

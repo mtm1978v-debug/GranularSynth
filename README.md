@@ -20,6 +20,7 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 
 - **Granular-Synthese** aus beliebigen Samples (WAV, MP3 u. a.). Einstellbar sind Auswahl, Position, Spray, Scan, Graingröße, Dichte, Fenster und Rückwärts-Anteil. Dazu kommen ein Anlauf vor der Auswahl, eine Schleife hin und her und bis zu drei Zonen.
 - **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison, auch mit **selbst gezeichneter Welle** (bandbegrenzte Wavetable). Mit HQ rechnen Oszillatoren und Sättigung mit **2x-Oversampling**: auch harte FM- und Drive-Klänge bleiben frei von Spiegelfrequenzen.
+- **Feedback-Resampling:** Solange eine Taste gehalten wird, wird der eigene Klang Durchlauf für Durchlauf (frei oder im Takt) zur neuen Grain-Quelle – er entwickelt sich, je länger man hält.
 - **Modulationsmatrix mit 32 Zeilen**, 8 LFOs (auch frei gezeichnet oder in Stufen), Hüllkurven, Velocity, Sidechain-Pegel und Sidechain-Tonhöhe. Die Modulation wirkt je Note.
 - **Vier freie Makros**: Ein Regler bewegt beliebig viele Ziele mit wählbarer Kurve. Die Makros lassen sich in der DAW automatisieren.
 - **Effekte**: zwei Filter, EQ, Echo, Hall, Gate, Crusher, Chorus, Phaser und Trance-Gate. Dazu ein Mischpult mit Pegelanzeigen.

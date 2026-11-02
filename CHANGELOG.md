@@ -6,6 +6,24 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.13 – 02.11.2026
+
+### Neu
+- **Feedback-Resampling** (Reiter *Samples*): Solange eine Taste gehalten wird, wird das Gespielte – mit Effekten und Hall – nach jedem Durchlauf zur neuen Grain-Quelle. Der Klang entwickelt sich, je länger man hält; jeder neue Anschlag beginnt wieder beim Original.
+  - *Anteil neu*: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei.
+  - *Durchlauf*: Länge frei (0,25–8 s) oder *Im Takt* (1/4 bis 2 Takte zum Host-Tempo).
+  - Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet. Grains lesen bis zu ihrem Ende aus dem Stand, mit dem sie begonnen haben – kein Störgeräusch beim Wechsel.
+  - Gemessen: Tonhöhe nach über 20 Durchläufen auf 0,1 Halbton genau, Pegel innerhalb ±0,6 dB.
+- **Hörproben-Presets 170–174:** Klavier zerfließt, Chor wird Nebel, Glocken mit Echo, Deep-House-Stab wird Teppich, Stimme verdampft.
+
+### Geändert
+- Die Aufnahme vom Sidechain-Eingang heißt jetzt *Aufnahme vom Eingang*.
+
+### Hinweis
+- Am schönsten mit gehaltenen Einzeltönen; Akkorde schichten sich mit jedem Durchlauf zu Clustern.
+
+---
+
 ## Version 2.12 – 02.11.2026
 
 ### Behoben

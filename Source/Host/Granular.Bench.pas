@@ -23,7 +23,7 @@ implementation
 uses
   Granular.Lang,
   Winapi.Windows, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
-  GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Vst3, Granular.VstHost,
+  GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Pitch, Granular.Vst3, Granular.VstHost,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
   Granular.Editor, Granular.InfoView;
 
@@ -2587,6 +2587,121 @@ end;
   Lage (bandbegrenzte Wavetable: muss sauberer sein als die eingebaute Saege), Speichern/Laden }
 { Oversampling nur wo noetig: Sinus und gezeichnete Welle ohne Sync rechnen auch bei HQ ohne Oversampling
   (dort entstehen keine Spiegelfrequenzen) - Ausgabe gleich wie mit Oversampling aus, Rechenzeit gleich }
+{ Feedback-Resampling: Tonhoehe bleibt ueber viele Durchlaeufe stehen (keine Drift, auch mit Pitch-Regler),
+  Pegel laeuft nicht weg, Aus = wieder das Original, Uebernehmen klingt auf derselben Tonhoehe }
+function CheckResample: string;
+
+  function Run(Note: Integer; PitchSemis, Mix: Double; Synced: Boolean; out N1, N2, LvlDb: Double; out Passes: Integer;
+    out Restored: Boolean): Boolean;
+  var
+    E: TGranularEngine;
+    L, R: array[0..511] of Single;
+    B, Blocks: Integer;
+    P: TPitchTracker;
+    Sum1, Sum2: Double;
+    Cnt1, Cnt2, K: Integer;
+    Notes: array of Double;
+    NC: Integer;
+
+    function Median: Double;
+    var
+      I, J: Integer;
+      T: Double;
+    begin
+      for I := 1 to NC - 1 do
+      begin
+        T := Notes[I];
+        J := I - 1;
+        while (J >= 0) and (Notes[J] > T) do
+        begin
+          Notes[J + 1] := Notes[J];
+          Dec(J);
+        end;
+        Notes[J + 1] := T;
+      end;
+      if NC = 0 then Result := 0 else Result := Notes[NC div 2];
+    end;
+
+  begin
+    E := TGranularEngine.Create;
+    P := TPitchTracker.Create;
+    try
+      E.SetSampleRate(SR);
+      P.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpPitch, PlainToParam(gpPitch, PitchSemis));
+      E.SetParamById(gpResOn, 1);
+      E.SetParamById(gpResMix, PlainToParam(gpResMix, Mix));
+      if Synced then
+        E.SetParamById(gpResSync, StepToParam(Ord(gpResSync), 2))     // 1/2 bei 120 BPM = 1 s
+      else
+        E.SetParamById(gpResTime, PlainToParam(gpResTime, 700));
+      E.ResPrepare;
+      E.NoteOn(Note, 0.8);
+      Blocks := Round(20 * SR / 512);
+      SetLength(Notes, Blocks);
+      Sum1 := 0; Sum2 := 0; Cnt1 := 0; Cnt2 := 0;
+      N1 := 0;
+      NC := 0;
+      for B := 0 to Blocks - 1 do
+      begin
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        P.Process(@L[0], @R[0], 512);
+        // Bezug: 2. Sekunde (Original), Vergleich: letzte 5 Sekunden (viele Durchlaeufe spaeter)
+        if (B >= SR div 512) and (B < 2 * SR div 512) then
+        begin
+          for K := 0 to 511 do Sum1 := Sum1 + Sqr(L[K]) + Sqr(R[K]);
+          Inc(Cnt1, 512);
+          if P.Valid then begin Notes[NC] := P.Note; Inc(NC); end;
+          if B = 2 * SR div 512 - 1 then
+          begin
+            N1 := Median;
+            NC := 0;
+          end;
+        end
+        else if B >= Blocks - 5 * SR div 512 then
+        begin
+          for K := 0 to 511 do Sum2 := Sum2 + Sqr(L[K]) + Sqr(R[K]);
+          Inc(Cnt2, 512);
+          if P.Valid then begin Notes[NC] := P.Note; Inc(NC); end;
+        end;
+      end;
+      N2 := Median;
+      Passes := E.ResPasses;
+      LvlDb := 10 * Log10(Max(1E-20, Sum2 / Max(1, Cnt2)) / Max(1E-20, Sum1 / Max(1, Cnt1)));
+      // neuer Anschlag: zurueck zum Original; danach Aus
+      E.NoteOn(Note, 0.8);
+      E.Process(nil, nil, @L[0], @R[0], 512);
+      Restored := not E.ResActive;
+      E.SetParamById(gpResOn, 0);
+      E.Process(nil, nil, @L[0], @R[0], 512);
+      Restored := Restored and not E.ResActive and (E.Sample <> nil) and (E.Sample.Frames > 0);
+      Result := True;
+    finally
+      P.Free;
+      E.Free;
+    end;
+  end;
+
+var
+  A1, A2, ALv, B1, B2, BLv: Double;
+  PA, PB: Integer;
+  RA, RB, Ok: Boolean;
+begin
+  Run(67, 0, 100, False, A1, A2, ALv, PA, RA);       // G4, jeder Durchlauf ersetzt ganz
+  Run(60, 7, 50, True, B1, B2, BLv, PB, RB);        // C4 mit Pitch +7, halb beigemischt
+  Ok := (PA >= 20) and (PB >= 15) and RA and RB and
+    (Abs(A2 - A1) < 0.5) and (Abs(B2 - B1) < 0.5) and (Abs(A1 - 67) < 0.5) and (Abs(B1 - 67) < 0.5) and
+    (Abs(ALv) < 6) and (Abs(BLv) < 6);
+  Result := Format('Resampling (Taste gehalten): G4 100 %%, 0,7 s: %d Durchlaeufe, Ton %.2f -> %.2f, Pegel %.1f dB | ' +
+    'C4+7 50 %%, 1/2 Takt: %d Durchlaeufe, Ton %.2f -> %.2f, Pegel %.1f dB | neuer Anschlag und Aus = Original %s',
+    [PA, A1, A2, ALv, PB, B1, B2, BLv, IfThen(RA and RB, 'ok', 'FALSCH')]);
+  if Ok then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
 function CheckOsSkip: string;
 var
   On: Boolean;
@@ -3461,7 +3576,8 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckResample + sLineBreak +
+    CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;
 
