@@ -21,7 +21,7 @@ interface
 
 uses
   Granular.Lang,
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, System.Math,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.StrUtils, System.Classes, System.Math,
   System.SyncObjs, System.IOUtils, System.IniFiles, System.UITypes,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
   GR32, GR32_Image, Granular.ComboFit,
@@ -514,7 +514,13 @@ begin
   // Plugin: Kommandozeile > zuletzt benutzt > GranularSynth.dll neben der EXE
   if (ParamCount > 0) and FileExists(ParamStr(ParamCount)) and
      (SameText(ExtractFileExt(ParamStr(ParamCount)), '.dll') or IsVst3Path(ParamStr(ParamCount))) then
-    PluginPath := ParamStr(ParamCount);
+    PluginPath := ParamStr(ParamCount)
+  else if (PluginPath <> '') and StartsText('GranularSynth', ExtractFileName(PluginPath)) and
+          not SameText(ExtractFilePath(PluginPath), ExtractFilePath(ParamStr(0))) and
+          FileExists(ExtractFilePath(ParamStr(0)) + ExtractFileName(PluginPath)) then
+    // gemerktes GranularSynth aus anderem Ordner (z.B. Build-Ordner ohne Presets):
+    // das mitgelieferte neben der EXE hat Vorrang
+    PluginPath := ExtractFilePath(ParamStr(0)) + ExtractFileName(PluginPath);
   if (PluginPath = '') or not FileExists(PluginPath) then
     PluginPath := ExtractFilePath(ParamStr(0)) + 'GranularSynth.dll';
   if FileExists(PluginPath) then

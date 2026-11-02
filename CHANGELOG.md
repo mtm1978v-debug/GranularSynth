@@ -6,6 +6,13 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.12 – 02.11.2026
+
+### Behoben
+- **Test-Host: leere Presetliste:** Der Host merkte sich das zuletzt benutzte Plugin auch aus einem anderen Ordner (z. B. einem Build-Ordner ohne Presets). Jetzt hat das mitgelieferte GranularSynth neben der EXE Vorrang.
+
+---
+
 ## Version 2.11 – 02.11.2026
 
 ### Behoben
