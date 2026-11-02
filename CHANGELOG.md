@@ -6,6 +6,13 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.11 – 02.11.2026
+
+### Behoben
+- **Reiter *Leistung*:** Texte überlappen nicht mehr; die Laufzeit-Zeile bricht sauber um. Der Schalter heißt jetzt verständlicher *Klassische Oszillatoren (bis 2.9)* (aus = Wavetable, Standard).
+
+---
+
 ## Version 2.10 – 02.11.2026
 
 ### Neu

@@ -2912,8 +2912,9 @@ begin
   FLoadGauge.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(12, 320, 600, 34);
   L.AutoSize := False;
+  L.WordWrap := True;               // erst nach AutoSize := False, sonst schrumpft die Beschriftung
+  L.SetBounds(12, 318, 384, 46);
   L.Caption := '';
   L.Font.Color := COL_NAME;
   L.Transparent := True;
@@ -2924,7 +2925,7 @@ begin
   FProcStat.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(12, 356, 600, 40);
+  L.SetBounds(12, 366, 384, 52);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -2934,7 +2935,7 @@ begin
   AddParam(PR, Ord(gpRenderHQ), 400, 30, 0, 0, 0, Tr('Rendern in Höchstqualität'));
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(404, 30 + ROW_H, 220, 110);
+  L.SetBounds(404, 30 + ROW_H, 230, 86);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -2945,30 +2946,24 @@ begin
   AddParam(PR, Ord(gpOversample), 400, 150, 0, 0, 0, Tr('Oversampling 2x (bei HQ)'));
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(404, 150 + ROW_H, 220, 110);
+  L.SetBounds(404, 150 + ROW_H, 230, 100);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption := Tr('An (Standard): Oszillatoren und Sättigung rechnen intern mit doppelter Abtastrate. ' +
     'Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet etwas mehr Rechenzeit.');
-  // Oszillator-Modell: Wavetable (bandbegrenzt, Standard) oder klassisch (bitgenau wie bis 2.9)
+  // Oszillator-Modell: aus = Wavetable (bandbegrenzt, Standard), an = klassisch (bitgenau wie bis 2.9)
+  AddParam(PR, Ord(gpOscModel), 400, 284, 0, 0, 0, Tr('Klassische Oszillatoren (bis 2.9)'));
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(404, 274, 100, 16);
-  L.Caption := Tr('Oszillatoren:');
-  L.Font.Color := COL_NAME;
-  L.Transparent := True;
-  AddParam(PR, Ord(gpOscModel), 404, 292, 0, 0, 200);
-  L := TLabel.Create(Self);
-  L.Parent := PR;
-  L.SetBounds(404, 292 + ROW_H, 220, 100);
+  L.SetBounds(404, 284 + ROW_H, 230, 86);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
-  L.Caption := Tr('Wavetable (Standard): Dreieck, Säge und Rechteck bandbegrenzt aus Tabellen - sauberer und ohne ' +
-    'Oversampling. Klassisch: genau der Klang bis Version 2.9 (für alte Projekte).');
+  L.Caption := Tr('Aus (Standard): Dreieck, Säge und Rechteck kommen bandbegrenzt aus Wavetables - sauberer, ' +
+    'ohne Oversampling. An: genau der Klang bis Version 2.9, nur für alte Projekte.');
 end;
 
 { --- Reiter EQ --- }
