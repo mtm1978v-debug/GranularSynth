@@ -20,6 +20,8 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 
 - **Granular-Synthese** aus beliebigen Samples (WAV, MP3 u. a.). Einstellbar sind Auswahl, Position, Spray, Scan, Graingröße, Dichte, Fenster und Rückwärts-Anteil. Dazu kommen ein Anlauf vor der Auswahl, eine Schleife hin und her und bis zu drei Zonen.
 - **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison, auch mit **selbst gezeichneter Welle** (bandbegrenzte Wavetable). Mit HQ rechnen Oszillatoren und Sättigung mit **2x-Oversampling**: auch harte FM- und Drive-Klänge bleiben frei von Spiegelfrequenzen.
+- **Audio bearbeiten:** Sample direkt im Plugin aufnehmen (Mikrofon oder „was der PC abspielt“), vorhören, zuschneiden, löschen, ein-/ausblenden, normalisieren, Stille entfernen, umkehren – Schnitte rasten auf Nulldurchgänge ein.
+- **Arp als MIDI:** Das Arp-Muster mit dem gespielten Akkord per Maus als MIDI-Datei in eine Spur der DAW ziehen.
 - **Feedback-Resampling:** Solange eine Taste gehalten wird, wird der eigene Klang Durchlauf für Durchlauf (frei oder im Takt) zur neuen Grain-Quelle – er entwickelt sich, je länger man hält.
 - **Modulationsmatrix mit 32 Zeilen**, 8 LFOs (auch frei gezeichnet oder in Stufen), Hüllkurven, Velocity, Sidechain-Pegel und Sidechain-Tonhöhe. Die Modulation wirkt je Note.
 - **Vier freie Makros**: Ein Regler bewegt beliebig viele Ziele mit wählbarer Kurve. Die Makros lassen sich in der DAW automatisieren.
@@ -45,6 +47,7 @@ Die Reiter folgen dem Weg des Signals. Klick auf ein Bild zeigt es groß.
 | **Effekte: Chorus, Phaser, Crusher, Trance-Gate**<br>[![Effekte: Chorus, Phaser, Crusher, Trance-Gate](docs/screenshots/effekte.png)](docs/screenshots/effekte.png) | **Echo / Hall**<br>[![Echo / Hall](docs/screenshots/echo_hall.png)](docs/screenshots/echo_hall.png) |
 | **Summe: EQ, Sättigung, Stereo, Limiter**<br>[![Summe: EQ, Sättigung, Stereo, Limiter](docs/screenshots/summe.png)](docs/screenshots/summe.png) | **Extras: Arpeggiator, Harmonie, Morph**<br>[![Extras: Arpeggiator, Harmonie, Morph](docs/screenshots/extras.png)](docs/screenshots/extras.png) |
 | **Mischpult**<br>[![Mischpult](docs/screenshots/mischpult.png)](docs/screenshots/mischpult.png) | **Leistung: Rechenlast, Oversampling**<br>[![Leistung: Rechenlast, Oversampling](docs/screenshots/leistung.png)](docs/screenshots/leistung.png) |
+| **Audio bearbeiten: Aufnahme, Vorhören, Schnitt**<br>[![Audio bearbeiten: Aufnahme, Vorhören, Schnitt](docs/screenshots/audio_bearbeiten.png)](docs/screenshots/audio_bearbeiten.png) | |
 
 *English interface / englische Oberfläche:*
 

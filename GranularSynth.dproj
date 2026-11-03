@@ -77,6 +77,11 @@
         <DCCReference Include="Source\UI\Granular.Fader.pas"/>
         <DCCReference Include="Source\UI\Granular.LoadView.pas"/>
         <DCCReference Include="Source\UI\Granular.Hints.pas"/>
+        <DCCReference Include="Source\UI\Granular.ArpMidi.pas"/>
+        <DCCReference Include="Source\UI\Granular.AudioEditor.pas"/>
+        <DCCReference Include="Source\Engine\Granular.SampleEdit.pas"/>
+        <DCCReference Include="Source\UI\Granular.WasapiRec.pas"/>
+        <DCCReference Include="Source\UI\Granular.IconButton.pas"/>
         <DCCReference Include="Source\Vst\Granular.Vst3.pas"/>
         <DCCReference Include="Source\Vst\Granular.Vst3Plugin.pas"/>
         <DCCReference Include="Source\Engine\Granular.Reverb.pas"/>

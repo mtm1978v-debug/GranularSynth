@@ -25,8 +25,9 @@ uses
   Granular.Update,
   Granular.Params, Granular.Sample, Granular.Engine, Granular.WaveView, Granular.Keyboard,
   Granular.ModViews, Granular.State, Granular.AudioDecode, Granular.Banner, Granular.Prof, Granular.Spectrum, Granular.ComboFit, Granular.FreeLfoView, Granular.InfoView, Granular.EqView, Granular.Eq,
-  Granular.LoadView, Granular.Hints,
-  Granular.Fader;   // nach Vcl.ComCtrls: TTrackBar im DJ-Fader-Look
+  Granular.LoadView, Granular.Hints, Granular.ArpMidi, Granular.AudioEditor,
+  Granular.Fader,   // nach Vcl.ComCtrls: TTrackBar im DJ-Fader-Look
+  Granular.IconButton;   // Symbole (TEdIcon) fuer die Knoepfe
 
 const
   WM_EDITOR_DEFOCUS = WM_USER + 211;   // Fokus nach Listenauswahl zurueck an den Editor
@@ -99,6 +100,7 @@ type
     FVaryStyle: TComboBox;      // Stil-Richtung beim Variieren
     FMorphLabel: TLabel;
     FArpPattern: TArpPatternView;
+    FArpMidiBars: TComboBox;
     FClipLed, FMidiLed: TClipLed;
     FQuickPV: TPanel;        // Einstellungs-Rechteck rechts im Schnell-Reiter (Bezug fuer den Taenzer)
     FInfoForm: TInfoForm;
@@ -305,6 +307,9 @@ type
     procedure BuildSampleTab;
     procedure RecClick(Sender: TObject);
     procedure ZoneLoadClick(Sender: TObject);
+    procedure EditSampleClick(Sender: TObject);
+    procedure EditSample(Z: Integer);
+    procedure AudioEditorTimer(Sender: TObject);
     procedure ZoneClearClick(Sender: TObject);
     procedure ZoneNoteChange(Sender: TObject);
     procedure LoadZoneFile(Z: Integer; const FileName: string);
@@ -403,6 +408,8 @@ type
     function PageIndex: Integer;
     { Hilfefenster oeffnen; Changelog = gleich die Aenderungsliste zeigen }
     procedure ShowHelp(Changelog: Boolean);
+    { Fenster 'Audio bearbeiten' fuer das Hauptsample (Testhilfe, nach dem Oeffnen des Editors) }
+    procedure OpenAudioEditor;
     { 'VST2', 'VST3', 'VST2 FX', 'VST3 FX': steht im Banner hinter der Version }
     property FormatName: string write SetFormatName;
     { eigenes Rechtsklick-Menue fuer einen Regler zeigen (aus dem DAW-Menue heraus) }
@@ -416,6 +423,7 @@ type
     procedure PresetFilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure PresetComboChange(Sender: TObject);
     procedure PresetSaveClick(Sender: TObject);
+    procedure ArpMidiMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure PresetStepClick(Sender: TObject);
   public
     { AParent muss sofort gesetzt werden: TPageControl braucht beim Aufbau ein Fensterhandle }
@@ -807,10 +815,12 @@ begin
   FTopBar.ParentBackground := False;
   FTopBar.Color := BG_DARK;
 
-  FLoadButton := MakeButton(Tr('Audio laden...'), 8, 100, LoadClick);
-  FPanicButton := MakeButton(Tr('Alle Noten aus'), 114, 100, PanicClick);
-  FOctDown := MakeButton(Tr('Okt -'), 232, 50, OctaveClick);
-  FOctUp := MakeButton(Tr('Okt +'), 286, 50, OctaveClick);
+  FLoadButton := MakeButton(Tr('Audio laden...'), 8, 104, LoadClick);
+  FPanicButton := MakeButton(Tr('Alle Noten aus'), 116, 116, PanicClick);
+  FOctDown := MakeButton(Tr('Okt -'), 240, 46, OctaveClick);
+  FOctUp := MakeButton(Tr('Okt +'), 290, 46, OctaveClick);
+  FLoadButton.Icon := eiOpen;
+  FPanicButton.Icon := eiPanic;
 
   FPresetCombo := TComboBox.Create(Self);
   FPresetCombo.Parent := FTopBar;
@@ -840,15 +850,22 @@ begin
   FPresetFilter.OnChange := PresetFilterChange;
   FPresetFilter.OnKeyDown := PresetFilterKeyDown;
   FPresetPrev := MakeButton('<', 508, 24, PresetStepClick);
-  FPresetCombo.SetBounds(534, 8, 172, 21);
+  FPresetPrev.Icon := eiPrev;
+  FPresetPrev.IconOnly := True;
+  FPresetCombo.SetBounds(534, 8, 156, 21);
   FPresetCombo.DropDownCount := 30;
   FPresetCombo.TabStop := False;
   FPresetCombo.OnChange := PresetComboChange;
-  FPresetNext := MakeButton('>', 708, 24, PresetStepClick);
-  FPresetFav := MakeButton('☆', 736, 26, PresetFavClick);
+  FPresetNext := MakeButton('>', 692, 24, PresetStepClick);
+  FPresetNext.Icon := eiNext;
+  FPresetNext.IconOnly := True;
+  FPresetFav := MakeButton('☆', 720, 26, PresetFavClick);
+  FPresetFav.Icon := eiStar;
+  FPresetFav.IconOnly := True;
   FPresetFav.Hint := Tr('Aktuelles Preset als Favorit markieren / Markierung entfernen');
   FPresetFav.ShowHint := True;
-  FPresetSave := MakeButton(Tr('Speichern...'), 766, 76, PresetSaveClick);
+  FPresetSave := MakeButton(Tr('Speichern...'), 750, 94, PresetSaveClick);
+  FPresetSave.Icon := eiSave;
 
   FStatus := TLabel.Create(Self);
   FStatus.Parent := FTopBar;
@@ -863,8 +880,12 @@ begin
   FMidiLed.SetBounds(890, 9, 36, 19);
   FMidiLed.Hint := Tr('Leuchtet bei jedem MIDI-Ereignis (Noten, Pitchbend, Modrad, Aftertouch, Pedal)');
   FMidiLed.ShowHint := True;
-  MakeButton(Tr('Info'), 930, 44, InfoClick).Hint := Tr('Klartext-Übersicht: was passiert bei einem Tastendruck (live)');
-  MakeButton(Tr('Hilfe'), 978, 48, HelpClick).Hint := Tr('Bedienung in einfachen Worten (Kapitel)');
+  var B := MakeButton(Tr('Info'), 930, 44, InfoClick);
+  B.Icon := eiInfo;
+  B.Hint := Tr('Klartext-Übersicht: was passiert bei einem Tastendruck (live)');
+  B := MakeButton(Tr('Hilfe'), 978, 48, HelpClick);
+  B.Icon := eiHelp;
+  B.Hint := Tr('Bedienung in einfachen Worten (Kapitel)');
   // Sprachflagge (klein, gedaempft): rechts in der Reiterzeile, Klick schaltet zur naechsten Sprache
   EnsureLangList;
   FLangFlagHost := TPanel.Create(Self);
@@ -1611,11 +1632,35 @@ begin
   FArpPattern.Parent := PA;
   FArpPattern.SetBounds(8, 24 + 7 * ROW_H + 24, 300, 30);
   AddStretch(FArpPattern, 8);
-  Hint(PA, 24 + 7 * ROW_H + 60, 120,
+  Hint(PA, 24 + 7 * ROW_H + 60, 94,
     Tr('Gehaltene Tasten werden nacheinander gespielt, im Tempo des Hosts; auch eine einzelne ' +
     'Taste läuft über die Oktaven. Schritte im Muster ausschalten = Pause an dieser Stelle ' +
     '(wie beim microKorg). Akkord = alle Tasten gleichzeitig im Rhythmus des Musters. ' +
     'Tonleiter (rechts) gilt auch für den Arp.'));
+  // Muster als MIDI-Datei in die DAW ziehen (Klick ohne Ziehen = speichern)
+  FArpMidiBars := TComboBox.Create(Self);
+  FArpMidiBars.Parent := PA;
+  FArpMidiBars.Style := csDropDownList;
+  FArpMidiBars.SetBounds(8, 24 + 7 * ROW_H + 159, 90, 21);
+  FArpMidiBars.TabStop := False;
+  for I := 0 to High(ARP_MIDI_BARS) do
+    if ARP_MIDI_BARS[I] = 1 then
+      FArpMidiBars.Items.Add(Tr('1 Takt'))
+    else
+      FArpMidiBars.Items.Add(Format(Tr('%d Takte'), [ARP_MIDI_BARS[I]]));
+  FArpMidiBars.ItemIndex := 2;
+  EnableComboFit(FArpMidiBars);
+  B := TButton.Create(Self);
+  B.Parent := PA;
+  B.SetBounds(106, 24 + 7 * ROW_H + 156, 222, 27);
+  B.Caption := Tr('MIDI hier greifen und ziehen');
+  B.Icon := eiKeys;
+  B.TabStop := False;
+  B.Cursor := crDrag;
+  B.Hint := Tr('Das Arp-Muster mit dem zuletzt gespielten Akkord als MIDI-Datei in eine Spur ' +
+    'der DAW ziehen. Klick ohne Ziehen = Datei speichern.');
+  B.ShowHint := True;
+  B.OnMouseDown := ArpMidiMouseDown;
 
   AddParam(PH, Ord(gpScale), 8, 24, 90, 0, 180);
   AddParam(PH, Ord(gpScaleRoot), 8, 24 + ROW_H, 90, 0, 80);
@@ -1653,11 +1698,14 @@ begin
   AddParam(PM, Ord(gpMorphLfoDepth), 8, 24 + 3 * ROW_H, 70, 52, 0, Tr('Tiefe'));
   B := Btn(PM, 24 + 4 * ROW_H + 6, Tr('Jetzigen Klang als Ziel B merken'), MorphStoreClick);
   B.Width := 200;
+  B.Icon := eiBookmark;
   B := Btn(PM, 24 + 4 * ROW_H + 6, Tr('Ziel B löschen'), MorphClearClick);
+  B.Icon := eiTrash;
   B.Left := 214;
   B.Width := 100;
   // Bearbeitungstausch: B nach vorn holen, bearbeiten, zuruecktauschen (Klang bleibt gleich)
   B := Btn(PM, 24 + 4 * ROW_H + 6, Tr('A <-> B tauschen'), MorphSwapClick);
+  B.Icon := eiSwap;
   B.Left := 320;
   B.Width := 120;
   B.Hint := Tr('A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample). ' +
@@ -1665,10 +1713,12 @@ begin
     'Nochmal klicken = zurück.');
   B.ShowHint := True;
   B := Btn(PM, 24 + 4 * ROW_H + 38, Tr('Preset als Ziel B laden ...'), MorphLoadClick);
+  B.Icon := eiOpen;
   B.Width := 200;
   B := Btn(PM, 24 + 4 * ROW_H + 38, Tr('Frei zeichnen ...'), MorphFreeClick);
+  B.Icon := eiPencil;
   B.Left := 214;
-  B.Width := 100;
+  B.Width := 120;
   FMorphLabel := TLabel.Create(Self);
   FMorphLabel.Parent := PM;
   FMorphLabel.SetBounds(8, 24 + 4 * ROW_H + 72, 200, 16);
@@ -2283,6 +2333,7 @@ begin
     Parent := P0;
     SetBounds(384, 24 + ROW_H, 88, 24);
     Caption := Tr('Zeichnen ...');
+    Icon := eiPencil;
     Tag := O;
     TabStop := False;
     OnClick := WaveEditClick;
@@ -2352,7 +2403,7 @@ begin
   Area.Color := BG_MAIN;
   PZ := MakePanel(Area, alLeft, Tr('Zonen: weitere Samples je Tastenbereich'));
   PZ.Width := 640;
-  PR := MakePanel(Area, alClient, Tr('Aufnahme vom Eingang'));
+  PR := MakePanel(Area, alClient, Tr('Sample bearbeiten und Aufnahme vom Eingang'));
 
   L := TLabel.Create(Self);
   L.Parent := PZ;
@@ -2399,6 +2450,7 @@ begin
     B.Parent := FZoneRow[Z];
     B.SetBounds(160, 3, 90, 26);
     B.Caption := Tr('Laden...');
+    B.Icon := eiOpen;
     B.Tag := Z;
     B.TabStop := False;
     B.OnClick := ZoneLoadClick;
@@ -2406,12 +2458,23 @@ begin
     B.Parent := FZoneRow[Z];
     B.SetBounds(256, 3, 70, 26);
     B.Caption := Tr('Leeren');
+    B.Icon := eiTrash;
     B.Tag := Z;
     B.TabStop := False;
     B.OnClick := ZoneClearClick;
+    B := TButton.Create(Self);
+    B.Parent := FZoneRow[Z];
+    B.SetBounds(332, 3, 96, 26);
+    B.Caption := Tr('Bearbeiten...');
+    B.Icon := eiPencil;
+    B.Hint := Tr('Sample dieser Zone schneiden, blenden, normalisieren');
+    B.ShowHint := True;
+    B.Tag := Z;
+    B.TabStop := False;
+    B.OnClick := EditSampleClick;
     FZoneName[Z] := TLabel.Create(Self);
     FZoneName[Z].Parent := FZoneRow[Z];
-    FZoneName[Z].SetBounds(334, 9, 286, 16);
+    FZoneName[Z].SetBounds(436, 9, 184, 16);
     FZoneName[Z].AutoSize := False;
     FZoneName[Z].Font.Color := COL_VAL;
     FZoneName[Z].Transparent := True;
@@ -2428,18 +2491,29 @@ begin
 
   FRecButton := TButton.Create(Self);
   FRecButton.Parent := PR;
-  FRecButton.SetBounds(8, 26, 170, 30);
+  FRecButton.SetBounds(216, 26, 170, 30);
   FRecButton.Caption := Tr('Aufnahme starten');
+  FRecButton.Icon := eiRec;
   FRecButton.TabStop := False;
   FRecButton.OnClick := RecClick;
+  B := TButton.Create(Self);
+  B.Parent := PR;
+  B.SetBounds(8, 26, 200, 30);
+  B.Caption := Tr('Hauptsample bearbeiten...');
+  B.Icon := eiPencil;
+  B.Hint := Tr('Audio bearbeiten: schneiden, löschen, ein-/ausblenden, normalisieren, Stille entfernen, umkehren');
+  B.ShowHint := True;
+  B.Tag := 0;
+  B.TabStop := False;
+  B.OnClick := EditSampleClick;
   FRecLabel := TLabel.Create(Self);
   FRecLabel.Parent := PR;
-  FRecLabel.SetBounds(188, 33, 300, 16);
+  FRecLabel.SetBounds(8, 62, 420, 16);
   FRecLabel.Font.Color := COL_VAL;
   FRecLabel.Transparent := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(8, 66, 420, 120);
+  L.SetBounds(8, 82, 420, 108);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -2510,6 +2584,90 @@ begin
   FRecLabel.Caption := Format(Tr('%.1f s geladen'), [Data.Frames / Data.SampleRate]);
   PushUndo;
   SetSample(Data);
+end;
+
+{ Fenster "Audio bearbeiten" fuer das Hauptsample (Tag 0) oder eine Zone (Tag = Zone); das Ergebnis
+  wird als neue WAV in "Eigene Toene" gespeichert - das Original bleibt unangetastet }
+procedure TGranularEditor.EditSampleClick(Sender: TObject);
+begin
+  EditSample((Sender as TComponent).Tag);
+end;
+
+procedure TGranularEditor.OpenAudioEditor;
+var
+  T: TTimer;
+begin
+  // modal erst nach dem Oeffnen des Plugin-Fensters (sonst blockiert effEditOpen); ein Timer statt
+  // TThread.Queue - die RTL der DLL arbeitet ihre Warteschlange im Host nicht ab
+  T := TTimer.Create(Self);
+  T.Interval := 500;
+  T.OnTimer := AudioEditorTimer;
+end;
+
+procedure TGranularEditor.AudioEditorTimer(Sender: TObject);
+begin
+  (Sender as TTimer).Enabled := False;
+  EditSample(0);
+end;
+
+procedure TGranularEditor.EditSample(Z: Integer);
+var
+  N: Integer;
+  Src, Res: TSampleData;
+  Name, Dir, Fn, Cap: string;
+begin
+  if Z = 0 then
+  begin
+    Src := FEngine.Sample;
+    Name := FEngine.SamplePath;
+    Cap := Tr('Audio bearbeiten - Hauptsample');
+  end
+  else
+  begin
+    Src := FEngine.ZoneSample(Z);
+    Name := FEngine.GetZoneLoaded(Z);
+    Cap := Format(Tr('Audio bearbeiten - Zone %d'), [Z]);
+  end;
+  if (Src <> nil) and IsEmptySample(Src) then
+    Src := nil;
+  if not EditAudio(Src, Cap, FBaseDir, Res) then
+    Exit;
+  // Name: Original + "_bearbeitet_NN"; ohne Datei (Demo-Klang, Aufnahme ohne Ordner) "Sample"
+  Name := ChangeFileExt(ExtractFileName(Name), '');
+  N := Pos('_bearbeitet_', Name);
+  if N > 0 then
+    Name := Copy(Name, 1, N - 1);
+  if Name = '' then
+    Name := 'Sample';
+  Dir := FBaseDir + 'Eigene Toene' + PathDelim;
+  Fn := '';
+  try
+    ForceDirectories(Dir);
+    N := 1;
+    repeat
+      Fn := Dir + Format('%s_bearbeitet_%.2d.wav', [Name, N]);
+      Inc(N);
+    until not FileExists(Fn);
+    SaveWaveFile(Res, Fn);
+    Res.FileName := Fn;
+  except
+    Fn := '';                 // Ordner schreibgeschuetzt: Sample gilt bis zum Schliessen
+  end;
+  if Z = 0 then
+  begin
+    PushUndo;
+    SetSample(Res);
+  end
+  else
+  begin
+    FEngine.SetZone(Z, Res, FZoneNote[Z].ItemIndex);
+    FEngine.SetZoneLoaded(Z, Fn);
+    if Fn <> '' then
+      FEngine.SetZoneRef(Z, MakePortablePath(Fn, FBaseDir))
+    else
+      FEngine.SetZoneRef(Z, '');
+    UpdateZoneUi;
+  end;
 end;
 
 procedure TGranularEditor.LoadZoneFile(Z: Integer; const FileName: string);
@@ -3948,12 +4106,14 @@ begin
   B.Parent := PV;
   B.SetBounds(8, Y, 110, 30);
   B.Caption := Tr('Variieren');
+  B.Icon := eiDice;
   B.TabStop := False;
   B.OnClick := VaryClick;
   FUndoButton := TButton.Create(Self);
   FUndoButton.Parent := PV;
   FUndoButton.SetBounds(124, Y, 110, 30);
   FUndoButton.Caption := Tr('Rückgängig');
+  FUndoButton.Icon := eiUndo;
   FUndoButton.TabStop := False;
   FUndoButton.OnClick := UndoClick;
   FUndoButton.Hint := Tr('Letzten Schritt zurücknehmen (Strg+Z)');
@@ -3962,6 +4122,7 @@ begin
   FRedoButton.Parent := PV;
   FRedoButton.SetBounds(240, Y, 110, 30);
   FRedoButton.Caption := Tr('Wiederholen');
+  FRedoButton.Icon := eiRedo;
   FRedoButton.TabStop := False;
   FRedoButton.OnClick := RedoClick;
   FRedoButton.Hint := Tr('Zurückgenommenen Schritt wiederherstellen (Strg+Y oder Strg+Umschalt+Z)');
@@ -5991,9 +6152,15 @@ begin
   I := FPresetCombo.ItemIndex;
   FPresetFav.Enabled := (I > 0) and (I <= High(FPresetFiles));
   if FPresetFav.Enabled and IsFavorite(FPresetFiles[I]) then
-    FPresetFav.Caption := '★'
+  begin
+    FPresetFav.Caption := '★';
+    FPresetFav.Icon := eiStarFull;
+  end
   else
+  begin
     FPresetFav.Caption := '☆';
+    FPresetFav.Icon := eiStar;
+  end;
 end;
 
 procedure TGranularEditor.PresetFavClick(Sender: TObject);
@@ -6116,6 +6283,38 @@ end;
 { Speichern-Option 'Samples einbetten' merken (Datei im Plugin-Ordner) }
 const
   EMBED_OPT_FILE = 'PresetSpeichern.txt';
+
+{ Arp-Muster als MIDI: Ziehen = Drag&Drop in die DAW, Klick = Speichern-Dialog }
+procedure TGranularEditor.ArpMidiMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  Bars: Integer;
+  Fn: string;
+  Dlg: TSaveDialog;
+begin
+  if Button <> mbLeft then
+    Exit;
+  Bars := ARP_MIDI_BARS[EnsureRange(FArpMidiBars.ItemIndex, 0, High(ARP_MIDI_BARS))];
+  if DragDetect(TWinControl(Sender).Handle, Mouse.CursorPos) then
+  begin
+    // eindeutiger Name: manche DAWs verweisen auf die Datei statt sie zu kopieren
+    Fn := TPath.Combine(TPath.GetTempPath, 'GranularSynth Arp ' + FormatDateTime('hhnnss', Now) + '.mid');
+    if WriteArpMidi(FEngine, Bars, Fn) then
+      DragFileOut(Fn);
+    Exit;
+  end;
+  Dlg := TSaveDialog.Create(nil);
+  try
+    Dlg.Filter := Tr('MIDI-Datei (*.mid)|*.mid');
+    Dlg.DefaultExt := 'mid';
+    Dlg.FileName := 'GranularSynth Arp.mid';
+    Dlg.Options := Dlg.Options + [ofOverwritePrompt];
+    if Dlg.Execute and not WriteArpMidi(FEngine, Bars, Dlg.FileName) then
+      MessageDlg(Tr('Die MIDI-Datei konnte nicht geschrieben werden.'), mtError, [mbOK], 0);
+  finally
+    Dlg.Free;
+  end;
+end;
 
 procedure TGranularEditor.PresetSaveClick(Sender: TObject);
 var

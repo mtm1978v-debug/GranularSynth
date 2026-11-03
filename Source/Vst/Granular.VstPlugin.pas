@@ -295,6 +295,9 @@ begin
   // Testhilfe: GRANULAR_FREEEDIT=1|2 oeffnet das Fenster 'freie Form' des LFOs
   if StrToIntDef(GetEnvironmentVariable('GRANULAR_FREEEDIT'), 0) in [1, 2] then
     FEditor.OpenFreeEditor(StrToInt(GetEnvironmentVariable('GRANULAR_FREEEDIT')) - 1);
+  // Testhilfe: GRANULAR_AUDIOEDIT=1 oeffnet 'Audio bearbeiten' fuer das Hauptsample (Bildschirmfoto)
+  if GetEnvironmentVariable('GRANULAR_AUDIOEDIT') = '1' then
+    FEditor.OpenAudioEditor;
   // Testhilfe: GRANULAR_HELP=1 oeffnet die Hilfe, =2 gleich den Changelog
   if GetEnvironmentVariable('GRANULAR_HELP') <> '' then
     FEditor.ShowHelp(GetEnvironmentVariable('GRANULAR_HELP') = '2');

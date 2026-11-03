@@ -18,8 +18,8 @@ Oberfläche, Kommentare und Dokumentation sind **auf Deutsch**. Bitte dabei blei
 
 | Pfad | Inhalt |
 |---|---|
-| `Source/Engine` | Klangerzeugung ohne VCL. `Granular.Engine.pas` (TGranularEngine), `Params` (alle Parameter), `State` (Chunk/Preset-Format), `DSP` (SSE-Kerne + Pascal-Referenz), `Reverb`, `Eq`, `Pitch` (YIN), `Sample`, `AudioDecode` |
-| `Source/UI` | Oberfläche. `Granular.Editor.pas` (TGranularEditor, alle Reiter), Anzeigen (WaveView, ModViews, Spectrum, EqView, FreeLfoView, LoadView, InfoView), `Banner`, `Fader`, `Hints` (erzeugt) |
+| `Source/Engine` | Klangerzeugung ohne VCL. `Granular.Engine.pas` (TGranularEngine), `Params` (alle Parameter), `State` (Chunk/Preset-Format), `DSP` (SSE-Kerne + Pascal-Referenz), `Reverb`, `Eq`, `Pitch` (YIN), `Sample`, `AudioDecode`, `SampleEdit` (Schnitt-Funktionen des Sample-Editors) |
+| `Source/UI` | Oberfläche. `Granular.Editor.pas` (TGranularEditor, alle Reiter), Anzeigen (WaveView, ModViews, Spectrum, EqView, FreeLfoView, LoadView, InfoView), `Banner`, `Fader` (Knopf-/Regler-Look), `IconButton` (Symbole), `AudioEditor` (Fenster „Audio bearbeiten“), `WasapiRec` (Aufnahme inkl. Loopback), `ArpMidi` (Arp als MIDI ziehen), `Hints` (erzeugt) |
 | `Source/Vst` | Plugin-Hüllen: `VstPlugin` (VST2), `Vst3Plugin` (VST3), Schnittstellen `Vst2`/`Vst3` |
 | `Source/Host` | Test-Host: `MainForm`, `VstHost` (VST2) + `Vst3Host` (VST3), Audio-Ein/-Ausgang, `AutoPlay`, `Bench` (Prüfstand), `PresetGen` (alle mitgelieferten Presets), `DemoRender` |
 | `Presets/` | mitgelieferte Presets, **erzeugt** von `PresetGen` (`GranularHost.exe -makepresets <Projektordner>`) |
@@ -129,11 +129,19 @@ Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüsse
 - **Dokumentation mitziehen:** Bei sichtbaren Änderungen auch die Hilfe (`Hilfe/Hilfe.rtf` bzw. die Reglertabelle), `LIESMICH.txt`, `README.md` und die Bildschirmfotos in `docs/screenshots/` anpassen. Die englischen Fassungen meldet `lang_check.py` dann als veraltet.
 - **Changelog:** Jede für Nutzer sichtbare Änderung kommt in `CHANGELOG.md` unter die kommende Version: *Neu*, *Geändert*, *Behoben*, *Entfernt* oder *Hinweis* (Folgen für Presets und Projekte).
 - **Projekteinschätzung:** `docs/Projekteinschaetzung.md` ist eine Einschätzung des Projekts von außen. Hin und wieder (etwa bei größeren Versionen, nicht bei jedem Deploy) prüfen, ob sie noch stimmt, und den Stand oben in der Datei anpassen.
-- **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE` und `GRANULAR_MATPAGE`.
+- **Symbole auf Knöpfen:** Die Plugin-Oberfläche zeichnet Symbole als Vektoren, ohne Bilddateien. Ein neuer Knopf bekommt ein Symbol, wenn es eindeutig erkennbar ist (Laden, Speichern, Löschen, Abspielen, Aufnahme …). Wo der Text mehr sagt, bleibt es beim Text.
+  - Die Symbole stehen in `Source/UI/Granular.IconButton.pas`: Aufzählung `TEdIcon`, Zeichnung in `DrawIcon` (Koordinaten 0..1 im Quadrat). Ein neues Symbol kommt hinten an `TEdIcon` und bekommt einen Zweig in `DrawIcon`.
+  - Ein normaler `TButton` der Oberfläche (aus `Granular.Fader`) zeigt das Symbol über `B.Icon := eiOpen;` links neben dem Text. Nur mit Symbol: zusätzlich `B.IconOnly := True` – die Beschriftung bleibt für Tooltip und Barrierefreiheit gesetzt, und ein `Hint` ist dann Pflicht.
+  - Passt das Symbol nicht neben den Text (etwa in einer längeren Übersetzung), wird es kleiner gezeichnet und notfalls weggelassen. Der Text wird nie abgeschnitten. Wer das Symbol sicher sehen will, macht den Knopf breit genug.
+  - Eigene Fenster ohne Owner-Draw-Knöpfe (z. B. „Audio bearbeiten“) nehmen `TIconButton` aus derselben Unit.
+  - **Kein GDI+** in der Plugin-DLL: Es startet beim Laden der DLL (Loader-Lock) und kann die DAW hängen lassen. Geglättet wird mit Graphics32 (`GR32_Polygons`).
+  - Farben: Grundfarbe hellgrau, Akzente sparsam – grün = abspielen/übernehmen, rot = Aufnahme/Löschen/Notaus, bernstein = gewählt/aktiv.
+- **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE`, `GRANULAR_MATPAGE` und `GRANULAR_AUDIOEDIT=1` (öffnet „Audio bearbeiten“ für das Hauptsample, für Bildschirmfotos).
 
 ## Bekannte Eigenheiten
 
 - In Delphi kann `Format('%+d')` nicht verwendet werden. Für Vorzeichen gibt es den eigenen Helfer `SignedPct`.
 - Hat ein Delphi-Set mehr als 256 mögliche Werte (`PARAM_COUNT` > 256), wird `IdIn()` statt `in [...]` verwendet.
 - `PSingle` gibt es in `System` und in `Winapi.Windows`. In Units, die beides einbinden, wird `System.PSingle` geschrieben.
+- `TThread.Queue`/`ForceQueue` laufen in der Plugin-DLL nicht zuverlässig: Die RTL der DLL arbeitet ihre Warteschlange im Host nicht ab. Für „später im GUI-Thread“ einen kurzen `TTimer` nehmen.
 - Strukturgrößen der VST3-Schnittstellen sind im Prüfstand festgeschrieben, zum Beispiel ParameterInfo 792 Byte und ProcessData 80/48 Byte. Felder dort nicht verschieben.

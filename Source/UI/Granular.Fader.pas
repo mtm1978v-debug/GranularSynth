@@ -22,7 +22,7 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, System.Classes, Vcl.Controls, Vcl.ComCtrls, Vcl.StdCtrls,
-  Vcl.Graphics, Vcl.Forms;
+  Vcl.Graphics, Vcl.Forms, Granular.IconButton;
 
 type
   { Tooltip ohne Schlagschatten: Windows laesst den Schatten (CS_DROPSHADOW) eines Tooltips manchmal als
@@ -82,7 +82,10 @@ type
     FHot: Boolean;
     FActive: Boolean;
     FGlyph: Integer;
+    FIcon: TEdIcon;
+    FIconOnly: Boolean;
     procedure SetActive(Value: Boolean);
+    procedure SetIcon(Value: TEdIcon);
     procedure CNDrawItem(var Message: TWMDrawItem); message CN_DRAWITEM;
     procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -94,6 +97,10 @@ type
     property Active: Boolean read FActive write SetActive;
     { Symbol statt Text: 0 = keins, 1 = Papierkorb (die Beschriftung bleibt fuer Tooltip/Barrierefreiheit) }
     property Glyph: Integer read FGlyph write FGlyph;
+    { Symbol links neben dem Text; passt beides nicht hinein, bleibt nur der Text (nie abgeschnitten) }
+    property Icon: TEdIcon read FIcon write SetIcon;
+    { nur das Symbol zeigen (Beschriftung bleibt fuer Tooltip/Barrierefreiheit) }
+    property IconOnly: Boolean read FIconOnly write FIconOnly;
   end;
 
   { Aufklappliste: geschlossenes Feld in gebuerstetem Aluminium (selbst gezeichnet), Liste dunkel mit
@@ -512,6 +519,15 @@ begin
   Invalidate;
 end;
 
+procedure TButton.SetIcon(Value: TEdIcon);
+begin
+  if FIcon <> Value then
+  begin
+    FIcon := Value;
+    Invalidate;
+  end;
+end;
+
 procedure TButton.CMMouseEnter(var Message: TMessage);
 begin
   inherited;
@@ -545,6 +561,8 @@ var
   Down: Boolean;
   Cx, Cy: Integer;
   Gc: TColor;
+  IS_: Integer;
+  Ext: TSize;
 begin
   DS := Message.DrawItemStruct;
   R := DS.rcItem;
@@ -598,6 +616,32 @@ begin
     Exit;
   end;
   OldF := SelectObject(DS.hDC, Font.Handle);
+  if FIcon <> eiNone then
+  begin
+    IS_ := Min(16, R.Bottom - R.Top - 6);
+    GetTextExtentPoint32(DS.hDC, PChar(Txt), Length(Txt), Ext);
+    if FIconOnly or (Txt = '') then
+    begin
+      PaintIcon(DS.hDC, (R.Left + R.Right - IS_) div 2, (R.Top + R.Bottom - IS_) div 2, IS_, FIcon, FActive,
+        not Enabled, FHot and Enabled);
+      SelectObject(DS.hDC, OldF);
+      Message.Result := 1;
+      Exit;
+    end;
+    // Symbol + Abstand + Text mittig, wenn es passt (sonst etwas kleiner, sonst nur Text)
+    if IS_ + 4 + Ext.cx > R.Right - R.Left - 4 then
+      IS_ := 13;
+    if IS_ + 4 + Ext.cx <= R.Right - R.Left - 4 then
+    begin
+      Cx := (R.Left + R.Right - (IS_ + 4 + Ext.cx)) div 2;
+      PaintIcon(DS.hDC, Cx, (R.Top + R.Bottom - IS_) div 2, IS_, FIcon, FActive, not Enabled, False);
+      R.Left := Cx + IS_ + 4;
+      DrawText(DS.hDC, PChar(Txt), Length(Txt), R, DT_LEFT or DT_VCENTER or DT_SINGLELINE);
+      SelectObject(DS.hDC, OldF);
+      Message.Result := 1;
+      Exit;
+    end;
+  end;
   DrawText(DS.hDC, PChar(Txt), Length(Txt), R, DT_CENTER or DT_VCENTER or DT_SINGLELINE);
   SelectObject(DS.hDC, OldF);
   Message.Result := 1;

@@ -6,6 +6,28 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.14 – 03.11.2026
+
+### Neu
+- **Arp-Muster als MIDI in die DAW ziehen** (Reiter *Extras*): Das Feld *MIDI hier greifen und ziehen* unter dem Schrittmuster mit der Maus in eine Spur der DAW ziehen. Die Datei enthält genau die Noten, die der Arp mit dem zuletzt gespielten Akkord und den aktuellen Einstellungen spielt: Richtung, Oktaven, Notenwert, Länge, Swing, Schrittmuster und Tempo. Die Länge ist wählbar (1, 2, 4 oder 8 Takte). Ein Klick ohne Ziehen speichert die Datei. Wurde noch kein Akkord gespielt, nimmt der Arp C-Dur.
+  - Damit lässt sich ein Arp-Lauf in der DAW weiter bearbeiten oder mit einem anderen Instrument spielen. Zum Abspielen durch GranularSynth den Arp dort ausschalten, sonst arpeggiert er die Noten noch einmal.
+
+- **Audio bearbeiten** (Reiter *Samples*): Mit *Hauptsample bearbeiten...* und *Bearbeiten...* in jeder Zone öffnet sich ein kleiner Schnittplatz für das Sample hinter den Grains. Funktionen: Zuschneiden, Löschen, Einblenden, Ausblenden, Normalisieren (−0,2 dB), Stille entfernen, Umkehren und Rückgängig (10 Schritte). Schnitte rasten auf den nächsten Nulldurchgang ein, beim Löschen wird die Naht kurz überblendet – kein Knacken. Bedienung: ziehen = markieren, Mausrad = Zoom, Entf, Strg+Z, Strg+A.
+  - **Vorhören:** *Abspielen* (Leertaste) spielt die Markierung bzw. ab dem Cursor über das Windows-Standardgerät – unabhängig vom Audio-Thread des Plugins.
+  - **Aufnahme im Fenster:** von jedem Aufnahmegerät oder **„Was der PC abspielt“** (Mitschnitt des Lautsprecher-Ausgangs, WASAPI-Loopback – kein Stereomix nötig), mit Pegelanzeige, höchstens 60 s. So lässt sich z. B. ein Webradio oder ein anderes Programm als Grain-Quelle aufnehmen.
+  - Symbol-Knöpfe (Play, Aufnahme, Lupen) und Zeitleiste in Sekunden.
+  - *Übernehmen* speichert das Ergebnis als neue WAV in *Eigene Toene* (z. B. `Floete_C5_bearbeitet_01.wav`) und lädt es; die Originaldatei bleibt unverändert. Die Auto-Stimmung erkennt den Grundton neu.
+
+### Geändert
+- **Symbole auf den Knöpfen** der ganzen Oberfläche (geglättet gezeichnet, keine Bilddateien): Audio laden, Alle Noten aus (Stoppschild), Preset vor/zurück, Favorit-Stern (gefüllt = Favorit), Speichern (Diskette), Info, Hilfe, Variieren (Würfel), Rückgängig/Wiederholen, Morph-Knöpfe, Laden/Leeren/Bearbeiten der Zonen, Aufnahme (roter Punkt), Zeichnen. Passt ein Symbol nicht neben den Text (z. B. in einer längeren Übersetzung), bleibt nur der Text stehen.
+- Kopfleiste leicht umverteilt (Platz für die Symbole); *MIDI hier greifen und ziehen* ist jetzt ein Knopf mit Klaviatur-Symbol.
+- Reiter *Samples*: Der rechte Bereich heißt jetzt *Sample bearbeiten und Aufnahme vom Eingang*; der Knopf *Hauptsample bearbeiten...* steht vorn.
+
+### Behoben
+- Feedback-Resampling, das per DAW-Automation bei geschlossenem Plugin-Fenster eingeschaltet wurde, blieb wirkungslos, wenn das Preset es vorher nicht nutzte. Die Puffer werden jetzt in einem Hilfs-Thread angelegt, sobald Resampling eingeschaltet wird; der Audio-Thread fordert dabei keinen Speicher an.
+
+---
+
 ## Version 2.13 – 02.11.2026
 
 ### Neu

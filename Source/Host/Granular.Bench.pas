@@ -25,7 +25,7 @@ uses
   Winapi.Windows, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
   GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Pitch, Granular.Vst3, Granular.VstHost,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
-  Granular.Editor, Granular.InfoView;
+  Granular.Editor, Granular.InfoView, Granular.ArpMidi, Granular.SampleEdit;
 
 const
   SR = 44100;
@@ -2589,6 +2589,237 @@ end;
   (dort entstehen keine Spiegelfrequenzen) - Ausgabe gleich wie mit Oversampling aus, Rechenzeit gleich }
 { Feedback-Resampling: Tonhoehe bleibt ueber viele Durchlaeufe stehen (keine Drift, auch mit Pitch-Regler),
   Pegel laeuft nicht weg, Aus = wieder das Original, Uebernehmen klingt auf derselben Tonhoehe }
+{ Arp als MIDI: Datei schreiben, zuruecklesen, Tonfolge/Zeiten pruefen und Anschlaege mit der Engine vergleichen
+  (C-E-G, hoch + runter, 2 Oktaven, 1/16, 8 Schritte mit Pause auf Schritt 4, 120 BPM, 1 Takt) }
+function CheckArpMidi: string;
+const
+  EXP_IDX: array[0..13] of Integer = (0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3);
+  SEQ6: array[0..5] of Integer = (60, 64, 67, 72, 76, 79);
+var
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  Fn: string;
+  D: TBytes;
+  Pos, Tick, N, I, K, Ons, Offs, Bad, EngOn, B, Step: Integer;
+  St: Byte;
+  Ok: Boolean;
+
+  function VarLen: Integer;
+  var
+    C: Byte;
+  begin
+    Result := 0;
+    repeat
+      C := D[Pos];
+      Inc(Pos);
+      Result := (Result shl 7) or (C and $7F);
+    until C and $80 = 0;
+  end;
+
+begin
+  Fn := TPath.Combine(TPath.GetTempPath, 'GranularSynth_bench_arp.mid');
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpTempo, PlainToParam(gpTempo, 120));
+    E.SetParamById(gpArpOn, StepToParam(Ord(gpArpOn), 1));
+    E.SetParamById(gpArpMode, StepToParam(Ord(gpArpMode), 2));
+    E.SetParamById(gpArpOct, StepToParam(Ord(gpArpOct), 1));
+    E.SetParamById(gpArpRate, StepToParam(Ord(gpArpRate), 3));
+    E.SetParamById(gpArpSteps, StepToParam(Ord(gpArpSteps), 7));
+    E.SetParamById(gpArpSwing, PlainToParam(gpArpSwing, 0));
+    E.SetParamById(gpArpGate, PlainToParam(gpArpGate, 50));
+    E.ArpMask := $FFFF and not Cardinal(1 shl 3);
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    B := E.NoteOnCount;
+    E.NoteOn(60, 0.8); E.NoteOn(64, 0.8); E.NoteOn(67, 0.8);
+    for I := 0 to 171 do E.Process(nil, nil, @L[0], @R[0], 512);         // knapp 1 Takt (2 s)
+    EngOn := E.NoteOnCount - B;                                         // nur vom Arp gestartete Stimmen
+    Ok := WriteArpMidi(E, 1, Fn);
+  finally
+    E.Free;
+  end;
+  Ons := 0; Offs := 0; Bad := 0;
+  if Ok then
+  begin
+    D := TFile.ReadAllBytes(Fn);
+    TFile.Delete(Fn);
+    Ok := (Length(D) > 22) and (D[0] = Ord('M')) and (D[14] = Ord('M')) and (D[12] = 1) and (D[13] = $E0);
+    Pos := 22;
+    Tick := 0;
+    while Ok and (Pos < Length(D)) do
+    begin
+      Inc(Tick, VarLen);
+      St := D[Pos];
+      if St = $FF then
+      begin
+        if D[Pos + 1] = $2F then
+          Break;
+        N := D[Pos + 2];
+        Inc(Pos, 3 + N);
+      end
+      else
+      begin
+        if St = $90 then
+        begin
+          // Erwartet: Schritt 0,1,2,4,5,... (Schritt 3 und 11 Pause), je 120 Ticks
+          if Ons <= High(EXP_IDX) then
+          begin
+            K := Ons;
+            Step := K + Ord(K >= 3) + Ord(K >= 10);
+            if (D[Pos + 1] <> SEQ6[EXP_IDX[K]]) or (Tick <> Step * 120) then
+              Inc(Bad);
+          end;
+          Inc(Ons);
+        end
+        else if St = $80 then
+          Inc(Offs)
+        else
+          Inc(Bad);
+        Inc(Pos, 3);
+      end;
+    end;
+  end;
+  Result := Format('Arp als MIDI: %d Noten (erwartet 14, Engine %d), %d Note-Aus, %d Abweichungen -> %s',
+    [Ons, EngOn, Offs, Bad, IfThen(Ok and (Ons = 14) and (Offs = 14) and (Bad = 0) and (EngOn = 14), 'OK', 'FEHLER')]);
+end;
+
+{ Resampling per Automation bei geschlossenem Editor: ohne ResPrepare-Aufruf muss der Helfer-Thread die
+  Puffer anlegen, danach entwickelt sich der Klang (Durchlaeufe > 0) }
+function CheckResAutoAlloc: string;
+var
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  B, Wait: Integer;
+  Ready: Boolean;
+begin
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    E.SetParamById(gpResOn, StepToParam(Ord(gpResOn), 1));      // wie Automation: nur der Parameter
+    E.SetParamById(gpResTime, PlainToParam(gpResTime, 500));
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    Wait := 0;
+    while not E.ResReady and (Wait < 200) do
+    begin
+      Sleep(10);
+      Inc(Wait);
+    end;
+    Ready := E.ResReady;
+    E.NoteOn(60, 0.8);
+    for B := 0 to 4 * SR div 512 do
+      E.Process(nil, nil, @L[0], @R[0], 512);
+    Result := Format('Resampling per Automation: Puffer nach %d ms, %d Durchlaeufe in 4 s -> %s',
+      [Wait * 10, E.ResPasses, IfThen(Ready and (E.ResPasses >= 3), 'OK', 'FEHLER')]);
+  finally
+    E.Free;
+  end;
+end;
+
+{ Sample-Editor: Schneiden, Loeschen (Naht), Blenden, Normalisieren, Umkehren, Stille entfernen, Nulldurchgang -
+  an einem kuenstlichen Signal (0,1 s Stille + 1 s Sinus 441 Hz mit Amplitude 0,25 + 0,1 s Stille, 44,1 kHz) }
+function CheckSampleEdit: string;
+const
+  N0 = 4410;     // Stille vorn/hinten
+  NS = 44100;    // Sinus
+var
+  D, C: TSampleData;
+  I, Fails, Z, Trimmed: Integer;
+  Gain, MaxStep: Double;
+  Msg: string;
+
+  function Make: TSampleData;
+  var
+    K: Integer;
+  begin
+    Result := TSampleData.Create;
+    Result.SampleRate := 44100;
+    Result.Channels := 2;
+    Result.Frames := 2 * N0 + NS;
+    SetLength(Result.L, Result.Frames);
+    SetLength(Result.R, Result.Frames);
+    for K := 0 to NS - 1 do
+    begin
+      Result.L[N0 + K] := 0.25 * Sin(2 * Pi * 441 * K / 44100);
+      Result.R[N0 + K] := Result.L[N0 + K];
+    end;
+  end;
+
+  procedure Fail(const What: string);
+  begin
+    Inc(Fails);
+    Msg := Msg + ' ' + What;
+  end;
+
+begin
+  Fails := 0;
+  Msg := '';
+  D := Make;
+  try
+    // Nulldurchgang: 441 Hz -> alle 50 Frames; 1/4 Periode daneben muss auf den Durchgang ziehen
+    Z := SnapZero(D, N0 + 100 + 12);
+    if Abs(Z - (N0 + 100)) > 1 then Fail('Nulldurchgang');
+    // Normalisieren: 0,25 -> 0,977 = +11,8 dB
+    Gain := SampleNormalize(D, 0, D.Frames);
+    if (Abs(Gain - 20 * Log10(EDIT_NORM_PEAK / 0.25)) > 0.05) or (Abs(SamplePeak(D, 0, D.Frames) - EDIT_NORM_PEAK) > 0.001) then
+      Fail('Normalisieren');
+    // Stille entfernen: 2 x 0,1 s weg, je 5 ms Rand bleibt
+    Trimmed := SampleTrimSilence(D);
+    if Abs(Trimmed - (2 * N0 - 2 * 221)) > 4 then Fail(Format('Stille(%d)', [Trimmed]));
+    // Einblenden: erster Frame 0, Mitte unveraendert
+    C := SampleClone(D);
+    try
+      SampleFadeIn(C, 0, 4410);
+      if (Abs(C.L[0]) > 1E-6) or (Abs(C.L[10000] - D.L[10000]) > 1E-6) then Fail('Einblenden');
+      SampleFadeOut(C, C.Frames - 4410, C.Frames);
+      if Abs(C.L[C.Frames - 1]) > 1E-6 then Fail('Ausblenden');
+    finally
+      C.Free;
+    end;
+    // Umkehren zweimal = Original
+    C := SampleClone(D);
+    try
+      SampleReverse(C, 0, C.Frames);
+      if Abs(C.L[0] - D.L[D.Frames - 1]) > 1E-6 then Fail('Umkehren');
+      SampleReverse(C, 0, C.Frames);
+      for I := 0 to C.Frames - 1 do
+        if C.L[I] <> D.L[I] then begin Fail('Umkehren2'); Break; end;
+    finally
+      C.Free;
+    end;
+    // Zuschneiden: genau die Laenge
+    C := SampleClone(D);
+    try
+      SampleCrop(C, 1000, 23050);
+      if (C.Frames <> 22050) or (C.L[0] <> D.L[1000]) then Fail('Zuschneiden');
+    finally
+      C.Free;
+    end;
+    // Loeschen mitten im Sinus (an Nulldurchgaengen): Laenge kuerzer um Bereich + Naht, kein Sprung an der Naht
+    C := SampleClone(D);
+    try
+      SampleDelete(C, SnapZero(C, 10000), SnapZero(C, 20000));
+      if Abs(C.Frames - (D.Frames - 10000 - Round(EDIT_JOIN_SEC * 44100))) > 2 then Fail(Format('Loeschen(%d)', [C.Frames]));
+      MaxStep := 0;
+      for I := 9800 to 10200 do
+        MaxStep := Max(MaxStep, Abs(C.L[I] - C.L[I - 1]));
+      // Sinus 441 Hz bei 0,977: groesster Schritt je Frame ~0,061
+      if MaxStep > 0.08 then Fail(Format('Naht %.3f', [MaxStep]));
+    finally
+      C.Free;
+    end;
+    SampleFinish(D);
+    if Length(D.LR) < 2 * D.Frames then Fail('LR');
+  finally
+    D.Free;
+  end;
+  Result := 'Sample-Editor: Nulldurchgang, Normalisieren, Stille, Blenden, Umkehren, Schneiden, Loeschen' +
+    IfThen(Fails = 0, ' -> OK', ':' + Msg + ' -> FEHLER');
+end;
+
 function CheckResample: string;
 
   function Run(Note: Integer; PitchSemis, Mix: Double; Synced: Boolean; out N1, N2, LvlDb: Double; out Passes: Integer;
@@ -3576,7 +3807,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckResample + sLineBreak +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckResample + sLineBreak + CheckArpMidi + sLineBreak + CheckResAutoAlloc + sLineBreak + CheckSampleEdit + sLineBreak +
     CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;

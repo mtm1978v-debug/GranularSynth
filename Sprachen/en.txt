@@ -1677,3 +1677,59 @@ Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nac
 solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim Original. Durchlauf: Länge frei (0,25-8 s) oder im Takt (1/4 bis 2 Takte). Anteil neu: 100 % ersetzt jedes Mal ganz, wenig mischt behutsam bei. Die Tonhöhe bleibt stehen (die gespielte Taste wird verrechnet), Pegel und Bass werden ausgeglichen, die Schleife ist nahtlos überblendet.	while a key is held, whatever is sounding (with effects and reverb) becomes the new grain source after every pass - the longer you hold, the more the sound evolves. Every new key press starts again from the original. Pass: length free (0.25-8 s) or in time (1/4 to 2 bars). New share: 100 % replaces completely each time, less blends in gently. Pitch stays put (the played key is compensated), level and bass are balanced, the loop is crossfaded seamlessly. Hold freezes the current state, "Keep current state as sample" saves it as WAV in Eigene Toene.
 1 Takt	1 bar
 2 Takte	2 bars
+%d Takte	%d bars
+MIDI hier greifen und ziehen	Grab MIDI here and drag
+Das Arp-Muster mit dem zuletzt gespielten Akkord als MIDI-Datei in eine Spur der DAW ziehen. Klick ohne Ziehen = Datei speichern.	Drag the arp pattern with the last played chord as a MIDI file onto a DAW track. Click without dragging = save the file.
+MIDI-Datei (*.mid)|*.mid	MIDI file (*.mid)|*.mid
+Die MIDI-Datei konnte nicht geschrieben werden.	The MIDI file could not be written.
+Abbrechen	Cancel
+Alles markieren	Select all
+Audio bearbeiten - Hauptsample	Edit audio - main sample
+Audio bearbeiten - Zone %d	Edit audio - zone %d
+Audio bearbeiten: schneiden, löschen, ein-/ausblenden, normalisieren, Stille entfernen, umkehren	Edit audio: crop, delete, fade in/out, normalize, remove silence, reverse
+Ausblenden	Fade out
+Bearbeiten...	Edit...
+Bearbeitetes Sample laden und in "Eigene Toene" speichern	Load the edited sample and save it in "Eigene Toene"
+Datei laden...	Load file...
+Einblenden	Fade in
+Eine Audiodatei zum Bearbeiten laden	Load an audio file to edit
+Fenster schließen, nichts ändern	Close the window, change nothing
+Ganz	Full
+Ganzes Sample markieren (Strg+A)	Select the whole sample (Ctrl+A)
+Ganzes Sample zeigen	Show the whole sample
+Hauptsample bearbeiten...	Edit main sample...
+Herauszoomen (auch Mausrad)	Zoom out (also mouse wheel)
+Hineinzoomen (auch Mausrad)	Zoom in (also mouse wheel)
+Kein Audio - Datei laden	No audio - load a file
+Lautstärke auf -0,2 dB Spitze bringen (Markierung oder alles)	Bring the peak level to -0.2 dB (selection or everything)
+Länge %.2f s | %d Hz | keine Markierung	Length %.2f s | %d Hz | no selection
+Länge %.2f s | Markierung %.2f s (%.2f - %.2f s)	Length %.2f s | selection %.2f s (%.2f - %.2f s)
+Löschen	Delete
+Markierung (ohne: ganzes Sample) rückwärts	Reverse the selection (none: whole sample)
+Markierung (ohne: ganzes Sample) weich ausblenden	Fade out the selection smoothly (none: whole sample)
+Markierung (ohne: ganzes Sample) weich einblenden	Fade in the selection smoothly (none: whole sample)
+Markierung entfernen (Entf)	Remove the selection (Del)
+Normalisieren	Normalize
+Nur die Markierung behalten	Keep only the selection
+Sample dieser Zone schneiden, blenden, normalisieren	Crop, fade or normalize the sample of this zone
+Stille am Anfang und Ende abschneiden	Cut off silence at the start and end
+Stille entfernen	Remove silence
+Ziehen = markieren, Shift+Klick = erweitern, Mausrad = Zoom. Schnitte rasten auf den nächsten Nulldurchgang ein.	Drag = select, Shift+click = extend, mouse wheel = zoom. Cuts snap to the nearest zero crossing.
+Zoom +	Zoom +
+Zoom -	Zoom -
+Zuschneiden	Crop
+Übernehmen	Apply
+Sample bearbeiten und Aufnahme vom Eingang	Edit sample and record from input
+Abspielen	Play
+Markierung (ohne: ab Cursor) anhören - Leertaste	Listen to the selection (none: from the cursor) - space bar
+%.1f s aufgenommen	%.1f s recorded
+Aufnahme läuft (Klang von GranularSynth wird mit aufgenommen)	Recording (GranularSynth's own sound is recorded too)
+Aufnahme läuft: %.1f s	Recording: %.1f s
+Aufnahme nicht möglich	Recording not possible
+Aufnahme starten/stoppen - ersetzt das Audio im Fenster (Rückgängig holt es zurück)	Start/stop recording - replaces the audio in the window (Undo brings it back)
+Aufnehmen	Record
+Kein Aufnahmegerät gefunden	No recording device found
+Nichts aufgenommen (lief Ton?)	Nothing recorded (was anything playing?)
+Was der PC abspielt	What the PC is playing
+höchstens %d s	max. %d s
+Aufnahme:	Recording:

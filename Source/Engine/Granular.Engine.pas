@@ -23,7 +23,7 @@ unit Granular.Engine;
 interface
 
 uses
-  System.SysUtils, System.SyncObjs, System.Math,
+  System.SysUtils, System.Classes, System.SyncObjs, System.Math,
   Granular.Params, Granular.Sample, Granular.DSP, Granular.Pitch, Granular.Reverb, Granular.Eq;
 
 const
@@ -324,6 +324,9 @@ type
     FArpStep, FArpCount: Integer;
     FArpMask: Cardinal;                       // Schrittmuster: Bit k = Schritt k spielt
     FArpShown: Integer;                       // zuletzt gespielter Schritt (Anzeige)
+    FArpLast: array[0..31] of Integer;        // zuletzt angeschlagener Akkord (fuer MIDI-Export)
+    FArpLastVel: array[0..31] of Single;
+    FArpLastCount: Integer;
     FPresetName: string;
     FFreeze: Boolean;
     FMorphB: array[0..NAMED_COUNT - 1] of Single;   // Morph-Ziel B (benannte Parameter)
@@ -339,6 +342,11 @@ type
     FResSmp: array[0..RES_BUFS - 1] of TSampleData;
     FResPrevBuf: Integer;           // voriger Puffer (ausklingende Grains), -1 = keiner
     FResKeySerial, FResKeySeen: Integer;   // Tastenanschlaege: neuer Anschlag = zurueck zum Original
+    // Resampling per Automation eingeschaltet (ohne offenen Editor): der Audio-Thread weckt einen
+    // schlafenden Helfer, der die Puffer anlegt - im Audio-Thread selbst wird nichts angefordert
+    FResThread: TThread;
+    FResWake: TEvent;
+    FResAsked: Boolean;
     FResCap: Integer;               // Platz je Puffer in Frames (0 = nicht angelegt)
     FResCur: Integer;               // spielender Puffer, -1 = das Original spielt
     FResOrig: TSampleData;          // Original, solange ein Puffer spielt
@@ -551,6 +559,8 @@ type
     procedure LoadSample(Data: TSampleData);
     { Feedback-Resampling: Puffer anlegen (ausserhalb des Audio-Threads, z.B. beim Einschalten) }
     procedure ResPrepare;
+    { Resampling-Puffer vorhanden (Pruefstand) }
+    function ResReady: Boolean;
     procedure ResRestore;
     procedure ResTick(OutL, OutR: PSingle; N: Integer);
     function ResActive: Boolean;
@@ -685,6 +695,8 @@ type
     { Arpeggiator-Schrittmuster (im Chunk gespeichert, nicht automatisierbar) }
     property ArpMask: Cardinal read FArpMask write FArpMask;
     property ArpShownStep: Integer read FArpShown;
+    { zuletzt mit Arp angeschlagener Akkord (Anschlagreihenfolge); Ergebnis = Anzahl, 0 = noch keiner }
+    function ArpChord(var Notes: array of Integer; var Vel: array of Single): Integer;
     { Name des zuletzt geladenen Presets (fuer effGetProgramName -> Host waehlt passende Demos) }
     property PresetName: string read FPresetName write FPresetName;
     property SidechainActive: Boolean read FScInput;
@@ -712,10 +724,46 @@ var
   GSectProfOn: Boolean = False;              // Pruefstand: Rechenzeit je Abschnitt messen
   GSectTicks: array[0..27] of Int64;   // 20 GrainLevel, 21 Gain, 22 Drive, 23 EQ, 24 Stereo, 25 Limiter, 26 VoiceFilter-Summe   // 8 Arp/SC2, 9 UpdateModulation, 10 Filter-Huellk., 11 Blockparameter
 
+{ Arp-Tonfolge: Tasten sortieren (ausser Modus 5 'wie gespielt') und ueber Oct Oktaven ausdehnen; Ergebnis = Laenge }
+function ArpBuildSeq(const Held: array of Integer; const Vel: array of Single; Count, Mode, Oct: Integer;
+  var Seq: array of Integer; var SeqVel: array of Single): Integer;
+{ Index in der Tonfolge fuer den Zaehler Count (Modi ausser Zufall und Akkord) }
+function ArpSeqIndex(Mode, Count, Len: Integer): Integer;
+
 implementation
 
 uses
   System.Diagnostics;
+
+type
+  { schlaeft, bis der Audio-Thread Resampling-Puffer braucht, und legt sie dann an }
+  TResAllocThread = class(TThread)
+  private
+    FEngine: TGranularEngine;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(AEngine: TGranularEngine);
+  end;
+
+constructor TResAllocThread.Create(AEngine: TGranularEngine);
+begin
+  FEngine := AEngine;
+  inherited Create(False);
+end;
+
+procedure TResAllocThread.Execute;
+begin
+  while not Terminated do
+    if (FEngine.FResWake.WaitFor(INFINITE) = wrSignaled) and not Terminated then
+    begin
+      try
+        FEngine.ResPrepare;
+      except
+      end;
+      FEngine.FResAsked := False;
+    end;
+end;
 
 type
   PFloatArr = ^TFloatArr;
@@ -823,6 +871,8 @@ begin
   for I := 0 to NAMED_COUNT - 1 do
     FEffMemoN[I] := -1;                       // Wirkwerte liegen in 0..1: erster Aufruf rechnet
   FLock := TCriticalSection.Create;
+  FResWake := TEvent.Create(nil, False, False, '');
+  FResThread := TResAllocThread.Create(Self);
   FEventLock := TCriticalSection.Create;
   FSampleRate := 44100;
   FRand := $2545F491;
@@ -902,6 +952,14 @@ end;
 
 destructor TGranularEngine.Destroy;
 begin
+  if FResThread <> nil then
+  begin
+    FResThread.Terminate;
+    FResWake.SetEvent;
+    FResThread.WaitFor;
+    FResThread.Free;
+  end;
+  FResWake.Free;
   if FLayerB <> nil then
   begin
     FLayerB.FSample := nil;      // geliehen (Sample A oder B dieser Engine)
@@ -1118,6 +1176,11 @@ end;
 function TGranularEngine.ResOffset: Double;
 begin
   if FResCur >= 0 then Result := FResOfs else Result := 0;
+end;
+
+function TGranularEngine.ResReady: Boolean;
+begin
+  Result := FResCap > 0;
 end;
 
 procedure TGranularEngine.ResPrepare;
@@ -1960,6 +2023,81 @@ end;
 
 { --- Arpeggiator --- }
 
+function ArpBuildSeq(const Held: array of Integer; const Vel: array of Single; Count, Mode, Oct: Integer;
+  var Seq: array of Integer; var SeqVel: array of Single): Integer;
+var
+  I, J, K, T: Integer;
+  Sorted: array[0..31] of Integer;
+  SortedVel: array[0..31] of Single;
+  V: Single;
+begin
+  Count := Min(Count, Length(Sorted));
+  // Grundreihe: nach Tonhoehe sortiert oder in Anschlagreihenfolge
+  for I := 0 to Count - 1 do
+  begin
+    Sorted[I] := Held[I];
+    SortedVel[I] := Vel[I];
+  end;
+  if Mode <> 5 then
+    for I := 1 to Count - 1 do
+    begin
+      T := Sorted[I]; V := SortedVel[I];
+      J := I - 1;
+      while (J >= 0) and (Sorted[J] > T) do
+      begin
+        Sorted[J + 1] := Sorted[J]; SortedVel[J + 1] := SortedVel[J];
+        Dec(J);
+      end;
+      Sorted[J + 1] := T; SortedVel[J + 1] := V;
+    end;
+  // ueber die Oktaven ausdehnen
+  Result := 0;
+  for K := 0 to Oct - 1 do
+    for I := 0 to Count - 1 do
+      if (Result <= High(Seq)) and (Sorted[I] + 12 * K <= 127) then
+      begin
+        Seq[Result] := Sorted[I] + 12 * K;
+        SeqVel[Result] := SortedVel[I];
+        Inc(Result);
+      end;
+end;
+
+function ArpSeqIndex(Mode, Count, Len: Integer): Integer;
+var
+  Cycle: Integer;
+begin
+  case Mode of
+    1: Result := Len - 1 - Count mod Len;                          // runter
+    2, 3:
+      begin
+        // hoch + runter ohne doppelte Endtoene
+        if Len = 1 then
+          Result := 0
+        else
+        begin
+          Cycle := Count mod (2 * Len - 2);
+          if Cycle < Len then Result := Cycle else Result := 2 * Len - 2 - Cycle;
+          if Mode = 3 then
+            Result := Len - 1 - Result;
+        end;
+      end;
+  else
+    Result := Count mod Len;                                        // hoch / wie gespielt
+  end;
+end;
+
+function TGranularEngine.ArpChord(var Notes: array of Integer; var Vel: array of Single): Integer;
+var
+  I: Integer;
+begin
+  Result := Min(FArpLastCount, Length(Notes));
+  for I := 0 to Result - 1 do
+  begin
+    Notes[I] := FArpLast[I];
+    Vel[I] := FArpLastVel[I];
+  end;
+end;
+
 function TGranularEngine.ArpActive: Boolean;
 begin
   Result := FEff[Ord(gpArpOn)] >= 0.5;
@@ -1994,6 +2132,13 @@ begin
     FArpVel[FArpHeldCount] := Velocity;
     Inc(FArpHeldCount);
   end;
+  // Akkord fuer den MIDI-Export merken (bleibt nach dem Loslassen erhalten)
+  for I := 0 to FArpHeldCount - 1 do
+  begin
+    FArpLast[I] := FArpHeld[I];
+    FArpLastVel[I] := FArpVel[I];
+  end;
+  FArpLastCount := FArpHeldCount;
 end;
 
 procedure TGranularEngine.KeyUp(Note: Integer);
@@ -2037,12 +2182,9 @@ end;
 { einen Schritt ausfuehren: Muster pruefen, Note(n) waehlen und anschlagen }
 procedure TGranularEngine.ArpStepNow;
 var
-  Steps, StepIdx, Mode, Oct, Len, I, J, K, T, Idx, Cycle: Integer;
+  Steps, StepIdx, Mode, Oct, Len, I, Idx: Integer;
   Seq: array[0..127] of Integer;
   SeqVel: array[0..127] of Single;
-  Sorted: array[0..31] of Integer;
-  SortedVel: array[0..31] of Single;
-  V: Single;
 begin
   Steps := ParamStep(Ord(gpArpSteps), FEff[Ord(gpArpSteps)]) + 1;
   StepIdx := FArpStep mod Steps;
@@ -2054,34 +2196,7 @@ begin
   Mode := ParamStep(Ord(gpArpMode), FEff[Ord(gpArpMode)]);
   Oct := ParamStep(Ord(gpArpOct), FEff[Ord(gpArpOct)]) + 1;
 
-  // Grundreihe: nach Tonhoehe sortiert oder in Anschlagreihenfolge
-  for I := 0 to FArpHeldCount - 1 do
-  begin
-    Sorted[I] := FArpHeld[I];
-    SortedVel[I] := FArpVel[I];
-  end;
-  if Mode <> 5 then
-    for I := 1 to FArpHeldCount - 1 do
-    begin
-      T := Sorted[I]; V := SortedVel[I];
-      J := I - 1;
-      while (J >= 0) and (Sorted[J] > T) do
-      begin
-        Sorted[J + 1] := Sorted[J]; SortedVel[J + 1] := SortedVel[J];
-        Dec(J);
-      end;
-      Sorted[J + 1] := T; SortedVel[J + 1] := V;
-    end;
-  // ueber die Oktaven ausdehnen
-  Len := 0;
-  for K := 0 to Oct - 1 do
-    for I := 0 to FArpHeldCount - 1 do
-      if (Len <= High(Seq)) and (Sorted[I] + 12 * K <= 127) then
-      begin
-        Seq[Len] := Sorted[I] + 12 * K;
-        SeqVel[Len] := SortedVel[I];
-        Inc(Len);
-      end;
+  Len := ArpBuildSeq(FArpHeld, FArpVel, FArpHeldCount, Mode, Oct, Seq, SeqVel);
   if Len = 0 then
     Exit;
 
@@ -2098,25 +2213,10 @@ begin
     Exit;
   end;
 
-  case Mode of
-    1: Idx := Len - 1 - FArpCount mod Len;                          // runter
-    2, 3:
-      begin
-        // hoch + runter ohne doppelte Endtoene
-        if Len = 1 then
-          Idx := 0
-        else
-        begin
-          Cycle := FArpCount mod (2 * Len - 2);
-          if Cycle < Len then Idx := Cycle else Idx := 2 * Len - 2 - Cycle;
-          if Mode = 3 then
-            Idx := Len - 1 - Idx;
-        end;
-      end;
-    4: Idx := Min(Trunc(Rand * Len), Len - 1);                      // Zufall
+  if Mode = 4 then
+    Idx := Min(Trunc(Rand * Len), Len - 1)                          // Zufall
   else
-    Idx := FArpCount mod Len;                                        // hoch / wie gespielt
-  end;
+    Idx := ArpSeqIndex(Mode, FArpCount, Len);
   Inc(FArpCount);
   StartVoice(Seq[Idx], SeqVel[Idx]);
   FArpCur[0] := Seq[Idx];
@@ -3957,6 +4057,12 @@ begin
           WriteScope(nil, OutL + Done, OutR + Done, N);
         Inc(Done, N);
       end;
+    end;
+    // Resampling an, aber noch keine Puffer (z.B. per Automation bei geschlossenem Editor): Helfer wecken
+    if (FParams[Ord(gpResOn)] >= 0.5) and (FResCap = 0) and not FResAsked and (FResWake <> nil) then
+    begin
+      FResAsked := True;
+      FResWake.SetEvent;
     end;
     if not FLayerOn and (FSample <> nil) then
       ResTick(OutL, OutR, Frames)
