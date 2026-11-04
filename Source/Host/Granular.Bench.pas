@@ -2820,6 +2820,94 @@ begin
     IfThen(Fails = 0, ' -> OK', ':' + Msg + ' -> FEHLER');
 end;
 
+{ Tonleiter: weisse Tasten spielen C-Moll (D4 = D, E4 = Es, A4 = As, C#4 stumm) und ein Sinus-Oszillator
+  rastet in C-Moll ein (Taste E4 klingt als F4, gemessen mit YIN) }
+function CheckScaleKeys: string;
+var
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  P: TPitchTracker;
+  B, Fails, Cnt: Integer;
+  Sum: Double;
+  Msg: string;
+
+  procedure Expect(Key, Want: Integer);
+  var
+    Got: Boolean;
+  begin
+    E.NoteOn(Key, 0.8);
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    if Want < 0 then
+      Got := E.VoiceOfNote(Key) < 0
+    else
+      Got := E.VoiceOfNote(Want) >= 0;
+    if not Got then
+    begin
+      Inc(Fails);
+      Msg := Msg + Format(' Taste %d', [Key]);
+    end;
+    E.NoteOff(Key);
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    E.AllNotesOff;
+    E.Process(nil, nil, @L[0], @R[0], 512);
+  end;
+
+begin
+  Fails := 0;
+  Msg := '';
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpScale, StepToParam(Ord(gpScale), 2));          // Moll
+    E.SetParamById(gpScaleRoot, StepToParam(Ord(gpScaleRoot), 0));  // C
+    E.SetParamById(gpScaleKeys, StepToParam(Ord(gpScaleKeys), 1));  // weisse Tasten
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    Expect(60, 60); Expect(62, 62); Expect(64, 63); Expect(65, 65); Expect(69, 68); Expect(71, 70);
+    Expect(72, 72); Expect(59, 58); Expect(61, -1);
+  finally
+    E.Free;
+  end;
+
+  // Oszillator rastet ein: nur Sinus-Oszillator, C-Moll, Taste E4 -> F4 (MIDI 65)
+  E := TGranularEngine.Create;
+  P := TPitchTracker.Create;
+  try
+    E.SetSampleRate(SR);
+    P.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpGrainOn, StepToParam(Ord(gpGrainOn), 0));
+    E.SetParamById(gpOscOn, StepToParam(Ord(gpOscOn), 1));
+    E.SetParamById(gpOscWave, StepToParam(Ord(gpOscWave), 0));
+    E.SetParamById(gpScale, StepToParam(Ord(gpScale), 2));
+    E.SetParamById(gpScaleRoot, StepToParam(Ord(gpScaleRoot), 0));
+    E.Process(nil, nil, @L[0], @R[0], 512);
+    E.NoteOn(64, 0.8);
+    Sum := 0;
+    Cnt := 0;
+    for B := 0 to SR div 512 do
+    begin
+      E.Process(nil, nil, @L[0], @R[0], 512);
+      P.Process(@L[0], @R[0], 512);
+      if (B > 20) and P.Valid then
+      begin
+        Sum := Sum + P.Note;
+        Inc(Cnt);
+      end;
+    end;
+    if (Cnt = 0) or (Abs(Sum / Cnt - 65) > 0.3) then
+    begin
+      Inc(Fails);
+      if Cnt > 0 then Msg := Msg + Format(' Osz %.2f statt 65', [Sum / Cnt]) else Msg := Msg + ' Osz ohne Ton';
+    end;
+  finally
+    P.Free;
+    E.Free;
+  end;
+  Result := 'Tonleiter: weisse Tasten in C-Moll, Oszillator rastet ein (E4 -> F4)' +
+    IfThen(Fails = 0, ' -> OK', ':' + Msg + ' -> FEHLER');
+end;
+
 function CheckResample: string;
 
   function Run(Note: Integer; PitchSemis, Mix: Double; Synced: Boolean; out N1, N2, LvlDb: Double; out Passes: Integer;
@@ -3807,7 +3895,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckResample + sLineBreak + CheckArpMidi + sLineBreak + CheckResAutoAlloc + sLineBreak + CheckSampleEdit + sLineBreak +
+    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckResample + sLineBreak + CheckArpMidi + sLineBreak + CheckResAutoAlloc + sLineBreak + CheckSampleEdit + sLineBreak + CheckScaleKeys + sLineBreak +
     CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
     sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
 end;

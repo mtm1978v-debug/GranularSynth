@@ -116,7 +116,7 @@ const
   COL_WAVE = $0080C878;
   COL_SEL  = $00604A30;
   UNDO_MAX = 10;
-  RULER_H = 18;           // Hoehe der Zeitleiste unter der Wellenform
+  RULER_H = 18;           // Hoehe bei 100 % (waechst mit der Fenstergroesse)           // Hoehe der Zeitleiste unter der Wellenform
   REC_MAX_SEC = 60;       // laengste Aufnahme (Speicher auf 32-Bit-Rechnern)          // Undo-Stufen (32-Bit-Rechner: begrenzter Speicher)
 
 procedure TWaveBox.Paint;
@@ -132,6 +132,7 @@ begin
   Res := nil;
   F := TAudioEditForm.CreateEditor(Src, Caption, BaseDir);
   try
+    UiScaleForm(F);
     Result := (F.ShowModal = mrOk) and (F.FData <> nil) and (F.FData.Frames > 1);
     if Result then
     begin
@@ -417,7 +418,7 @@ var
   Fmt: string;
 begin
   C.Brush.Color := BG_DARK;
-  C.FillRect(Rect(0, Top, W, Top + RULER_H));
+  C.FillRect(Rect(0, Top, W, Top + UiPt(RULER_H)));
   Span := (FViewB - FViewA) / FData.SampleRate;
   if (Span <= 0) or (W < 10) then
     Exit;
@@ -433,7 +434,7 @@ begin
   T0 := FViewA / FData.SampleRate;
   T := Ceil(T0 / Step) * Step;
   C.Font.Color := $00A0A0A0;
-  C.Font.Size := 8;
+  C.Font.Size := UiPt(8);
   C.Brush.Style := bsClear;
   C.Pen.Color := $00706860;
   while T <= T0 + Span do
@@ -455,7 +456,7 @@ var
 begin
   C := FWave.Canvas;
   W := FWave.Width;
-  H := FWave.Height - RULER_H;          // unten die Zeitleiste
+  H := FWave.Height - UiPt(RULER_H);          // unten die Zeitleiste
   C.Brush.Color := $00201C1A;
   C.FillRect(Rect(0, 0, W, FWave.Height));
   if (FData = nil) or (FData.Frames < 2) then

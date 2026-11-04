@@ -392,6 +392,7 @@ type
     FCcMap: array[0..127] of Integer;
     FLearnParam, FLearnedCc: Integer;
     FHeldBySustain: array[0..127] of Boolean;
+    FKeyMap: array[0..127] of SmallInt;   // gedrueckte Taste -> gespielte Note (weisse Tasten = Tonleiter); -1 = stumm
     FLog: array[0..255] of TTrigLogItem;   // Ringpuffer; schreibt nur, wenn FLogOn (Info-Fenster offen)
     FLogWrite: Integer;
     FLogOn: Boolean;
@@ -476,7 +477,7 @@ type
     function Eff(Id: TGranularParamId): Double;
     procedure UpdateModulation(InL, InR: PSingle; N: Integer);
     procedure UpdateBlockParams;
-    procedure ApplyEvent(const E: TNoteEvent);
+    procedure ApplyEvent(const E0: TNoteEvent);
     procedure StartVoice(Note: Integer; Velocity: Single);
     procedure ReleaseNote(Note: Integer);
     procedure KillGrainsOfVoice(V: Integer);
@@ -536,6 +537,7 @@ type
     procedure FollowSc2(L: PSingle; RAddr: NativeInt; N: Integer);
     procedure ApplyGain(N: Integer);
     function ScaleSnap(Semis: Double): Double;
+    function MapScaleKey(Key: Integer): Integer;
     function ArpActive: Boolean;
     procedure KeyDown(Note: Integer; Velocity: Single);
     procedure KeyUp(Note: Integer);
@@ -852,6 +854,8 @@ var
   Info: TParamInfo;
 begin
   inherited Create;
+  for I := 0 to 127 do
+    FKeyMap[I] := I;
   ResetGrains;
   // Kammfilter-Ringe: Filter 1/2 global und je Stimme
   SetLength(FCombMem, (2 + 2 * MAX_VOICES) * COMB_LEN * 2);
@@ -1751,11 +1755,27 @@ begin
   QueueEvent(E);
 end;
 
-procedure TGranularEngine.ApplyEvent(const E: TNoteEvent);
+procedure TGranularEngine.ApplyEvent(const E0: TNoteEvent);
 var
   I: Integer;
-  R: TNoteEvent;
+  R, E: TNoteEvent;
 begin
+  E := E0;
+  // Tonleiter-Tasten: Taste beim Anschlag umdeuten und merken - das Loslassen trifft dieselbe Note,
+  // auch wenn die Einstellung dazwischen wechselt
+  if (E.Kind = neOn) and (E.Velocity > 0) and (E.Note >= 0) and (E.Note <= 127) then
+  begin
+    FKeyMap[E.Note] := MapScaleKey(E.Note);
+    if FKeyMap[E.Note] < 0 then
+      Exit;                      // schwarze Taste im Modus 'weisse Tasten': stumm
+    E.Note := FKeyMap[E.Note];
+  end
+  else if (E.Kind in [neOn, neOff]) and (E.Note >= 0) and (E.Note <= 127) then
+  begin
+    if FKeyMap[E.Note] < 0 then
+      Exit;
+    E.Note := FKeyMap[E.Note];
+  end;
   case E.Kind of
     neOn:
       if E.Velocity > 0 then
@@ -4780,6 +4800,41 @@ begin
   EchoBlock(@FEcho);
 end;
 
+{ Modus 'weisse Tasten = Tonleiter': die weissen Tasten ab C4 zaehlen die Toene der Tonleiter ab
+  (C4 = Grundton, D4 = 2. Ton ...), schwarze Tasten = -1. Sonst bzw. ohne Tonleiter: Taste unveraendert }
+function TGranularEngine.MapScaleKey(Key: Integer): Integer;
+const
+  WHITE: array[0..11] of Integer = (0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6);
+var
+  Mask: Word;
+  Deg: array[0..11] of Integer;
+  N, K, W, G, Sc, Root, Base: Integer;
+begin
+  Result := Key;
+  Sc := EnsureRange(Round(Eff(gpScale)), 0, 8);
+  if (Sc = 0) or (FEff[Ord(gpScaleKeys)] < 0.5) then
+    Exit;
+  W := WHITE[Key mod 12];
+  if W < 0 then
+    Exit(-1);
+  Root := EnsureRange(Round(Eff(gpScaleRoot)), 0, 11);
+  Mask := SCALE_MASKS[Sc];
+  N := 0;
+  for K := 0 to 11 do
+    if Mask and (1 shl K) <> 0 then
+    begin
+      Deg[N] := K;
+      Inc(N);
+    end;
+  // Stufe relativ zu C4; der Grundton liegt nahe C4 (bis F# darueber, ab G darunter)
+  G := (Key div 12 - 5) * 7 + W;
+  Base := ROOT_NOTE + Root;
+  if Root > 6 then
+    Dec(Base, 12);
+  Result := Base + 12 * Floor(G / N) + Deg[((G mod N) + N) mod N];
+  Result := EnsureRange(Result, 0, 127);
+end;
+
 function TGranularEngine.ScaleSnap(Semis: Double): Double;
 var
   Abs0, D, K, Best: Integer;
@@ -4984,8 +5039,13 @@ begin
       end;
       FOscArgs.GL := Sqrt((1 - VPn) / 2) * Sqrt(2);
       FOscArgs.GR := Sqrt((1 + VPn) / 2) * Sqrt(2);
-      Hz := 440 * Power(2, (Note - 69 + FGlideOfs[V] + (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 +
-        FBend * FBendRange) / 12);
+      // Tonleiter: wie die Grains auf den naechsten Ton einrasten (die Taste; Glide und Bend bleiben stufenlos)
+      if FScale > 0 then
+        Hz := 440 * Power(2, (ScaleSnap(Note - ROOT_NOTE) + ROOT_NOTE - 69 + FGlideOfs[V] +
+          (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 + FBend * FBendRange) / 12)
+      else
+        Hz := 440 * Power(2, (Note - 69 + FGlideOfs[V] + (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 +
+          FBend * FBendRange) / 12);
       OsV := FOsOn and FOscOsGroup and ((Wave <> 5) or DrawOn);   // Rauschen: nichts zu spiegeln
       if OsV then
         Dt := Min(Hz / (FSampleRate * 2), 0.45)

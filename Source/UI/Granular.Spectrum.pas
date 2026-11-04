@@ -184,7 +184,7 @@ begin
       Dec(D, 18);
     end;
     FGrid.Font.Name := 'Tahoma';
-    FGrid.Font.Size := 7;
+    FGrid.Font.Size := UiPt(7);
     FGrid.Font.Color := $808080;
     for I := 0 to High(LINES) do
     begin

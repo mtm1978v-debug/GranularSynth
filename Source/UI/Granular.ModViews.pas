@@ -348,7 +348,7 @@ begin
     YFPrev := YF;
   end;
   B.Font.Name := 'Tahoma';
-  B.Font.Size := 7;
+  B.Font.Size := UiPt(7);
   B.Font.Color := COL_TEXT;
   B.Textout(Max(4, FXA div 2 - 3), Bot - 13, 'A');
   B.Textout((FXA + FXD) div 2 - 3, Bot - 13, 'D');
@@ -467,7 +467,7 @@ begin
     begin
       B.HorzLineS(0, H div 2, W - 1, COL_GRID);
       B.Font.Name := 'Tahoma';
-      B.Font.Size := 7;
+      B.Font.Size := UiPt(7);
       B.Font.Color := COL_TEXT;
       B.Textout(6, 4, Tr('Morph-LFO aus'));
       inherited;
@@ -625,7 +625,7 @@ begin
     FStatic.Clear(COL_BG);
     FStatic.HorzLineS(0, Mid, SW, COL_GRID);
     FStatic.Font.Name := 'Tahoma';
-    FStatic.Font.Size := 7;
+    FStatic.Font.Size := UiPt(7);
     FStatic.Font.Color := COL_TEXT;
     FStatic.Textout(4, 2, Tr('Ausgang'));
     FStatic.Font.Color := $40A0FF;
@@ -725,7 +725,7 @@ begin
         B.FillRectTS(0, 0, W, H, Color32(255, 120, 100, A div 3));
     end;
     B.Font.Name := 'Tahoma';
-    B.Font.Size := 7;
+    B.Font.Size := UiPt(7);
     B.Font.Style := [];
     if FMidi and (A > 120) then B.Font.Color := $00202020
     else if A > 120 then B.Font.Color := $00FFFFFF
@@ -888,7 +888,7 @@ begin
   // Pegelkette: 20 Segmente, unbeleuchtet schwach sichtbar - so wirkt die Anzeige auch bei Stille als Messgeraet
   DrawSegments(B, L, FOutput);
   B.Font.Name := 'Tahoma';
-  B.Font.Size := 7;
+  B.Font.Size := UiPt(7);
   B.Font.Color := $FFB0B0B0;
   if FOutput then
   begin

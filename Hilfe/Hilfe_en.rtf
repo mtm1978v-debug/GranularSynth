@@ -2,7 +2,7 @@
 {\colortbl;\red230\green230\blue230;\red255\green200\blue90;\red110\green200\blue255;\red150\green230\blue150;\red180\green180\blue180;\red40\green46\blue60;\red34\green34\blue38;\red40\green42\blue48;}
 \f0\fs20\cf1
 {\cf2\b\fs34 GRANULAR - Help\par}
-{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.14\par}\par
+{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.15\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 free software under the GNU GPL version 3 or later, without warranty \'b7 licence text: LICENSE.txt in the plugin folder\par}\par
 {\cf3\b\fs26 Foreword\par}
 GranularSynth is a highly optimised granular synthesizer with a clear goal: {\b professional sound} on the level of commercial digital synthesizers, followed by low CPU load and easy operation. With HQ, oscillators and saturation use {\b 2x oversampling}, so even harsh FM and drive sounds stay free of metallic aliasing (can be switched off in the Performance tab). The CPU-heavy parts (grains, oscillator, reverb, equalizer, displays) are written in {\b assembler} (SSE, Win32 and Win64), each with a Pascal version for cross-checking. The result: {\b very low CPU load} with {\b high sound quality} - even on older computers and in old hosts. The interface language can be switched between Deutsch and English in the Extras tab ("Sprache / Language") or by clicking the small flag at the right end of the tab row.\par\par
@@ -49,8 +49,13 @@ In addition to the grains, up to {\b three oscillators} (tabs Osc 1, Osc 2, Osc 
 A second preset is stored as {\b target B} ("Extras" tab). The {\b Morph} control blends seamlessly between A and B - by hand, with its own {\b morph LFO} (which can also be drawn freely) or via the matrix.\par\par
 {\cf3\b\fs26 8. Playing aids\par}
 {\cf4\b \'95 }{\b Arpeggiator} with step pattern and {\b scale} lock (never a wrong note).\par
+{\cf4\b \'95 }{\b Scale} (Extras tab, Harmony): With {\b Scale} and {\b Root}, the synth only plays notes of that scale - never a wrong note. This applies to {\b every note, wherever it comes from}: MIDI keyboard, PC keyboard, the DAW piano roll, the arpeggiator, pitch random and LFO on pitch - and to grains {\b and} oscillators. A note outside the scale jumps to the nearest scale note, upwards on a tie (C minor: E becomes F, F# becomes G). Pitch bend and glide stay continuous.\par
+Example techno in A minor: scale {\b Minor}, root {\b A}. Minor pentatonic is even safer: five notes that always fit together. {\b Off (chromatic)} turns the scale off.\par
+Important: the DAW records the {\b played} notes, not the snapped ones. Turning the scale off later plays back exactly what was played.\par
+{\b Keys - white keys = scale:} the white keys from C4 play the scale notes in order - C4 is the root, D4 the second note and so on; the black keys stay silent. This lets you play any scale on the white keys alone, handy without piano skills or when playing fast live. With a pentatonic scale, five white keys span one octave.\par
 {\cf4\b \'95 }{\b Glide:} notes slide into each other, adjustable time.\par
 {\cf4\b \'95 }{\b Bend / Mod} next to the keyboard: bend the pitch (springs back) and mod wheel.\par
+{\cf4\b \'95 }{\b Window size} (Extras tab, below the language): 100 to 200 % - for large or high-resolution screens. Applies to all instances and is remembered.\par\par
 {\cf4\b \'95 }{\b Latch} (arp): like on the microKORG the arpeggio keeps running after you let go; a new chord replaces the old one, turning Latch off ends it.\par\par
 {\cf4\b \'95 }{\b Edit audio} (Samples tab): "Edit main sample..." or "Edit..." in a zone opens a small editor. Drag to select, mouse wheel zooms. Crop, Delete (Del), Fade in, Fade out, Normalize, Remove silence, Reverse, Undo (Ctrl+Z). Cuts snap to the nearest zero crossing. "Apply" saves a new WAV in "Eigene Toene" - the original stays untouched. Play (space bar) plays the selection. Recording: choose a device or "What the PC is playing" (captures the speaker output, e.g. web radio), max. 60 s; GranularSynth's own sound is recorded too. Please only record material you are allowed to use.\par\par
 {\cf4\b \'95 }{\b Arp as MIDI}: drag the field "Grab MIDI here and drag" below the step pattern onto a DAW track - the MIDI file contains the notes the arp plays with the last played chord and the current settings (length 1 to 8 bars). Click without dragging = save the file. If GranularSynth plays the file back, turn its arp off.\par\par
@@ -322,7 +327,7 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Latch}\cell\pard\intbl{as on the microKORG: released keys keep playing in the arp until new keys are struck - the new chord replaces the old one. While keys are held, further ones are added. To stop: Latch off or "All notes off".}\cell\pard\intbl{\cf5 Arp Latch}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Scale / Root}\cell\pard\intbl{all pitches snap to the notes of the scale - never a wrong note.}\cell\pard\intbl{\cf4 yes (Scale, Root)}\cell\row
+\pard\intbl{\cf2 Scale / root / keys}\cell\pard\intbl{every note - grains and oscillators, from the keyboard, the DAW, the arp, pitch random or LFO - snaps to the nearest note of the scale (upwards on a tie). Keys "white keys = scale": the white keys from C4 play the scale notes in order (C4 = root), black keys stay silent.}\cell\pard\intbl{\cf4 yes (Scale, Root, Scale keys)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Freeze}\cell\pard\intbl{Read position stands still, the sound freezes.}\cell\pard\intbl{\cf4 yes (Freeze)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200

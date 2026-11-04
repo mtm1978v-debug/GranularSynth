@@ -21,6 +21,7 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 - **Granular-Synthese** aus beliebigen Samples (WAV, MP3 u. a.). Einstellbar sind Auswahl, Position, Spray, Scan, Graingröße, Dichte, Fenster und Rückwärts-Anteil. Dazu kommen ein Anlauf vor der Auswahl, eine Schleife hin und her und bis zu drei Zonen.
 - **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison, auch mit **selbst gezeichneter Welle** (bandbegrenzte Wavetable). Mit HQ rechnen Oszillatoren und Sättigung mit **2x-Oversampling**: auch harte FM- und Drive-Klänge bleiben frei von Spiegelfrequenzen.
 - **Audio bearbeiten:** Sample direkt im Plugin aufnehmen (Mikrofon oder „was der PC abspielt“), vorhören, zuschneiden, löschen, ein-/ausblenden, normalisieren, Stille entfernen, umkehren – Schnitte rasten auf Nulldurchgänge ein.
+- **Fenstergröße:** 100 bis 200 % für große und hochauflösende Bildschirme.
 - **Arp als MIDI:** Das Arp-Muster mit dem gespielten Akkord per Maus als MIDI-Datei in eine Spur der DAW ziehen.
 - **Feedback-Resampling:** Solange eine Taste gehalten wird, wird der eigene Klang Durchlauf für Durchlauf (frei oder im Takt) zur neuen Grain-Quelle – er entwickelt sich, je länger man hält.
 - **Modulationsmatrix mit 32 Zeilen**, 8 LFOs (auch frei gezeichnet oder in Stufen), Hüllkurven, Velocity, Sidechain-Pegel und Sidechain-Tonhöhe. Die Modulation wirkt je Note.

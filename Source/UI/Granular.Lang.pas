@@ -23,12 +23,15 @@ unit Granular.Lang;
 interface
 
 uses
-  Winapi.Windows, System.SysUtils, System.Classes, System.Generics.Collections,
-  Vcl.Controls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Menus;
+  Winapi.Windows, System.SysUtils, System.Classes, System.IOUtils, System.Generics.Collections,
+  Vcl.Controls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Menus, Vcl.Forms;
 
 const
   LANG_DIR = 'Sprachen';
   LANG_FILE = 'Sprache.txt';
+  SCALE_FILE = 'Fenstergroesse.txt';
+  { waehlbare Fenstergroessen in Prozent }
+  UI_SCALES: array[0..4] of Integer = (100, 125, 150, 175, 200);
 
 function Tr(const S: string): string;
 { einmal je Plugin-Ordner: gemerkte Sprache laden }
@@ -36,6 +39,17 @@ procedure LangInit(const BaseDir: string);
 { umschalten und merken ('de' = Deutsch) }
 procedure LangSet(const Code: string);
 function LangCode: string;
+{ gemerkte Fenstergroesse in Prozent (fehlt die Datei: 100) und speichern }
+{ aktuelle Skalierung der Oberflaeche in Prozent (setzt der Editor) und Schriftgroesse dazu:
+  selbst gezeichnete Anzeigen nehmen UiPt(7) statt 7 }
+var
+  GUiScalePct: Integer = 100;
+function UiPt(Size: Integer): Integer;
+function UiScaleLoad(const BaseDir: string = ''): Integer;   // '' = Ordner aus LangInit
+procedure UiScaleSave(Pct: Integer);
+{ Zusatzfenster (Hilfe, Info, Audio bearbeiten, Zeichnen ...) auf die gewaehlte Fenstergroesse bringen:
+  einmal nach dem Aufbau, vor dem Zeigen aufrufen }
+procedure UiScaleForm(F: TCustomForm);
 { verfuegbare Sprachen: Kuerzel und Anzeigename (Deutsch immer zuerst) }
 procedure LangList(Codes, Names: TStrings);
 { Sprachdatei direkt laden (Pruefstand), ohne die Wahl zu speichern }
@@ -243,6 +257,49 @@ begin
     finally
       Free;
     end;
+  except
+    // Ordner schreibgeschuetzt: Wahl gilt bis zum Schliessen
+  end;
+end;
+
+procedure UiScaleForm(F: TCustomForm);
+begin
+  if (F = nil) or (GUiScalePct = 100) then
+    Exit;
+  TForm(F).ParentFont := False;
+  F.ScaleBy(GUiScalePct, 100);
+end;
+
+function UiPt(Size: Integer): Integer;
+begin
+  Result := MulDiv(Size, GUiScalePct, 100);
+end;
+
+function UiScaleLoad(const BaseDir: string): Integer;
+var
+  I: Integer;
+  Dir: string;
+begin
+  Result := 100;
+  Dir := BaseDir;
+  if Dir = '' then
+    Dir := GBase;
+  try
+    if FileExists(Dir + SCALE_FILE) then
+    begin
+      I := StrToIntDef(Trim(TFile.ReadAllText(Dir + SCALE_FILE)), 100);
+      for var P in UI_SCALES do
+        if P = I then
+          Result := I;
+    end;
+  except
+  end;
+end;
+
+procedure UiScaleSave(Pct: Integer);
+begin
+  try
+    TFile.WriteAllText(GBase + SCALE_FILE, IntToStr(Pct));
   except
     // Ordner schreibgeschuetzt: Wahl gilt bis zum Schliessen
   end;

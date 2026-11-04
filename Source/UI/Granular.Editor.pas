@@ -218,6 +218,7 @@ type
     FOnHostMenu: THostMenuEvent;
     FOnLanguageChange: TNotifyEvent;   // Sprache gewechselt: die Huelle baut die Oberflaeche neu auf
     FLangCombo: TComboBox;
+    FScaleCombo: TComboBox;
     FLangCodes, FLangNames: TStringList;
     FLangFlag: TPaintBox;              // Flagge in der Reiterzeile: Klick = naechste Sprache
     FLangFlagHost: TPanel;             // Fenster-Traeger: liegt ueber der Reiterleiste (TPaintBox allein waere verdeckt)
@@ -331,6 +332,7 @@ type
     procedure InfoClick(Sender: TObject);
     procedure HelpClick(Sender: TObject);
     procedure LangComboChange(Sender: TObject);
+    procedure ScaleComboChange(Sender: TObject);
     procedure LangFlagPaint(Sender: TObject);
     procedure UpdIconPaint(Sender: TObject);
     procedure UpdIconClick(Sender: TObject);
@@ -404,6 +406,9 @@ type
     property OnParamEdit: TParamEditEvent read FOnParamEdit write FOnParamEdit;
     property OnHostMenu: THostMenuEvent read FOnHostMenu write FOnHostMenu;
     property OnLanguageChange: TNotifyEvent read FOnLanguageChange write FOnLanguageChange;
+    { Oberflaeche auf M/D vergroessern (Fenstergroesse): Positionen, Schriften und die gemerkten
+      Abstaende der mitwachsenden Regler }
+    procedure ApplyScale(M, D: Integer);
     destructor Destroy; override;
     function PageIndex: Integer;
     { Hilfefenster oeffnen; Changelog = gleich die Aenderungsliste zeigen }
@@ -566,6 +571,24 @@ begin
   Item.RightGap := RightGap;
   Item.AlignRight := AlignRight;
   FStretch := FStretch + [Item];
+end;
+
+procedure TGranularEditor.ApplyScale(M, D: Integer);
+var
+  I: Integer;
+begin
+  if (M = D) or (D <= 0) then
+    Exit;
+  // eigene Schrift: sonst skaliert Delphi nur Steuerelemente mit eigener Schrift, alle anderen
+  // (Knoepfe, Reiter, Listen) erben die unveraenderte Schrift des Formulars
+  ParentFont := False;
+  ScaleBy(M, D);
+  for I := 0 to High(FStretch) do
+  begin
+    FStretch[I].Left := MulDiv(FStretch[I].Left, M, D);
+    FStretch[I].RightGap := MulDiv(FStretch[I].RightGap, M, D);
+  end;
+  RelayoutAll(nil);
 end;
 
 procedure TGranularEditor.PanelResize(Sender: TObject);
@@ -1332,7 +1355,7 @@ begin
     FSlotGlobal[S].Parent := Right;
     FSlotGlobal[S].SetBounds(132 + MX, Y + 23, 126, 11);
     FSlotGlobal[S].AutoSize := False;
-    FSlotGlobal[S].Font.Size := 6;
+    FSlotGlobal[S].Font.Size := 6;          // TLabel: waechst mit ApplyScale
     FSlotGlobal[S].Font.Color := $0050A0E0;
     FSlotGlobal[S].Transparent := True;
     FSlotGlobal[S].Caption := Tr('global: letzte Note');
@@ -1613,7 +1636,7 @@ begin
   PM := MakePanel(Area, alClient, Tr('Morph (A -> B)'));
   // oben verankert direkt unter der Harmonie-Erklaerung (nicht unten: sonst wandert der Block mit der Fensterhoehe)
   PK := MakePanel(PH, alNone, Tr('Halten'));
-  PK.SetBounds(0, 24 + 2 * ROW_H + 6 + 90 + 8, PH.Width, 110);
+  PK.SetBounds(0, 24 + 3 * ROW_H + 6 + 90 + 64, PH.Width, 110);
   PK.Anchors := [akLeft, akTop, akRight];
 
   for I := 0 to High(ARP) do
@@ -1664,14 +1687,16 @@ begin
 
   AddParam(PH, Ord(gpScale), 8, 24, 90, 0, 180);
   AddParam(PH, Ord(gpScaleRoot), 8, 24 + ROW_H, 90, 0, 80);
-  Hint(PH, 24 + 2 * ROW_H + 6, 56,
-    Tr('Tonleiter: alle Tonhöhen (Tasten, Arp, Pitch-Zufall, LFO auf Pitch) rasten auf die ' +
-    'Töne der Tonleiter ein - Zufall klingt so immer musikalisch.'));
+  AddParam(PH, Ord(gpScaleKeys), 100, 24 + 2 * ROW_H, 0, 0, 0, Tr('Weiße Tasten = Tonleiter'));
+  Hint(PH, 24 + 3 * ROW_H + 6, 84,
+    Tr('Tonleiter: jeder Ton (Keyboard, DAW, Arp, Zufall, LFO) rastet bei Grains und Oszillatoren auf die ' +
+    'Tonleiter ein. Weiße Tasten = Tonleiter: die weißen Tasten spielen der Reihe nach die Töne der Tonleiter ' +
+    '(C4 = Grundton), die schwarzen schweigen.'));
 
   // Sprache der Oberflaeche: "Deutsch" + jede Datei in Sprachen\ (Beschriftung bewusst zweisprachig)
   L := TLabel.Create(Self);
   L.Parent := PH;
-  L.SetBounds(8, 24 + 2 * ROW_H + 6 + 62, 120, 16);
+  L.SetBounds(8, 24 + 3 * ROW_H + 6 + 90, 120, 16);
   L.Caption := 'Sprache / Language';
   L.Font.Color := COL_NAME;
   L.Transparent := True;
@@ -1679,11 +1704,36 @@ begin
   FLangCombo := TComboBox.Create(Self);
   FLangCombo.Parent := PH;
   FLangCombo.Style := csDropDownList;
-  FLangCombo.SetBounds(130, 24 + 2 * ROW_H + 6 + 58, 150, 21);
+  FLangCombo.SetBounds(130, 24 + 3 * ROW_H + 6 + 86, 150, 21);
   FLangCombo.TabStop := False;
   FLangCombo.Items.Assign(FLangNames);
   FLangCombo.ItemIndex := Max(0, FLangCodes.IndexOf(LangCode));
   FLangCombo.OnChange := LangComboChange;
+  // Fenstergroesse (fuer grosse/hochaufloesende Bildschirme): Wechsel baut den Editor neu auf
+  L := TLabel.Create(Self);
+  L.Parent := PH;
+  L.SetBounds(8, 24 + 3 * ROW_H + 6 + 120, 120, 16);
+  L.Caption := Tr('Fenstergröße');
+  L.Font.Color := COL_NAME;
+  L.Transparent := True;
+  FScaleCombo := TComboBox.Create(Self);
+  FScaleCombo.Parent := PH;
+  FScaleCombo.Style := csDropDownList;
+  FScaleCombo.SetBounds(130, 24 + 3 * ROW_H + 6 + 116, 150, 21);
+  FScaleCombo.TabStop := False;
+  for I := 0 to High(UI_SCALES) do
+  begin
+    FScaleCombo.Items.Add(Format('%d %%', [UI_SCALES[I]]));
+    if UI_SCALES[I] = UiScaleLoad then
+      FScaleCombo.ItemIndex := I;
+  end;
+  if FScaleCombo.ItemIndex < 0 then
+    FScaleCombo.ItemIndex := 0;
+  FScaleCombo.Hint := Tr('Größe des Plugin-Fensters - für große oder hochauflösende Bildschirme. ' +
+    'Gilt für alle Instanzen und wird gemerkt.');
+  FScaleCombo.ShowHint := True;
+  EnableComboFit(FScaleCombo);
+  FScaleCombo.OnChange := ScaleComboChange;
 
   AddParam(PK, Ord(gpFreeze), 8, 24, 90, 0);
   Hint(PK, 24 + ROW_H + 2, 50,
@@ -1899,6 +1949,16 @@ begin
   LangList(FLangCodes, FLangNames);
 end;
 
+procedure TGranularEditor.ScaleComboChange(Sender: TObject);
+begin
+  if FScaleCombo.ItemIndex < 0 then
+    Exit;
+  UiScaleSave(UI_SCALES[FScaleCombo.ItemIndex]);
+  // wie beim Sprachwechsel: die Plugin-Huelle baut den Editor in der neuen Groesse auf
+  if Assigned(FOnLanguageChange) then
+    FOnLanguageChange(Self);
+end;
+
 procedure TGranularEditor.LangComboChange(Sender: TObject);
 begin
   if (FLangCombo.ItemIndex >= 0) and (FLangCombo.ItemIndex < FLangCodes.Count) then
@@ -1991,7 +2051,7 @@ begin
     C.FillRect(Rect(0, 0, W, H));
     C.Font.Color := clWhite;
     C.Font.Style := [fsBold];
-    C.Font.Size := 6;
+    C.Font.Size := UiPt(6);
     C.Brush.Style := bsClear;
     C.TextOut((W - C.TextWidth(UpperCase(LangCode))) div 2, (H - C.TextHeight('X')) div 2, UpperCase(LangCode));
     C.Brush.Style := bsSolid;
@@ -2083,6 +2143,7 @@ procedure TGranularEditor.InfoClick(Sender: TObject);
 begin
   if FInfoForm = nil then
     FInfoForm := TInfoForm.CreateInfo(Self, FEngine);
+    UiScaleForm(FInfoForm);
   FInfoForm.Refresh(True);
   FInfoForm.Show;
   FInfoForm.BringToFront;
@@ -2762,6 +2823,9 @@ begin
     if DragQueryFile(Msg.Drop, 0, Buf, Length(Buf)) = 0 then
       Exit;
     Fn := Buf;
+    // MIDI (z.B. das eigene Arp-Muster) gehoert in eine DAW-Spur, nicht ins Sample
+    if SameText(ExtractFileExt(Fn), '.mid') or SameText(ExtractFileExt(Fn), '.midi') then
+      Exit;
     DragQueryPoint(Msg.Drop, Pt);
     Pt := ClientToScreen(Pt);
     Target := 0;
@@ -3586,6 +3650,7 @@ begin
     Tmr.OnTimer := FreeTimerTick;
 
     SyncFreeUi;
+    UiScaleForm(Frm);
     Frm.Show;
   end;
 end;
@@ -3706,6 +3771,7 @@ begin
   FWaveView[O].Anchors := [akLeft, akTop, akRight, akBottom];
   FWaveView[O].Tag := O;
   FWaveView[O].OnChange := WaveViewChange;
+  UiScaleForm(Frm);
   Frm.Show;
 end;
 
@@ -6300,7 +6366,15 @@ begin
     // eindeutiger Name: manche DAWs verweisen auf die Datei statt sie zu kopieren
     Fn := TPath.Combine(TPath.GetTempPath, 'GranularSynth Arp ' + FormatDateTime('hhnnss', Now) + '.mid');
     if WriteArpMidi(FEngine, Bars, Fn) then
-      DragFileOut(Fn);
+    begin
+      // waehrend des eigenen Ziehens keine Dateien annehmen: Ablegen auf dem Plugin = 'nicht erlaubt'
+      DragAcceptFiles(Handle, False);
+      try
+        DragFileOut(Fn);
+      finally
+        DragAcceptFiles(Handle, True);
+      end;
+    end;
     Exit;
   end;
   Dlg := TSaveDialog.Create(nil);

@@ -25,7 +25,7 @@ uses
   System.SysUtils, Granular.Params;
 
 const
-  PARAM_HINTS: array[0..309, 0..1] of string = (
+  PARAM_HINTS: array[0..310, 0..1] of string = (
     ('Anlauf an', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Anlauf-Start', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Arp Latch', 'Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".'),
@@ -98,7 +98,7 @@ const
     ('Grain-Pegel', 'Grains an / Pegel: Grains aus = nur die Oszillatoren klingen (klassischer Synthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-Bereich regelt die Summe aus Grains und Oszillatoren).'),
     ('Graingröße', 'Graingröße: Länge eines Grains: kurz = körnig, lang = glatt.'),
     ('Grains an', 'Grains an / Pegel: Grains aus = nur die Oszillatoren klingen (klassischer Synthesizer); Pegel = Lautstärke nur der Grains (die Lautstärke im Klang-Bereich regelt die Summe aus Grains und Oszillatoren).'),
-    ('Grundton', 'Tonleiter / Grundton: Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.'),
+    ('Grundton', 'Tonleiter / Grundton / Tasten: Jeder Ton - Grains und Oszillatoren, vom Keyboard, aus der DAW, vom Arp, Pitch-Zufall oder LFO - rastet auf den nächsten Ton der Tonleiter ein (bei Gleichstand nach oben). Tasten „weiße Tasten = Tonleiter“: die weißen Tasten ab C4 spielen der Reihe nach die Töne der Tonleiter (C4 = Grundton), schwarze Tasten schweigen.'),
     ('HQ-Modus', 'HQ-Modus: Bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und Sättigung ohne Spiegelfrequenzen (etwas mehr Rechenlast).'),
     ('Hall Bass-Schnitt', 'Bass-Schnitt / Höhen-Schnitt: Filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dröhnen, Höhen-Schnitt für einen dunklen Raum.'),
     ('Hall Breite', 'Hall: Raum, Größe, Nachhall, Dämpfung, Vorverzögerung, Breite, Mix: Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...).'),
@@ -312,7 +312,8 @@ const
     ('Sustain', 'Attack / Decay / Sustain / Release: Wie jede Note einschwillt, auf den Haltepegel abfällt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note.'),
     ('Sättigung', 'Sättigung: Warme Übersteuerung.'),
     ('Textur', 'Makros: Textur, Bewegung, Helligkeit, Raum, Streuung, Hüllkurven-Länge: jeder Regler verändert mehrere Einstellungen auf einmal. 50 % = Preset unverändert; „Makros auf 50 %“ setzt alle zurück.'),
-    ('Tonleiter', 'Tonleiter / Grundton: Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.'),
+    ('Tonleiter', 'Tonleiter / Grundton / Tasten: Jeder Ton - Grains und Oszillatoren, vom Keyboard, aus der DAW, vom Arp, Pitch-Zufall oder LFO - rastet auf den nächsten Ton der Tonleiter ein (bei Gleichstand nach oben). Tasten „weiße Tasten = Tonleiter“: die weißen Tasten ab C4 spielen der Reihe nach die Töne der Tonleiter (C4 = Grundton), schwarze Tasten schweigen.'),
+    ('Tonleiter-Tasten', 'Tonleiter / Grundton / Tasten: Jeder Ton - Grains und Oszillatoren, vom Keyboard, aus der DAW, vom Arp, Pitch-Zufall oder LFO - rastet auf den nächsten Ton der Tonleiter ein (bei Gleichstand nach oben). Tasten „weiße Tasten = Tonleiter“: die weißen Tasten ab C4 spielen der Reihe nach die Töne der Tonleiter (C4 = Grundton), schwarze Tasten schweigen.'),
     ('Tor-Quelle', 'Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer: Wird 1, sobald eine beliebige Quelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.'),
     ('Tor-Schwelle', 'Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer: Wird 1, sobald eine beliebige Quelle die Schwelle überschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille.'),
     ('Trance-Gate Glättung', 'Trance-Gate: 16 Schritte zum Anklicken, Notenwert, Schritte, Tiefe, Glättung - zerhackt den Klang im Songtempo.'),
@@ -434,7 +435,7 @@ const
     ('Stopp', 'Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. "nie" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei "frei"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält "Note aus" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Events). "nach Zeit": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T ...; ein Notenwert gilt vor den ms).'),
     ('Sync (Obertöne)', 'Hard Sync: 0 = saubere Welle, höher = immer mehr Obertöne, schneidend (nicht bei Rauschen).'),
     ('Sättigung', 'Warme Übersteuerung.'),
-    ('Tonleiter / Grundton', 'Alle Tonhöhen rasten auf die Töne der Tonleiter ein - nie ein falscher Ton.'),
+    ('Tonleiter / Grundton / Tasten', 'Jeder Ton - Grains und Oszillatoren, vom Keyboard, aus der DAW, vom Arp, Pitch-Zufall oder LFO - rastet auf den nächsten Ton der Tonleiter ein (bei Gleichstand nach oben). Tasten „weiße Tasten = Tonleiter“: die weißen Tasten ab C4 spielen der Reihe nach die Töne der Tonleiter (C4 = Grundton), schwarze Tasten schweigen.'),
     ('Trance-Gate', '16 Schritte zum Anklicken, Notenwert, Schritte, Tiefe, Glättung - zerhackt den Klang im Songtempo.'),
     ('Unison / Verstimmung / Breite', '2 bis 7 verstimmte Stimmen je Note, im Stereobild verteilt (fette Pads und Leads).'),
     ('Variieren / Stärke / Gesperrt', 'Würfelt eine Abwandlung des Klangs; die Stärke bestimmt wie weit, gesperrte Bereiche bleiben unverändert. „Rückgängig“ holt den vorigen Stand.'),

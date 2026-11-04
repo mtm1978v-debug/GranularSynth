@@ -91,6 +91,7 @@ type
     FForm: TForm;
     FEditor: TGranularEditor;
     FOldFormProc: TWndMethod;         // Fensterprozedur des Editor-Formulars (Sprachwechsel)
+    FEditW, FEditH: Integer;          // Fenstergroesse in Pixeln (gewaehlte Skalierung)
     FInBuf: array[0..3] of TArray<Single>;
     FDryBuf: array[0..LIM_LOOK * 2 - 1] of Single;
     FDryPos: Integer;
@@ -107,6 +108,7 @@ type
     procedure OpenEditor(ParentWnd: HWND);
     procedure CloseEditor;
     procedure CreateEditorPanel;
+    procedure UpdateEditSize;
     procedure EditorLanguageChange(Sender: TObject);
     procedure FormWndProc(var Msg: TMessage);
     // IPluginBase
@@ -159,6 +161,7 @@ type
   private
     FPlugin: TGranularVst3;
     FKeep: IUnknown;               // haelt das Plugin am Leben, solange die Ansicht existiert
+    FFrame: Pointer;               // IPlugFrame* der DAW (Groessenwunsch), nicht gezaehlt
   public
     constructor Create(APlugin: TGranularVst3);
     destructor Destroy; override;
@@ -812,7 +815,8 @@ begin
   FForm := TForm.CreateNew(nil);
   FForm.BorderStyle := bsNone;
   FForm.ParentWindow := ParentWnd;
-  FForm.SetBounds(0, 0, EDITOR_W, EDITOR_H);
+  UpdateEditSize;
+  FForm.SetBounds(0, 0, FEditW, FEditH);
   FForm.KeyPreview := True;
   FForm.OnKeyDown := FormKeyDown;
   FForm.OnKeyUp := FormKeyUp;
@@ -826,6 +830,7 @@ end;
 procedure TGranularVst3.CreateEditorPanel;
 begin
   LangInit(FBaseDir);
+  GUiScalePct := UiScaleLoad(FBaseDir);   // selbst gezeichnete Anzeigen: Schriftgroesse beim Aufbau
   FEditor := TGranularEditor.Create(FForm, FForm, FEngine);
   FEditor.BaseDir := FBaseDir;
   FEditor.OnParamEdit := EditorParamEdit;
@@ -833,6 +838,19 @@ begin
   FEditor.OnLanguageChange := EditorLanguageChange;
   if FIsFx then FEditor.FormatName := 'VST3 FX' else FEditor.FormatName := 'VST3';
   FEditor.SyncSampleFromEngine;
+  // gewaehlte Fenstergroesse: alle Positionen und Schriften mitwachsen lassen
+  if FEditW <> EDITOR_W then
+    FEditor.ApplyScale(FEditW, EDITOR_W);
+end;
+
+{ Fenstergroesse aus der gemerkten Skalierung (Reiter Extras: Fenstergroesse) }
+procedure TGranularVst3.UpdateEditSize;
+var
+  S: Integer;
+begin
+  S := UiScaleLoad(FBaseDir);
+  FEditW := MulDiv(EDITOR_W, S, 100);
+  FEditH := MulDiv(EDITOR_H, S, 100);
 end;
 
 procedure TGranularVst3.EditorLanguageChange(Sender: TObject);
@@ -844,13 +862,27 @@ end;
 { Sprachwechsel: Editor neu aufbauen, gleicher Reiter (als Nachricht: alter Editor nicht mehr aktiv) }
 procedure TGranularVst3.FormWndProc(var Msg: TMessage);
 var
-  Page: Integer;
+  Page, OldW, OldH: Integer;
+  R: TViewRect;
 begin
   if (Msg.Msg = WM_GRANULAR_RELANG) and (FEditor <> nil) then
   begin
     Page := FEditor.PageIndex;
     FEditor.ReleaseAllKeys;
     FreeAndNil(FEditor);
+    // Fenstergroesse geaendert: Formular anpassen und die DAW ueber IPlugFrame bitten
+    OldW := FEditW;
+    OldH := FEditH;
+    UpdateEditSize;
+    if (FEditW <> OldW) or (FEditH <> OldH) then
+    begin
+      FForm.SetBounds(0, 0, FEditW, FEditH);
+      if (FView <> nil) and (FView.FFrame <> nil) then
+      begin
+        R.left := 0; R.top := 0; R.right := FEditW; R.bottom := FEditH;
+        IPlugFrame(FView.FFrame).resizeView(FViewIntf, @R);
+      end;
+    end;
     CreateEditorPanel;
     FEditor.ShowPage(Page);
     Exit;
@@ -1000,8 +1032,9 @@ begin
     Exit(kInvalidArgument);
   size.left := 0;
   size.top := 0;
-  size.right := EDITOR_W;
-  size.bottom := EDITOR_H;
+  FPlugin.UpdateEditSize;
+  size.right := FPlugin.FEditW;
+  size.bottom := FPlugin.FEditH;
   Result := kResultOk;
 end;
 
@@ -1017,6 +1050,7 @@ end;
 
 function TGranularView.setFrame(frame: Pointer): TResult;
 begin
+  FFrame := frame;
   Result := kResultOk;
 end;
 
@@ -1029,8 +1063,9 @@ function TGranularView.checkSizeConstraint(rect: PViewRect): TResult;
 begin
   if rect <> nil then
   begin
-    rect.right := rect.left + EDITOR_W;
-    rect.bottom := rect.top + EDITOR_H;
+    FPlugin.UpdateEditSize;
+    rect.right := rect.left + FPlugin.FEditW;
+    rect.bottom := rect.top + FPlugin.FEditH;
   end;
   Result := kResultOk;
 end;

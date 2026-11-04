@@ -1940,6 +1940,101 @@ begin
   B.Eq(160, 0, -2, 1, 1);
   B.P(gpResOn, 1); B.P(gpResMix, 100); B.P(gpResTime, 700);
   B.Save('174 Grains - Resampling - Stimme verdampft');
+
+  // ----- FM + Drive fuer Techno (Oversampling haelt die Obertoene sauber) -----
+  // 175: Rumble-Bass - FM 1:1 eine Oktave tief + Sinus-Sub, kraeftige Saettigung, dunkler Tiefpass,
+  // kurzes 1/16-Echo und dunkler Hall geben das typische Techno-Grollen
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 2); B.P(gpOscFmRatio, 1); B.P(gpOscFmAmt, 38); B.P(gpOscLevel, 70);
+  B.P(gpOscAttack, 2); B.P(gpOscDecay, 600); B.P(gpOscSustain, 75); B.P(gpOscRelease, 180);
+  B.P(gpOscFmEnvOn, 1); B.P(gpOscFmAttack, 1); B.P(gpOscFmDecay, 260); B.P(gpOscFmSustain, 35); B.P(gpOscFmRelease, 150);
+  B.P(gpOsc3On, 1); B.P(gpOsc3Wave, 0); B.P(gpOsc3Oct, 1); B.P(gpOsc3Level, 55);
+  B.P(gpOsc3Attack, 2); B.P(gpOsc3Sustain, 100); B.P(gpOsc3Release, 180);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 700); B.P(gpFltReso, 25); B.P(gpFltContour, 100);
+  B.P(gpDrive, 55);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_16); B.P(gpEchoFeedback, 30); B.P(gpEchoMix, 9);
+  B.Hall(70, 3, 80, 0, 10);
+  B.P(gpVolume, -5);
+  B.Save('175 FM - Techno - Rumble-Bass mit Drive');
+
+  // 176: Reese-Bass - FM 2 mit 5 Unison-Stimmen und Schwebung, Sinus-Sub, Tiefpass wandert langsam im
+  // Takt (1 Takt), Saettigung macht ihn breit und dreckig
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 2); B.P(gpOscFmRatio, 2); B.P(gpOscFmAmt, 45); B.P(gpOscLevel, 65);
+  B.P(gpOscAttack, 4); B.P(gpOscDecay, 800); B.P(gpOscSustain, 90); B.P(gpOscRelease, 220);
+  B.P(gpOscUnison, 5); B.P(gpOscDetune, 22); B.P(gpOscUniWidth, 60);
+  B.P(gpOsc3On, 1); B.P(gpOsc3Wave, 0); B.P(gpOsc3Oct, 1); B.P(gpOsc3Level, 45);
+  B.P(gpOsc3Attack, 4); B.P(gpOsc3Sustain, 100); B.P(gpOsc3Release, 220);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 1100); B.P(gpFltReso, 30); B.P(gpFltContour, 100);
+  B.LfoSync(1, D_1_1, SINUS);
+  B.M(msLfo1, gpFltCutoff, 18);
+  B.P(gpDrive, 50);
+  B.Hall(50, 2, 70, 0, 8);
+  B.P(gpVolume, -3);
+  B.Save('176 FM - Techno - Reese-Bass, wandert im Takt');
+
+  // 177: Industrial-Stab - harte FM 3.5 mit kurzer FM-Huellkurve (metallischer Anschlag), viel Drive,
+  // etwas Crusher und ein grosser Hall: ein Akkordschlag fuer Peak-Time-Techno
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 3); B.P(gpOscFmRatio, 3.5); B.P(gpOscFmAmt, 65); B.P(gpOscLevel, 65);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 380); B.P(gpOscSustain, 0); B.P(gpOscRelease, 260);
+  B.P(gpOscFmEnvOn, 1); B.P(gpOscFmAttack, 1); B.P(gpOscFmDecay, 140); B.P(gpOscFmSustain, 10); B.P(gpOscFmRelease, 200);
+  B.P(gpOsc2On, 1); B.P(gpOsc2Wave, 4); B.P(gpOsc2Oct, 2); B.P(gpOsc2FmRatio, 1); B.P(gpOsc2FmAmt, 30); B.P(gpOsc2Level, 45);
+  B.P(gpOsc2Attack, 1); B.P(gpOsc2Decay, 420); B.P(gpOsc2Sustain, 0); B.P(gpOsc2Release, 260);
+  B.M(msVelocity, gpOscFmAmt, 30);
+  B.P(gpDrive, 70);
+  B.P(gpCrushOn, 1); B.P(gpCrushBits, 10); B.P(gpCrushMix, 18);
+  B.Hall(85, 4, 55, 15, 24);
+  B.P(gpVolume, -4);
+  B.Save('177 FM - Techno - Industrial-Stab (Anschlag = haerter)');
+
+  // 178: Verzerrter Acid - FM 1:1 durch sehr resonanten Tiefpass mit kurzer Filter-Huellkurve, legato
+  // gleitend, Drive vor dem Filter-Quietschen; fester Anschlag = Akzent
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 2); B.P(gpOscFmRatio, 1); B.P(gpOscFmAmt, 62); B.P(gpOscLevel, 75);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 300); B.P(gpOscSustain, 85); B.P(gpOscRelease, 80);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 260); B.P(gpFltReso, 82); B.P(gpFltContour, 100);
+  B.P(gpFltEnvAmt, 70); B.P(gpFltAttack, 1); B.P(gpFltDecay, 180); B.P(gpFltSustain, 8); B.P(gpFltRelease, 100);
+  B.M(msVelocity, gpFltEnvAmt, 30);
+  B.P(gpGlideMode, 2); B.P(gpGlideTime, 60);
+  B.P(gpDrive, 68);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8T); B.P(gpEchoFeedback, 30); B.P(gpEchoMix, 12);
+  B.P(gpVolume, -7);
+  B.Save('178 FM - Techno - Verzerrter Acid (Anschlag = Akzent)');
+
+  // 179: Peitschen-Lead - FM 2 mit 3 Unison-Stimmen; das Modrad dreht Drive und FM-Menge zugleich auf,
+  // vom runden Lead bis zur Kreissaege; 1/8-Echo
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 3); B.P(gpOscFmRatio, 2); B.P(gpOscFmAmt, 35); B.P(gpOscLevel, 60);
+  B.P(gpOscAttack, 3); B.P(gpOscDecay, 500); B.P(gpOscSustain, 85); B.P(gpOscRelease, 200);
+  B.P(gpOscUnison, 3); B.P(gpOscDetune, 14); B.P(gpOscUniWidth, 70);
+  B.M(msModWheel, gpDrive, 55);
+  B.M(msModWheel, gpOscFmAmt, 35);
+  B.P(gpDrive, 25);
+  B.P(gpGlideMode, 1); B.P(gpGlideTime, 40);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8); B.P(gpEchoFeedback, 28); B.P(gpEchoMix, 14);
+  B.Hall(60, 2, 50, 10, 12);
+  B.P(gpVolume, 1);
+  B.Save('179 FM - Techno - Peitschen-Lead (Modrad = Drive)');
+
+  // 180: Pump-Pad - weiche FM 2 mit langsamer FM-Huellkurve, das Trance-Gate in 1/16 laesst es im Takt
+  // pumpen, leichter Drive und grosser Hall: Flaeche fuer den Breakdown
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 3); B.P(gpOscFmRatio, 2); B.P(gpOscFmAmt, 30); B.P(gpOscLevel, 55);
+  B.P(gpOscAttack, 250); B.P(gpOscDecay, 1500); B.P(gpOscSustain, 90); B.P(gpOscRelease, 1200);
+  B.P(gpOscFmEnvOn, 1); B.P(gpOscFmAttack, 1500); B.P(gpOscFmDecay, 2000); B.P(gpOscFmSustain, 70); B.P(gpOscFmRelease, 1200);
+  B.P(gpOscUnison, 3); B.P(gpOscDetune, 12); B.P(gpOscUniWidth, 90);
+  B.P(gpTgOn, 1); B.P(gpTgRate, 3); B.P(gpTgDepth, 80); B.P(gpTgSmooth, 8);
+  B.P(gpDrive, 30);
+  B.Hall(90, 6, 50, 20, 30);
+  B.P(gpVolume, 0);
+  B.Save('180 FM - Techno - Pump-Pad fuer den Breakdown');
 end;
 
 { ------------------------------------------------------------------------------

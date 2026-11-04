@@ -19,7 +19,7 @@ interface
 
 uses
   Granular.Lang,
-  Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, System.Math, System.Types, System.IOUtils,
+  Winapi.Windows, Winapi.Messages, Winapi.RichEdit, System.Classes, System.SysUtils, System.Math, System.Types, System.IOUtils,
   Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.ExtCtrls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ComCtrls,
   Granular.Fader, Granular.Params, Granular.Engine;
 
@@ -199,6 +199,45 @@ begin
   end;
 end;
 
+{ RTF-Schriftgroessen (\fsN, halbe Punkte) mit der Fenstergroesse skalieren - EM_SETZOOM wuerde den
+  Rich-Edit zwar vergroessern, bricht die Zeilen aber nach der alten Breite um }
+function ScaleRtf(const Rtf: string): string;
+var
+  I, J, N: Integer;
+  Sb: TStringBuilder;
+begin
+  if GUiScalePct = 100 then
+    Exit(Rtf);
+  Sb := TStringBuilder.Create(Length(Rtf) + 256);
+  try
+    I := 1;
+    while I <= Length(Rtf) do
+    begin
+      if (Rtf[I] = '\') and (I + 3 <= Length(Rtf)) and (Rtf[I + 1] = 'f') and (Rtf[I + 2] = 's') and
+         CharInSet(Rtf[I + 3], ['0'..'9']) then
+      begin
+        J := I + 3;
+        N := 0;
+        while (J <= Length(Rtf)) and CharInSet(Rtf[J], ['0'..'9']) do
+        begin
+          N := N * 10 + Ord(Rtf[J]) - Ord('0');
+          Inc(J);
+        end;
+        Sb.Append('\fs').Append(MulDiv(N, GUiScalePct, 100));
+        I := J;
+      end
+      else
+      begin
+        Sb.Append(Rtf[I]);
+        Inc(I);
+      end;
+    end;
+    Result := Sb.ToString;
+  finally
+    Sb.Free;
+  end;
+end;
+
 procedure THelpForm.ShowDoc(Changelog: Boolean);
 var
   Md: string;
@@ -211,7 +250,7 @@ begin
       if FileExists(FChangeFile) then
       begin
         Md := TFile.ReadAllText(FChangeFile, TEncoding.UTF8);
-        St := TStringStream.Create(MarkdownToRtf(Md), TEncoding.ASCII);
+        St := TStringStream.Create(ScaleRtf(MarkdownToRtf(Md)), TEncoding.ASCII);
         try
           FEd.PlainText := False;
           FEd.Lines.LoadFromStream(St);
@@ -223,7 +262,16 @@ begin
         FEd.Lines.Text := Tr('Changelog nicht gefunden: ') + FChangeFile;
     end
     else if FileExists(FHelpFile) then
-      FEd.Lines.LoadFromFile(FHelpFile)
+    begin
+      // Hilfe ist ANSI-RTF; Schriftgroessen an die Fenstergroesse anpassen
+      St := TStringStream.Create(ScaleRtf(TFile.ReadAllText(FHelpFile, TEncoding.ANSI)), TEncoding.ANSI);
+      try
+        FEd.PlainText := False;
+        FEd.Lines.LoadFromStream(St);
+      finally
+        St.Free;
+      end;
+    end
     else
       FEd.Lines.Text := Tr('Hilfedatei nicht gefunden: ') + FHelpFile;
   finally
@@ -286,7 +334,7 @@ begin
   Ed.Parent := HelpForm;
   Ed.Align := alClient;
   Ed.AlignWithMargins := True;
-  Ed.Margins.SetBounds(12, 10, 4, 10);
+  Ed.Margins.SetBounds(12, 10, 16, 10);   // rechts Luft zur Bildlaufleiste
   Ed.BorderStyle := bsNone;
   Ed.ReadOnly := True;
   Ed.ScrollBars := ssVertical;
@@ -296,6 +344,7 @@ begin
   HelpForm.FHelpFile := FileName;
   // CHANGELOG.md liegt im Plugin-Ordner, die Hilfe darunter im Ordner Hilfe
   HelpForm.FChangeFile := ExpandFileName(ExtractFilePath(FileName) + '..' + PathDelim + 'CHANGELOG.md');
+  UiScaleForm(HelpForm);       // vor dem Laden: der Text bricht dann nach der neuen Breite um
   HelpForm.ShowDoc(Changelog);
   HelpForm.Show;
 end;

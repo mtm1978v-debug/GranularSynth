@@ -32,3 +32,7 @@ build.local.bat
 
 # Hoervergleich Oszillator-Modell (GranularHost -abrender)
 Hoerprobe Wavetable/
+
+# lokaler Code-Index (CodeGraph), nicht ins Repo
+.codegraph/
+codegraph.json

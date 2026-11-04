@@ -417,7 +417,7 @@ begin
       S := IntToStr(I * 10);
       C.TextOut(Round(P.X) - C.TextWidth(S) div 2, Round(P.Y) - 7, S);
     end;
-  C.Font.Size := 16;
+  C.Font.Size := UiPt(16);
   C.Font.Style := [fsBold];
   S := Format(Tr('%.1f %%'), [FShown]);
   C.TextOut(Round(Cx) - C.TextWidth(S) div 2, Round(Cy) + 16, S);

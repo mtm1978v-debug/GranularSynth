@@ -345,7 +345,7 @@ begin
   try
     FStatic.Clear(COL_BG);
     FStatic.Font.Name := 'Tahoma';
-    FStatic.Font.Size := 7;
+    FStatic.Font.Size := UiPt(7);
     Mid := H div 2;
     L := KeysW;
     WW := Max(1, W - L);
@@ -806,7 +806,7 @@ begin
     FMask := CurMask;
     FSteps := CurSteps;
     B.Font.Name := 'Tahoma';
-    B.Font.Size := 7;
+    B.Font.Size := UiPt(7);
     for I := 0 to ARP_MAX_STEPS - 1 do
     begin
       X0 := I * W div ARP_MAX_STEPS + 1;

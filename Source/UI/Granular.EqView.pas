@@ -191,7 +191,7 @@ begin
   try
     FGrid.Clear(COL_BG);
     FGrid.Font.Name := 'TahomaTr(';
-    FGrid.Font.Size := 7;
+    FGrid.Font.Size := UiPt(7);
     FGrid.Font.Color := $808080;
     D := -18;
     while D <= 18 do
@@ -285,7 +285,7 @@ begin
       if not On then
       begin
         B.Font.Name := 'Tahoma';
-        B.Font.Size := 8;
+        B.Font.Size := UiPt(8);
         B.Font.Color := $0060B0FF;
         B.Textout(W div 2 - 60, 6, Tr('EQ ist aus ("EQ an" anhaken)'));
       end;

@@ -67,6 +67,7 @@ type
     procedure OpenEditor(ParentWnd: HWND);
     procedure CloseEditor;
     procedure CreateEditorPanel;
+    procedure UpdateRect;
     procedure EditorLanguageChange(Sender: TObject);
     procedure FormWndProc(var Msg: TMessage);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -254,10 +255,19 @@ begin
     FEffect.UniqueID := VstFourCC('GrnS');
   FEffect.Version := PLUGIN_VERSION;
 
+  UpdateRect;
+end;
+
+{ Fenstergroesse aus der gemerkten Skalierung (Reiter Extras: Fenstergroesse) }
+procedure TGranularPlugin.UpdateRect;
+var
+  S: Integer;
+begin
+  S := UiScaleLoad(FBaseDir);
   FRect.Top := 0;
   FRect.Left := 0;
-  FRect.Bottom := EDITOR_H;
-  FRect.Right := EDITOR_W;
+  FRect.Right := MulDiv(EDITOR_W, S, 100);
+  FRect.Bottom := MulDiv(EDITOR_H, S, 100);
 end;
 
 destructor TGranularPlugin.Destroy;
@@ -273,7 +283,8 @@ begin
   FForm := TForm.CreateNew(nil);
   FForm.BorderStyle := bsNone;
   FForm.ParentWindow := ParentWnd;
-  FForm.SetBounds(0, 0, EDITOR_W, EDITOR_H);
+  UpdateRect;
+  FForm.SetBounds(0, 0, FRect.Right, FRect.Bottom);
   FForm.KeyPreview := True;
   FForm.OnKeyDown := FormKeyDown;
   FForm.OnKeyUp := FormKeyUp;
@@ -339,12 +350,16 @@ end;
 procedure TGranularPlugin.CreateEditorPanel;
 begin
   LangInit(FBaseDir);
+  GUiScalePct := UiScaleLoad(FBaseDir);   // selbst gezeichnete Anzeigen: Schriftgroesse beim Aufbau
   FEditor := TGranularEditor.Create(FForm, FForm, FEngine);
   FEditor.BaseDir := FBaseDir;
   FEditor.OnParamEdit := EditorParamEdit;   // Reglerbewegungen an die DAW melden
   FEditor.OnLanguageChange := EditorLanguageChange;
   if FIsFx then FEditor.FormatName := 'VST2 FX' else FEditor.FormatName := 'VST2';
   FEditor.SyncSampleFromEngine;
+  // gewaehlte Fenstergroesse: alle Positionen und Schriften mitwachsen lassen
+  if FRect.Right <> EDITOR_W then
+    FEditor.ApplyScale(FRect.Right, EDITOR_W);
 end;
 
 procedure TGranularPlugin.EditorLanguageChange(Sender: TObject);
@@ -357,13 +372,23 @@ end;
   Editor ist dann nicht mehr auf dem Aufrufstapel. }
 procedure TGranularPlugin.FormWndProc(var Msg: TMessage);
 var
-  Page: Integer;
+  Page, OldW, OldH: Integer;
 begin
   if (Msg.Msg = WM_GRANULAR_RELANG) and (FEditor <> nil) then
   begin
     Page := FEditor.PageIndex;
     FEditor.ReleaseAllKeys;
     FreeAndNil(FEditor);
+    // Fenstergroesse geaendert: erst das Formular, dann der DAW die neue Groesse melden
+    OldW := FRect.Right;
+    OldH := FRect.Bottom;
+    UpdateRect;
+    if (FRect.Right <> OldW) or (FRect.Bottom <> OldH) then
+    begin
+      FForm.SetBounds(0, 0, FRect.Right, FRect.Bottom);
+      if Assigned(FAudioMaster) then
+        FAudioMaster(@FEffect, audioMasterSizeWindow, FRect.Right, FRect.Bottom, nil, 0);
+    end;
     CreateEditorPanel;
     FEditor.ShowPage(Page);
     Exit;

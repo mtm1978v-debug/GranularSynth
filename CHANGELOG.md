@@ -6,6 +6,25 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.15 – 04.11.2026
+
+### Neu
+- **Tonleiter-Tasten** (Reiter *Extras*, Harmonie, neue Zeile *Tasten*): *weiße Tasten = Tonleiter* – die weißen Tasten ab C4 spielen der Reihe nach die Töne der gewählten Tonleiter (C4 = Grundton), die schwarzen schweigen. So lässt sich jede Tonleiter allein auf den weißen Tasten spielen. Neuer, automatisierbarer Parameter *Tonleiter-Tasten* (hinten angehängt).
+- **Fenstergröße wählbar** (Reiter *Extras*, unter der Sprache): 100, 125, 150, 175 oder 200 % für große und hochauflösende Bildschirme. Schriften, Knöpfe, Symbole, Regler und Anzeigen wachsen mit; die DAW bekommt die neue Fenstergröße gemeldet (VST2 und VST3). Die Wahl gilt für alle Instanzen und wird im Plugin-Ordner gemerkt (`Fenstergroesse.txt`). Auch die Zusatzfenster wachsen mit: Audio bearbeiten, Frei zeichnen, Welle zeichnen, Info und Hilfe.
+- **Sechs FM-Techno-Presets mit Drive (175–180):** Rumble-Bass, Reese-Bass (wandert im Takt), Industrial-Stab (Anschlag = härter), verzerrter Acid (Anschlag = Akzent), Peitschen-Lead (Modrad = Drive) und Pump-Pad mit Trance-Gate für den Breakdown. Gemacht für gespielte elektronische Musik; das Oversampling hält die harten FM-Obertöne mit Sättigung sauber.
+
+### Geändert
+- **Panorama-Regler** (Grain, Osz 1–3, Summe, Mischpult) zeigen die Position wie an einem Mischpult: *L 30*, *C* (Mitte), *R 30* statt −30 % … +30 %. In der DAW steht keine Einheit mehr dahinter. Presets und Automation bleiben unverändert.
+
+### Behoben
+- **Arp als MIDI:** Das gezogene MIDI-Muster ließ sich auf das Plugin-Fenster selbst fallen lassen und führte zur Meldung „Datei konnte nicht geladen werden“. Während des Ziehens nimmt das Fenster jetzt keine Dateien an; MIDI-Dateien aus dem Explorer werden still ignoriert.
+- **Tonleiter wirkt jetzt auch auf die Oszillatoren.** Bisher rasteten nur die Grains ein; ein Oszillator spielte den Ton der Taste, auch wenn er nicht zur Tonleiter gehörte. Jetzt spielen Grains und Oszillatoren denselben Ton; Pitchbend und Glide bleiben stufenlos.
+
+### Hinweis
+- Presets mit eingestellter Tonleiter und Oszillatoren klingen dadurch anders (tonleiterrichtig).
+
+---
+
 ## Version 2.14 – 03.11.2026
 
 ### Neu

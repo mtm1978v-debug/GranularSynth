@@ -164,6 +164,7 @@ type
     gpResOn, gpResMix,              // Nov. 2026: Feedback-Resampling (eigener Ausgang wird zur Grain-Quelle)
     gpResTime, gpResSync,           // Laenge eines Resampling-Durchlaufs (frei in ms oder im Takt)
     gpOversample,  // Nov. 2026: 2x-Oversampling bei HQ (Oszillatoren, Saettigung); gehoert zum Rechner, nicht zum Preset
+    gpScaleKeys,   // Nov. 2026: Tasten: alle (Einrasten) / weisse Tasten spielen die Tonleiter
     gpPerformance, // Leistungsstufe: begrenzt Stimmen/Grains (gehoert nicht zum Klang, bleibt beim Presetwechsel)
     gpMaster,      // Master-Lautstaerke (gehoert nicht zum Klang: bleibt beim Presetwechsel)
     gpTempo        // Tempo fuer LFO-Sync (im VST spaeter vom Host); muss der LETZTE sein
@@ -188,8 +189,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 14;
-  APP_VERSION = '2.14';
+  APP_VERSION_MINOR = 15;
+  APP_VERSION = '2.15';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -236,6 +237,7 @@ const
   RES_SYNC_BEATS: array[1..4] of Double = (1, 2, 4, 8);
   ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 -> 2)', 'Parallel (1 + 2)');
   AUTOPITCH_NAMES: array[0..2] of string = ('Aus', 'Frei', 'Halbtöne');
+  SCALE_KEY_NAMES: array[0..1] of string = ('alle Tasten (Einrasten)', 'weiße Tasten = Tonleiter');
   SCALE_NAMES: array[0..8] of string = ('Aus (chromatisch frei)', 'Dur', 'Moll', 'Harmonisch Moll', 'Dorisch',
     'Pentatonik Dur', 'Pentatonik Moll', 'Blues', 'Ganzton');
   { je Tonleiter: Bit k gesetzt = Halbton k ueber dem Grundton gehoert dazu }
@@ -428,14 +430,14 @@ const
     (Name: 'EQ Bässe';     UnitStr: 'dB'; MinV: -12;  MaxV: 12;    DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'EQ Höhen';     UnitStr: 'dB'; MinV: -12;  MaxV: 12;    DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'Summen-Breite'; UnitStr: '%';  MinV: 0;    MaxV: 200;   DefV: 100;  Curve: pcLinear;  Steps: 0),
-    (Name: 'Summen-Panorama'; UnitStr: '%'; MinV: -100; MaxV: 100;  DefV: 0;    Curve: pcLinear;  Steps: 0),
+    (Name: 'Summen-Panorama'; UnitStr: ''; MinV: -100; MaxV: 100;  DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'Hall Raum';     UnitStr: '';   MinV: 0;    MaxV: 5;     DefV: 0;    Curve: pcStepped; Steps: 6),
     (Name: 'Osz an';        UnitStr: '';   MinV: 0;    MaxV: 1;     DefV: 0;    Curve: pcStepped; Steps: 2),
     (Name: 'Osz Welle';     UnitStr: '';   MinV: 0;    MaxV: 5;     DefV: 0;    Curve: pcStepped; Steps: 6),
     (Name: 'Osz Oktave';    UnitStr: '';   MinV: 0;    MaxV: 5;     DefV: 3;    Curve: pcStepped; Steps: 6),
     (Name: 'Osz Fein';      UnitStr: 'ct'; MinV: -100; MaxV: 100;   DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'Osz-Pegel';     UnitStr: '%';  MinV: 0;    MaxV: 200;   DefV: 40;   Curve: pcLinear;  Steps: 0),
-    (Name: 'Osz Panorama';  UnitStr: '%';  MinV: -100; MaxV: 100;   DefV: 0;    Curve: pcLinear;  Steps: 0),
+    (Name: 'Osz Panorama';  UnitStr: '';  MinV: -100; MaxV: 100;   DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'Osz FM-Verh.';  UnitStr: 'x';  MinV: 0.5;  MaxV: 8;     DefV: 2;    Curve: pcLinear;  Steps: 0),
     (Name: 'Osz FM-Menge';  UnitStr: '%';  MinV: 0;    MaxV: 100;   DefV: 30;   Curve: pcLinear;  Steps: 0),
     (Name: 'Osz Attack';    UnitStr: 'ms'; MinV: 1;    MaxV: 5000;  DefV: 10;   Curve: pcExp;     Steps: 0),
@@ -478,7 +480,7 @@ const
     (Name: 'SC-Trig Ton';   UnitStr: '';   MinV: 0;    MaxV: 1;     DefV: 0;    Curve: pcStepped; Steps: 2),
     (Name: 'Ausgangs-Schwelle'; UnitStr: '%'; MinV: 1; MaxV: 100;   DefV: 15;   Curve: pcLinear;  Steps: 0),
     (Name: 'Grain-Oktave';  UnitStr: '';   MinV: 0;    MaxV: 8;     DefV: 4;    Curve: pcStepped; Steps: 9),
-    (Name: 'Grain-Panorama'; UnitStr: '%'; MinV: -100; MaxV: 100;   DefV: 0;    Curve: pcLinear;  Steps: 0),
+    (Name: 'Grain-Panorama'; UnitStr: ''; MinV: -100; MaxV: 100;   DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'Grains an';     UnitStr: '';   MinV: 0;    MaxV: 1;     DefV: 1;    Curve: pcStepped; Steps: 2),
     (Name: 'Osz Sync';      UnitStr: '%';  MinV: 0;    MaxV: 100;   DefV: 0;    Curve: pcLinear;  Steps: 0),
     (Name: 'Glide';         UnitStr: '';   MinV: 0;    MaxV: 2;     DefV: 0;    Curve: pcStepped; Steps: 3),
@@ -490,7 +492,7 @@ const
     (Name: 'Osz2 Oktave'; UnitStr: ''; MinV: 0; MaxV: 5; DefV: 3; Curve: pcStepped; Steps: 6),
     (Name: 'Osz2 Fein'; UnitStr: 'ct'; MinV: -100; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
     (Name: 'Osz2-Pegel'; UnitStr: '%'; MinV: 0; MaxV: 200; DefV: 40; Curve: pcLinear; Steps: 0),
-    (Name: 'Osz2 Panorama'; UnitStr: '%'; MinV: -100; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Osz2 Panorama'; UnitStr: ''; MinV: -100; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
     (Name: 'Osz2 FM-Verh.'; UnitStr: 'x'; MinV: 0.5; MaxV: 8; DefV: 2; Curve: pcLinear; Steps: 0),
     (Name: 'Osz2 FM-Menge'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 30; Curve: pcLinear; Steps: 0),
     (Name: 'Osz2 Sync'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
@@ -514,7 +516,7 @@ const
     (Name: 'Osz3 Oktave'; UnitStr: ''; MinV: 0; MaxV: 5; DefV: 3; Curve: pcStepped; Steps: 6),
     (Name: 'Osz3 Fein'; UnitStr: 'ct'; MinV: -100; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
     (Name: 'Osz3-Pegel'; UnitStr: '%'; MinV: 0; MaxV: 200; DefV: 40; Curve: pcLinear; Steps: 0),
-    (Name: 'Osz3 Panorama'; UnitStr: '%'; MinV: -100; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Osz3 Panorama'; UnitStr: ''; MinV: -100; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
     (Name: 'Osz3 FM-Verh.'; UnitStr: 'x'; MinV: 0.5; MaxV: 8; DefV: 2; Curve: pcLinear; Steps: 0),
     (Name: 'Osz3 FM-Menge'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 30; Curve: pcLinear; Steps: 0),
     (Name: 'Osz3 Sync'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
@@ -657,6 +659,7 @@ const
     (Name: 'Resampling Tempo'; UnitStr: 'ms'; MinV: 250; MaxV: 8000; DefV: 1000; Curve: pcLinear; Steps: 0),
     (Name: 'Resampling Sync'; UnitStr: ''; MinV: 0; MaxV: 4; DefV: 0; Curve: pcStepped; Steps: 5),
     (Name: 'Oversampling'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 1; Curve: pcStepped; Steps: 2),
+    (Name: 'Tonleiter-Tasten'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
     (Name: 'Leistung'; UnitStr: ''; MinV: 0; MaxV: 2; DefV: 0; Curve: pcStepped; Steps: 3),
     (Name: 'Master';        UnitStr: 'dB'; MinV: -60;  MaxV: 6;     DefV: 0;    Curve: pcDecibel; Steps: 0),
     (Name: 'Tempo';         UnitStr: 'BPM'; MinV: 60;  MaxV: 200;  DefV: 120;  Curve: pcLinear;  Steps: 0)
@@ -699,7 +702,7 @@ const
     gpOsc3FmAmt, gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn,
     gpOsc3FltType, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn,
     gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease, gpMaster, gpTempo);
-  VST_ADDED_COUNT = 124;   // Anzahl der Eintraege in VST_ADDED
+  VST_ADDED_COUNT = 125;   // Anzahl der Eintraege in VST_ADDED
   VST_ADDED: array[0..VST_ADDED_COUNT - 1] of TGranularParamId = (
     // Okt. 2026: Ereignis-Verzoegerung
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
@@ -742,7 +745,8 @@ const
     // Nov. 2026: Oszillator-Modell
     gpOscModel,
     // Nov. 2026: Feedback-Resampling
-    gpResOn, gpResMix, gpResTime, gpResSync);
+    gpResOn, gpResMix, gpResTime, gpResSync,
+    gpScaleKeys);
 
 
 { VST-Nummer -> interner Index und zurueck (-1 = ungueltig) }
@@ -1108,6 +1112,7 @@ begin
     gpLfo1Stop, gpLfo2Stop, gpLfo3Stop, gpLfo4Stop, gpLfo5Stop, gpLfo6Stop, gpLfo7Stop, gpLfo8Stop: Result := LFO_STOP_NAMES[EnsureRange(Step, 0, 9)];
     gpSc1Input, gpSc2Input: Result := SC_INPUT_NAMES[EnsureRange(Step, 0, 2)];
     gpPerformance: Result := PERF_NAMES[EnsureRange(Step, 0, 2)];
+    gpScaleKeys: Result := SCALE_KEY_NAMES[EnsureRange(Step, 0, 1)];
     gpLfo1Partner, gpLfo2Partner, gpLfo3Partner, gpLfo4Partner, gpLfo5Partner, gpLfo6Partner, gpLfo7Partner, gpLfo8Partner: Result := Format('LFO %d', [EnsureRange(Step, 0, LFO_COUNT - 1) + 1]);
     gpQuality: Result := QUALITY_NAMES[EnsureRange(Step, 0, 1)];
     gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve: Result := UMAC_CURVE_NAMES[EnsureRange(Step, 0, 3)];
@@ -1137,6 +1142,13 @@ begin
   if Index = Ord(gpVolume) then
   begin
     if Norm <= 0 then Result := '-inf dB' else Result := Format('%.1f dB', [V]);
+  end
+  else if Pos('Panorama', Info.Name) > 0 then
+  begin
+    // Panorama wie am Mischpult: L 30 / C / R 30 (statt -30 % .. +30 %)
+    if Round(V) = 0 then Result := 'C'
+    else if V < 0 then Result := Format('L %d', [Round(-V)])
+    else Result := Format('R %d', [Round(V)]);
   end
   else if Index = Ord(gpScTrigNote) then
     Result := Copy('C  CisD  DisE  F  FisG  GisA  B  H  ', (Round(V) mod 12) * 3 + 1, 3).Trim +

@@ -380,7 +380,7 @@ begin
   end;
 
   B.Font.Name := 'Tahoma';
-  B.Font.Size := 8;
+  B.Font.Size := UiPt(8);
   B.Font.Color := $C8C8C8;
   B.Textout(14, H - 16, FInfo);
   N := FSelEnd - FSelStart;

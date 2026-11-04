@@ -15,6 +15,7 @@ unit Granular.Keyboard;
 interface
 
 uses
+  Granular.Lang,
   System.Classes, System.SysUtils, System.Math, System.Types,
   Vcl.Controls, Vcl.ExtCtrls, Vcl.Graphics,
   GR32, GR32_Image, Granular.Prof;
@@ -217,7 +218,7 @@ begin
     FLabels.SetSize(B.Width, B.Height);
     FLabels.Clear(0);
     FLabels.Font.Name := 'Tahoma';
-    FLabels.Font.Size := 7;
+    FLabels.Font.Size := UiPt(7);
     for N := FFirstNote to Last do
       if N mod 12 = 0 then
       begin
@@ -406,7 +407,7 @@ begin
   Canvas.FillRect(Rect(R.Left + 2, Y - 2, R.Right - 2, Y + 2));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := $00C0B8B0;
-  Canvas.Font.Size := 7;
+  Canvas.Font.Size := UiPt(7);
   Canvas.TextOut((R.Width - Canvas.TextWidth(FCaption)) div 2, R.Bottom - 14, FCaption);
   Canvas.Brush.Style := bsSolid;
 end;
