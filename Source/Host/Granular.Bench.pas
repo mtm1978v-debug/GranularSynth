@@ -22,7 +22,8 @@ implementation
 
 uses
   Granular.Lang,
-  Winapi.Windows, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
+  Winapi.Windows, Winapi.ActiveX, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
+  System.Threading, System.Diagnostics,
   GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Pitch, Granular.Vst3, Granular.VstHost,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
   Granular.Editor, Granular.InfoView, Granular.ArpMidi, Granular.SampleEdit;
@@ -1247,7 +1248,8 @@ function CheckFullLoad: string;
     E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 1));
   end;
 
-  procedure Measure1(Layer: Boolean; out MsTotal, MsWorst: Double; out Grains, Voices: Integer; Variant: Integer);
+  procedure Measure1(Layer: Boolean; out MsTotal, MsWorst: Double; out Grains, Voices: Integer; Variant: Integer;
+    Secs: Integer);
   const
     BLK = 512;
   var
@@ -1287,7 +1289,7 @@ function CheckFullLoad: string;
       QueryPerformanceFrequency(F);
       MsWorst := 0;
       QueryPerformanceCounter(T0);
-      for B := 0 to Round(10 * SR / BLK) - 1 do
+      for B := 0 to Round(Secs * SR / BLK) - 1 do
       begin
         QueryPerformanceCounter(Tb);
         E.Process(nil, nil, @L[0], @R[0], BLK);
@@ -1295,7 +1297,7 @@ function CheckFullLoad: string;
         Ms := (T1 - Tb) * 1000 / F;
         if Ms > MsWorst then MsWorst := Ms;
       end;
-      MsTotal := (T1 - T0) * 1000 / F;
+      MsTotal := (T1 - T0) * 1000 / F * 10 / Secs;   // immer bezogen auf 10 s Audio
       Grains := E.ActiveGrains;
       Voices := 0;
       for I := 0 to 31 do
@@ -1306,15 +1308,19 @@ function CheckFullLoad: string;
   end;
 
   { Minimum aus drei Laeufen: robust gegen andere Last auf dem Rechner }
+  { Hauptmessung (Variant 0): bester von 3 Laeufen ueber 10 s - der laengste Block braucht eine lange
+    Messung, um seltene Spitzen zu erwischen. Aufschluesselung (Variant 1-5): nur zur Information,
+    ein Lauf ueber 4 s genuegt }
   procedure Measure(Layer: Boolean; out MsTotal, MsWorst: Double; out Grains, Voices: Integer; Variant: Integer = 0);
   var
-    K: Integer;
+    K, Runs, Secs: Integer;
     T, W: Double;
   begin
     MsTotal := 1E9; MsWorst := 1E9;
-    for K := 1 to 3 do
+    if Variant = 0 then begin Runs := 3; Secs := 10; end else begin Runs := 1; Secs := 4; end;
+    for K := 1 to Runs do
     begin
-      Measure1(Layer, T, W, Grains, Voices, Variant);
+      Measure1(Layer, T, W, Grains, Voices, Variant, Secs);
       MsTotal := Min(MsTotal, T);
       MsWorst := Min(MsWorst, W);
     end;
@@ -3526,19 +3532,80 @@ end;
 { Klang-Regression: jedes Preset spielt einen Akkord (1,5 s halten, 1 s Ausklang); Summe und Spitze des
   Ausgangs je Preset werden mit Demos\regress_ref.txt verglichen. Fehlt die Datei, wird sie angelegt
   (Referenz VOR einem Umbau erzeugen, danach muss jedes Preset gleich klingen). }
-function CheckRegression(OsOn: Boolean = False; Classic: Boolean = True): string;
+{ ein Preset fuer die Klang-Regression rendern (laeuft in einem Worker-Thread): Akkord 1,5 s halten,
+  1 s ausklingen; Summe der Betraege und Spitze. False = Preset nicht ladbar }
+function RenderRegressPreset(const Dir, Name: string; OsOn, Classic: Boolean; out Sum, Peak: Double): Boolean;
 const
   CHORD: array[0..3] of Integer = (48, 55, 60, 64);
 var
-  Dir, RefFile, Path, Res, Line, Bad: string;
-  SR2: TSearchRec;
-  Names, Ref, Outp: TStringList;
   E: TGranularEngine;
   L, R: array[0..511] of Single;
-  I, B, K, Cnt, NBad: Integer;
+  B, K: Integer;
+  Path, Res: string;
+  ComOk: Boolean;
+begin
+  Result := False;
+  Sum := 0;
+  Peak := 0;
+  // Worker-Thread: dieselbe Rechengenauigkeit wie der Hauptthread (sonst weichen die Bits ab) und COM
+  // fuer Media Foundation (Audiodateien, die kein WAV sind)
+  {$IFDEF CPUX86}
+  Set8087CW(Default8087CW);
+  {$ENDIF}
+  SetMXCSR(DefaultMXCSR);
+  ComOk := Succeeded(CoInitializeEx(nil, COINIT_MULTITHREADED));
+  try
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      if not LoadChunkFromFile(E, Dir + 'Presets' + PathDelim + Name, Path) then
+        Exit(False);
+      Res := ResolveSamplePath(Path, Dir);
+      if FileExists(Res) then
+        E.LoadSample(LoadAudioFile(Res))
+      else
+        E.LoadSample(CreateDemoSample(SR));
+      LoadMorphSample(E, Dir);
+      LoadZoneSamples(E, Dir);
+      E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(OsOn)));
+      E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(Classic)));
+      for K := 0 to High(CHORD) do
+        E.NoteOn(CHORD[K], 0.8);
+      for B := 0 to 214 do                        // 2,5 s
+      begin
+        if B = 129 then                           // nach 1,5 s loslassen
+          for K := 0 to High(CHORD) do
+            E.NoteOff(CHORD[K]);
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        for K := 0 to 511 do
+        begin
+          Sum := Sum + Abs(L[K]) + Abs(R[K]);
+          Peak := Max(Peak, Max(Abs(L[K]), Abs(R[K])));
+        end;
+      end;
+      Result := True;
+    finally
+      E.Free;
+    end;
+  finally
+    if ComOk then
+      CoUninitialize;
+  end;
+end;
+
+function CheckRegression(OsOn: Boolean = False; Classic: Boolean = True): string;
+var
+  Dir, RefFile, Line, Bad: string;
+  SR2: TSearchRec;
+  Names, Ref, Outp: TStringList;
+  I, K, Cnt, NBad: Integer;
   Sum, Peak, RSum, RPeak: Double;
   Parts: TArray<string>;
   FS: TFormatSettings;
+  Sums, Peaks: TArray<Double>;
+  Valid: TArray<Boolean>;
+  Watch: TStopwatch;
+  Took: string;
 begin
   FS := TFormatSettings.Invariant;
   Dir := IncludeTrailingPathDelimiter(ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..'));
@@ -3561,40 +3628,25 @@ begin
     if FileExists(RefFile) then
       Ref.LoadFromFile(RefFile, TEncoding.UTF8);
     Cnt := 0; NBad := 0; Bad := '';
+    // Rendern auf allen Kernen (jedes Preset in eigener Engine, unabhaengig); verglichen wird danach
+    // der Reihe nach. Die globale Startwellen-Tabelle legt eine Engine vorab an (sonst Wettlauf).
+    TGranularEngine.Create.Free;
+    SetLength(Sums, Names.Count);
+    SetLength(Peaks, Names.Count);
+    SetLength(Valid, Names.Count);
+    Watch := TStopwatch.StartNew;
+    TParallel.For(0, Names.Count - 1,
+      procedure(Idx: Integer)
+      begin
+        Valid[Idx] := RenderRegressPreset(Dir, Names[Idx], OsOn, Classic, Sums[Idx], Peaks[Idx]);
+      end);
+    Watch.Stop;
     for I := 0 to Names.Count - 1 do
     begin
-      E := TGranularEngine.Create;
-      try
-        E.SetSampleRate(SR);
-        if not LoadChunkFromFile(E, Dir + 'Presets' + PathDelim + Names[I], Path) then
-          Continue;
-        Res := ResolveSamplePath(Path, Dir);
-        if FileExists(Res) then
-          E.LoadSample(LoadAudioFile(Res))
-        else
-          E.LoadSample(CreateDemoSample(SR));
-        LoadMorphSample(E, Dir);
-        LoadZoneSamples(E, Dir);
-        E.SetParamById(gpOversample, StepToParam(Ord(gpOversample), Ord(OsOn)));
-        E.SetParamById(gpOscModel, StepToParam(Ord(gpOscModel), Ord(Classic)));
-        for K := 0 to High(CHORD) do
-          E.NoteOn(CHORD[K], 0.8);
-        Sum := 0; Peak := 0;
-        for B := 0 to 214 do                        // 2,5 s
-        begin
-          if B = 129 then                           // nach 1,5 s loslassen
-            for K := 0 to High(CHORD) do
-              E.NoteOff(CHORD[K]);
-          E.Process(nil, nil, @L[0], @R[0], 512);
-          for K := 0 to 511 do
-          begin
-            Sum := Sum + Abs(L[K]) + Abs(R[K]);
-            Peak := Max(Peak, Max(Abs(L[K]), Abs(R[K])));
-          end;
-        end;
-      finally
-        E.Free;
-      end;
+      if not Valid[I] then
+        Continue;
+      Sum := Sums[I];
+      Peak := Peaks[I];
       Inc(Cnt);
       Line := Names[I] + '|' + FloatToStrF(Sum, ffExponent, 12, 2, FS) + '|' + FloatToStrF(Peak, ffExponent, 12, 2, FS);
       Outp.Add(Line);
@@ -3619,6 +3671,7 @@ begin
         end;
       end;
     end;
+    Took := Format(' (%.1f s, %d Kerne)', [Watch.Elapsed.TotalSeconds, TThread.ProcessorCount]);
     if Ref.Count = 0 then
     begin
       ForceDirectories(ExtractFilePath(RefFile));
@@ -3626,7 +3679,7 @@ begin
       Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: Referenz fuer %d Presets angelegt (%s)', [Cnt, RefFile]);
     end
     else if NBad = 0 then
-      Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: %d Presets wie die Referenz -> OK', [Cnt])
+      Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: %d Presets wie die Referenz%s -> OK', [Cnt, Took])
     else
       Result := IfThen(not Classic, '[Wavetable] ', IfThen(OsOn, '[Oversampling] ', '')) + Format('Klang-Regression: FEHLER %d von %d Presets weichen ab:%s', [NBad, Cnt, Bad]);
   finally
@@ -3848,6 +3901,32 @@ begin
   Result := Format('Ausgangs-Trigger: %d Ereignisse, %d LFO-Starts (Spitze %.2f)', [Evt, Starts, Peak]);
 end;
 
+{ Laufzeit je Check (bench_zeiten.txt neben der EXE): zeigt, wo der Pruefstand seine Zeit verbringt }
+var
+  GLapWatch: TStopwatch;
+  GLaps: TStringList;
+
+function Lap(const Name, Res: string): string;
+begin
+  // der Check ist beim Aufruf schon gelaufen (Argument): Zeit seit dem letzten Lap gehoert zu ihm
+  if GLaps = nil then
+    GLaps := TStringList.Create;
+  GLaps.Add(Format('%8.1f s  %s', [GLapWatch.Elapsed.TotalSeconds, Name]));
+  GLapWatch := TStopwatch.StartNew;
+  Result := Res;
+end;
+
+procedure SaveLaps;
+begin
+  if GLaps = nil then
+    Exit;
+  try
+    GLaps.SaveToFile(ExtractFilePath(ParamStr(0)) + 'bench_zeiten.txt');
+  except
+  end;
+  FreeAndNil(GLaps);
+end;
+
 function RunBenchmark: string;
 var
   P, S: TRender;
@@ -3861,6 +3940,7 @@ begin
   SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
   SetThreadPriority(GetCurrentThread, THREAD_PRIORITY_HIGHEST);
   HasSSE := CpuHasSSE;
+  GLapWatch := TStopwatch.StartNew;
   P := RenderWith(False);
   if HasSSE then
     S := RenderWith(True)
@@ -3871,6 +3951,7 @@ begin
   Std := RenderWith(HasSSE, False, True);
   NoLim := RenderWith(HasSSE, True, False);
   InitDSP(True);
+  Lap('Grundmessung (Pascal/SSE)', '');
 
   MaxDiff := 0;
   Peak := 0;
@@ -3894,10 +3975,64 @@ begin
   Result := Result + sLineBreak + Format(
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
-  Result := Result + sLineBreak + CheckGfxKernel + sLineBreak + CheckSpectrumKernels + sLineBreak + CheckReverb + sLineBreak + CheckSat + sLineBreak + CheckComb + sLineBreak + CheckPhaser + sLineBreak + CheckChorus +
-    sLineBreak + CheckNewSound + sLineBreak + CheckEq + sLineBreak + CheckOsc + sLineBreak + CheckOutputStage + sLineBreak + CheckOutTrigger + sLineBreak + CheckPolyMod + sLineBreak + CheckMorphLayers + sLineBreak + CheckNoteLfoIsolation + sLineBreak + CheckFreeLfo + sLineBreak + CheckFreeSmooth + sLineBreak + CheckOsc123 + sLineBreak + CheckGrainLevel + sLineBreak + CheckVstMap + sLineBreak + CheckSwapAB + sLineBreak + CheckMixMeters + sLineBreak + CheckSourceRename + sLineBreak + CheckEnvSeg + sLineBreak + CheckEventDelay + sLineBreak + CheckLfoStop + sLineBreak + CheckLfoPartner + sLineBreak + CheckArpLatch + sLineBreak + CheckRegression + sLineBreak + CheckRegression(True) + sLineBreak + CheckRegression(True, False) + sLineBreak + CheckWavetable + sLineBreak + CheckOversample + sLineBreak + CheckOscDraw + sLineBreak + CheckOsSkip + sLineBreak + CheckResample + sLineBreak + CheckArpMidi + sLineBreak + CheckResAutoAlloc + sLineBreak + CheckSampleEdit + sLineBreak + CheckScaleKeys + sLineBreak +
-    CheckVst3 + sLineBreak + CheckLfo58 + sLineBreak + CheckUserMacros + sLineBreak + CheckLanguage + sLineBreak + CheckTextFit + sLineBreak + CheckHostVst3 + sLineBreak + CheckEmbedPreset + sLineBreak + CheckMidiLearn +
-    sLineBreak + CheckFxLoad + sLineBreak + CheckPreRoll + sLineBreak + CheckIdleSkip + sLineBreak + CheckTwoInstances + sLineBreak + CheckPresetLoad + sLineBreak + CheckFullLoad + sLineBreak + CheckMood + sLineBreak + CheckMoodSongs;
+  Result := Result + sLineBreak +
+    Lap('CheckGfxKernel', CheckGfxKernel) + sLineBreak +
+    Lap('CheckSpectrumKernels', CheckSpectrumKernels) + sLineBreak +
+    Lap('CheckReverb', CheckReverb) + sLineBreak +
+    Lap('CheckSat', CheckSat) + sLineBreak +
+    Lap('CheckComb', CheckComb) + sLineBreak +
+    Lap('CheckPhaser', CheckPhaser) + sLineBreak +
+    Lap('CheckChorus', CheckChorus) +
+    sLineBreak + Lap('CheckNewSound', CheckNewSound) + sLineBreak +
+    Lap('CheckEq', CheckEq) + sLineBreak +
+    Lap('CheckOsc', CheckOsc) + sLineBreak +
+    Lap('CheckOutputStage', CheckOutputStage) + sLineBreak +
+    Lap('CheckOutTrigger', CheckOutTrigger) + sLineBreak +
+    Lap('CheckPolyMod', CheckPolyMod) + sLineBreak +
+    Lap('CheckMorphLayers', CheckMorphLayers) + sLineBreak +
+    Lap('CheckNoteLfoIsolation', CheckNoteLfoIsolation) + sLineBreak +
+    Lap('CheckFreeLfo', CheckFreeLfo) + sLineBreak +
+    Lap('CheckFreeSmooth', CheckFreeSmooth) + sLineBreak +
+    Lap('CheckOsc123', CheckOsc123) + sLineBreak +
+    Lap('CheckGrainLevel', CheckGrainLevel) + sLineBreak +
+    Lap('CheckVstMap', CheckVstMap) + sLineBreak +
+    Lap('CheckSwapAB', CheckSwapAB) + sLineBreak +
+    Lap('CheckMixMeters', CheckMixMeters) + sLineBreak +
+    Lap('CheckSourceRename', CheckSourceRename) + sLineBreak +
+    Lap('CheckEnvSeg', CheckEnvSeg) + sLineBreak +
+    Lap('CheckEventDelay', CheckEventDelay) + sLineBreak +
+    Lap('CheckLfoStop', CheckLfoStop) + sLineBreak +
+    Lap('CheckLfoPartner', CheckLfoPartner) + sLineBreak +
+    Lap('CheckArpLatch', CheckArpLatch) + sLineBreak +
+    Lap('CheckRegression', CheckRegression) + sLineBreak +
+    Lap('CheckRegression(True)', CheckRegression(True)) + sLineBreak +
+    Lap('CheckRegression(True, False)', CheckRegression(True, False)) + sLineBreak +
+    Lap('CheckWavetable', CheckWavetable) + sLineBreak +
+    Lap('CheckOversample', CheckOversample) + sLineBreak +
+    Lap('CheckOscDraw', CheckOscDraw) + sLineBreak +
+    Lap('CheckOsSkip', CheckOsSkip) + sLineBreak +
+    Lap('CheckResample', CheckResample) + sLineBreak +
+    Lap('CheckArpMidi', CheckArpMidi) + sLineBreak +
+    Lap('CheckResAutoAlloc', CheckResAutoAlloc) + sLineBreak +
+    Lap('CheckSampleEdit', CheckSampleEdit) + sLineBreak +
+    Lap('CheckScaleKeys', CheckScaleKeys) + sLineBreak +
+    Lap('CheckVst3', CheckVst3) + sLineBreak +
+    Lap('CheckLfo58', CheckLfo58) + sLineBreak +
+    Lap('CheckUserMacros', CheckUserMacros) + sLineBreak +
+    Lap('CheckLanguage', CheckLanguage) + sLineBreak +
+    Lap('CheckTextFit', CheckTextFit) + sLineBreak +
+    Lap('CheckHostVst3', CheckHostVst3) + sLineBreak +
+    Lap('CheckEmbedPreset', CheckEmbedPreset) + sLineBreak +
+    Lap('CheckMidiLearn', CheckMidiLearn) +
+    sLineBreak + Lap('CheckFxLoad', CheckFxLoad) + sLineBreak +
+    Lap('CheckPreRoll', CheckPreRoll) + sLineBreak +
+    Lap('CheckIdleSkip', CheckIdleSkip) + sLineBreak +
+    Lap('CheckTwoInstances', CheckTwoInstances) + sLineBreak +
+    Lap('CheckPresetLoad', CheckPresetLoad) + sLineBreak +
+    Lap('CheckFullLoad', CheckFullLoad) + sLineBreak +
+    Lap('CheckMood', CheckMood) + sLineBreak +
+    Lap('CheckMoodSongs', CheckMoodSongs);
+  SaveLaps;
 end;
 
 end.

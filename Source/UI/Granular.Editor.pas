@@ -65,7 +65,7 @@ type
     AlignRight: Boolean;    // True: nur verschieben (rechtsbuendig), sonst strecken
   end;
 
-  TVarySection = (vsGrains, vsSound, vsEnvelope, vsModulation, vsEffects);
+  TVarySection = (vsGrains, vsSound, vsEnvelope, vsModulation, vsEffects, vsOscs);
 
   TGranularEditor = class(TCustomPanel)
   private
@@ -104,7 +104,7 @@ type
     FClipLed, FMidiLed: TClipLed;
     FQuickPV: TPanel;        // Einstellungs-Rechteck rechts im Schnell-Reiter (Bezug fuer den Taenzer)
     FInfoForm: TInfoForm;
-    FLockChecks: array[TVarySection] of TCheckBox;
+    FVaryChecks: array[TVarySection] of TCheckBox;   // an = Bereich wird beim Variieren gewuerfelt
     FUndoButton, FABButton: TButton;
     FLimiterLabel: TLabel;
     FUndo, FRedo: TArray<TArray<Single>>;
@@ -1540,9 +1540,9 @@ var
 begin
   if Style <= 0 then
     Exit;
-  Env := not FLockChecks[vsEnvelope].Checked;
-  Grains := not FLockChecks[vsGrains].Checked;
-  Fx := not FLockChecks[vsEffects].Checked;
+  Env := FVaryChecks[vsEnvelope].Checked;
+  Grains := FVaryChecks[vsGrains].Checked;
+  Fx := FVaryChecks[vsEffects].Checked;
   case Style of
     1: begin   // Pad / Flaeche: weich, lang, breit, mit Raum
          if Env then begin R(gpAttack, 250, 1500); R(gpSustain, 80, 100); R(gpRelease, 1500, 5000); end;
@@ -4075,7 +4075,7 @@ const
     'geordnet  <->  zufällig',
     'perkussiv  <->  langsam, lang ausklingend');
   SECTION_NAMES: array[TVarySection] of string =
-    ('Grains', 'Klang', 'Hüllkurve', 'Modulation', 'Effekte');
+    ('Grains', 'Klang', 'Hüllkurve', 'Modulation', 'Effekte', 'Oszillatoren');
 var
   PM, PV: TPanel;
   I, Y: Integer;
@@ -4150,15 +4150,16 @@ begin
   L := TLabel.Create(Self);
   L.Parent := PV;
   L.SetBounds(8, Y, 300, 16);
-  L.Caption := Tr('Gesperrt (wird nicht verändert):');
+  L.Caption := Tr('Variieren in:');
   L.Font.Color := COL_NAME;
   L.Transparent := True;
   for Sec := Low(TVarySection) to High(TVarySection) do
   begin
-    FLockChecks[Sec] := TCheckBox.Create(Self);
-    FLockChecks[Sec].Parent := PV;
-    FLockChecks[Sec].SetBounds(16 + (Ord(Sec) mod 3) * 110, Y + 22 + (Ord(Sec) div 3) * 24, 16, 16);
-    FLockChecks[Sec].TabStop := False;
+    FVaryChecks[Sec] := TCheckBox.Create(Self);
+    FVaryChecks[Sec].Parent := PV;
+    FVaryChecks[Sec].SetBounds(16 + (Ord(Sec) mod 3) * 110, Y + 22 + (Ord(Sec) div 3) * 24, 16, 16);
+    FVaryChecks[Sec].TabStop := False;
+    FVaryChecks[Sec].Checked := True;           // anfangs wird alles gewuerfelt
     L := TLabel.Create(Self);
     L.Parent := PV;
     L.SetBounds(36 + (Ord(Sec) mod 3) * 110, Y + 22 + (Ord(Sec) div 3) * 24, 80, 16);
@@ -4208,7 +4209,7 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    Tr('Variieren ändert die nicht gesperrten Bereiche zufällig um die eingestellte Stärke. ' +
+    Tr('Variieren ändert die eingeschalteten Bereiche (Variieren in) zufällig um die eingestellte Stärke. ' +
     'Rückgängig (Strg+Z) nimmt jede Reglerbewegung, Variieren, Preset-Wechsel und A/B zurück, ' +
     'Wiederholen (Strg+Y) stellt sie wieder her. A/B merkt sich zwei Fassungen zum Vergleichen. ' +
     'Rechtsklick auf einen Regler: Modulation zuweisen oder MIDI-Learn. Alt + Mausrad: Modulationsmenge.');
@@ -4293,10 +4294,17 @@ const
   KLANG: array[0..2] of TGranularParamId = (gpPitchRand, gpSpread, gpReverse);
   ENV: array[0..3] of TGranularParamId = (gpAttack, gpDecay, gpSustain, gpRelease);
   MODS: array[0..3] of TGranularParamId = (gpLfo1Rate, gpLfo1Shape, gpLfo2Rate, gpLfo2Shape);
-  FX: array[0..7] of TGranularParamId =
-    (gpFltType, gpFltCutoff, gpFltReso, gpFltContour, gpFltEnvAmt, gpEchoTime, gpEchoFeedback, gpEchoDamp);
+  FLT: array[0..4] of TGranularParamId = (gpFltType, gpFltCutoff, gpFltReso, gpFltContour, gpFltEnvAmt);
+  ECHO: array[0..2] of TGranularParamId = (gpEchoTime, gpEchoFeedback, gpEchoDamp);
+  // FM-Verhaeltnisse, die musikalisch bleiben (ganzzahlig oder halbzahlig: harmonische Obertoene)
+  FM_RATIOS: array[0..8] of Double = (0.5, 1, 1.5, 2, 3, 4, 5, 6, 7);
 var
   S: Double;
+
+  function IsOn(Id: TGranularParamId): Boolean;
+  begin
+    Result := FEngine.GetParamById(Id) >= 0.5;
+  end;
 
   procedure Vary(Index: Integer; Scale: Double = 1);
   var
@@ -4317,12 +4325,48 @@ var
     end;
   end;
 
-  procedure VaryList(const Ids: array of TGranularParamId);
+  procedure VaryList(const Ids: array of TGranularParamId; Scale: Double = 1);
   var
     I: Integer;
   begin
     for I := 0 to High(Ids) do
-      Vary(Ord(Ids[I]));
+      Vary(Ord(Ids[I]), Scale);
+  end;
+
+  { Oszillatoren: nur eingeschaltete; Welle bleibt (der Charakter des Presets), FM-Verhaeltnis springt
+    nur auf musikalische Werte, Pegel und Sync behutsam }
+  procedure VaryOscs;
+  var
+    O, K: Integer;
+    P: TOscParamIds;
+    Cur, Best: Double;
+  begin
+    for O := 0 to OSC_COUNT - 1 do
+    begin
+      P := OSC_P[O];
+      if not IsOn(P.On_) then
+        Continue;
+      if Random < S * 0.4 then
+      begin
+        // Nachbar-Verhaeltnis in der Liste (ein Schritt hoch oder runter)
+        Cur := ParamToPlain(P.FmRatio, FEngine.GetParamById(P.FmRatio));
+        K := 0;
+        for var I := 0 to High(FM_RATIOS) do
+          if Abs(FM_RATIOS[I] - Cur) < Abs(FM_RATIOS[K] - Cur) then
+            K := I;
+        K := EnsureRange(K + IfThen(Random < 0.5, -1, 1), 0, High(FM_RATIOS));
+        Best := FM_RATIOS[K];
+        FEngine.SetParamById(P.FmRatio, PlainToParam(P.FmRatio, Best));
+      end;
+      Vary(Ord(P.FmAmt));
+      Vary(Ord(P.Level), 0.4);
+      Vary(Ord(P.Sync), 0.5);
+      VaryList([P.Attack, P.Decay, P.Sustain, P.Release], 0.6);
+      if IsOn(P.FmEnvOn) then
+        VaryList([P.FmAttack, P.FmDecay, P.FmSustain, P.FmRelease], 0.6);
+      if IsOn(P.FltOn) then
+        VaryList([P.FltCutoff, P.FltReso, P.FltEnvAmt], 0.6);
+    end;
   end;
 
 var
@@ -4332,10 +4376,11 @@ begin
   if S <= 0 then
     Exit;
   PushUndo;
-  if not FLockChecks[vsGrains].Checked then VaryList(GRAINS);
-  if not FLockChecks[vsSound].Checked then VaryList(KLANG);
-  if not FLockChecks[vsEnvelope].Checked then VaryList(ENV);
-  if not FLockChecks[vsModulation].Checked then
+  // mit Mass: nur Teile, die im Preset auch klingen (ausgeschaltete bleiben unberuehrt)
+  if FVaryChecks[vsGrains].Checked and IsOn(gpGrainOn) then VaryList(GRAINS);
+  if FVaryChecks[vsSound].Checked and IsOn(gpGrainOn) then VaryList(KLANG);
+  if FVaryChecks[vsEnvelope].Checked then VaryList(ENV);
+  if FVaryChecks[vsModulation].Checked then
   begin
     VaryList(MODS);
     // nur die Mengen bereits belegter Slots, keine neuen Zuordnungen erfinden
@@ -4343,11 +4388,22 @@ begin
       if ParamStep(SlotSourceIndex(Slot), FEngine.GetParam(SlotSourceIndex(Slot))) > 0 then
         Vary(SlotAmountIndex(Slot), 0.5);
   end;
-  if not FLockChecks[vsEffects].Checked then
+  if FVaryChecks[vsEffects].Checked then
   begin
-    VaryList(FX);
-    Vary(Ord(gpEchoPitch), 0.3);
+    if IsOn(gpFltOn) then
+      VaryList(FLT);
+    if IsOn(gpEchoOn) then
+    begin
+      VaryList(ECHO);
+      Vary(Ord(gpEchoPitch), 0.3);
+    end;
+    if IsOn(gpRevOn) then
+      VaryList([gpRevMix, gpRevDecay], 0.5);
+    if FEngine.GetParamById(gpDrive) > 0 then
+      Vary(Ord(gpDrive), 0.5);     // Saettigung nur, wenn das Preset schon welche hat
   end;
+  if FVaryChecks[vsOscs].Checked then
+    VaryOscs;
   ApplyVaryStyle(FVaryStyle.ItemIndex);
   UpdateFromEngine;
 end;

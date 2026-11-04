@@ -69,7 +69,9 @@ const
 constructor TIconButton.Create(AOwner: TComponent);
 begin
   inherited;
-  ControlStyle := ControlStyle + [csOpaque] - [csDoubleClicks];
+  // csClickEvents raus: Click kommt allein aus MouseUp - sonst loest die VCL ihn zusaetzlich aus,
+  // und Umschalter wie Abspielen/Stopp springen sofort zurueck
+  ControlStyle := ControlStyle + [csOpaque] - [csDoubleClicks, csClickEvents];
   DoubleBuffered := True;
   Width := 100;
   Height := 27;

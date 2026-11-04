@@ -6,6 +6,17 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.16 – 04.11.2026
+
+### Geändert
+- **Variieren mit Maß** (Reiter *Schnell*): Gewürfelt wird nur noch, was im Preset auch klingt – ausgeschaltete Teile (Grains, Filter, Echo, Hall, Sättigung) bleiben unberührt. Neu ist der Bereich **Oszillatoren**: bei eingeschalteten Oszillatoren variieren FM-Menge, Pegel, Sync, Hüllkurven und Filter; die Welle bleibt, das FM-Verhältnis springt nur auf musikalische Werte (½, 1, 1½, 2, 3 …). So lassen sich auch reine FM-Presets sinnvoll abwandeln.
+- **Variieren in** statt *Gesperrt*: Die Schalter unter *Variieren* zeigen jetzt, was gewürfelt wird (an = wird verändert). Anfangs sind alle an – das Würfeln selbst verhält sich wie bisher.
+
+### Behoben
+- **Audio bearbeiten:** *Abspielen* und *Aufnehmen* reagierten nicht auf Mausklicks (der Klick wurde doppelt ausgelöst und startete und stoppte sofort wieder); Zoom-Knöpfe sprangen zwei Stufen.
+
+---
+
 ## Version 2.15 – 04.11.2026
 
 ### Neu

@@ -39,7 +39,7 @@ TABS = [
  ("Kategorie / Stern", "Kopfleiste: Presetliste nach Kategorie eingrenzen; Stern = aktuelles Preset als Favorit markieren."),
  ("Wiederholen", "stellt den zuletzt mit Rückgängig zurückgenommenen Schritt wieder her (Strg+Y)."),
  ("Makros", "Textur, Bewegung, Helligkeit, Raum, Streuung, H\u00fcllkurven-L\u00e4nge: jeder Regler ver\u00e4ndert mehrere Einstellungen auf einmal. 50 % = Preset unver\u00e4ndert; \u201eMakros auf 50 %\u201c setzt alle zur\u00fcck."),
- ("Variieren / St\u00e4rke / Gesperrt", "w\u00fcrfelt eine Abwandlung des Klangs; die St\u00e4rke bestimmt wie weit, gesperrte Bereiche bleiben unver\u00e4ndert. \u201eR\u00fcckg\u00e4ngig\u201c holt den vorigen Stand."),
+ ("Variieren / St\u00e4rke / Variieren in", "w\u00fcrfelt eine Abwandlung des Klangs; die St\u00e4rke bestimmt wie weit. Unter \u201eVariieren in\u201c sind die Bereiche eingeschaltet, die ver\u00e4ndert werden; ausgeschaltete bleiben, wie sie sind. Gew\u00fcrfelt wird nur, was im Preset auch klingt (ausgeschaltete Teile bleiben, wie sie sind); bei den Oszillatoren bleibt die Welle, das FM-Verh\u00e4ltnis springt nur auf musikalische Werte. \u201eR\u00fcckg\u00e4ngig\u201c holt den vorigen Stand."),
  ("A/B", "zwischen zwei Fassungen hin- und herschalten und vergleichen."),
  ("HQ-Modus", "bessere Interpolation der Grains und - mit Oversampling (Reiter Leistung, Standard an) - saubere Oszillatoren und S\u00e4ttigung ohne Spiegelfrequenzen (etwas mehr Rechenlast)."),
  ("Limiter", "f\u00e4ngt Spitzen am Ausgang ab, damit nichts verzerrt."),
@@ -167,7 +167,7 @@ TABS = [
 ]),]
 
 NO = {"Sprache / Language", "Freie Form: Klaviatur, Gl\u00e4ttung", "Zonen 1-3", "Aufnahme", "Kategorie / Stern", "Wiederholen", "Lastliste", "Zeiger / Laufzeit", "Audio laden...", "Alle Noten aus", "Okt - / Okt +", "Preset w\u00e4hlen, < >", "Speichern...", "CLIP / MIDI",
-      "Info", "Hilfe", "Statuszeile", "Autoplay, Haken \u201ealle\u201c", "Variieren / St\u00e4rke / Gesperrt", "A/B", "Spektrum", "Kurve", "Leuchten",
+      "Info", "Hilfe", "Statuszeile", "Autoplay, Haken \u201ealle\u201c", "Variieren / St\u00e4rke / Variieren in", "A/B", "Spektrum", "Kurve", "Leuchten",
       "Ziel B merken / laden / l\u00f6schen", "A <-> B tauschen"}
 PART = {"Bend / Mod": "MIDI", "Latch": "Arp Latch", "Arpeggiator": "ja (Muster: nein)", "LFO 1 bis 8: Rate, Form, Sync": "ja (freie Form: nein)",
         "Morph, Morph-LFO": "ja (freie Form: nein)", "Zwei Klänge (Morph-Art)": "ja", "Modulationsmatrix": "ja (alle Zeilen)",

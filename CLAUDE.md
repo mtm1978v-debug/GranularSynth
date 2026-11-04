@@ -38,6 +38,7 @@ bin\Win64\GranularHost.exe -bench
 
 - `build.bat` heißt mit vollem Pfad aufrufen, wenn es aus einem anderen Ordner gestartet wird.
 - In `bin\<Plattform>\bench.txt` dürfen weder `FEHLER` noch `ABWEICHUNG` stehen. Die Zeile `Klang-Regression: … -> OK` muss erscheinen.
+- **Laufzeit:** Die Klang-Regression rendert auf allen Kernen (`TParallel.For`, je Preset eine Engine), verglichen wird danach der Reihe nach. Worker-Threads setzen FPU/MXCSR auf den Delphi-Standard und starten COM – sonst weichen unter Win32 die Bits ab bzw. Media Foundation lädt nichts. Zeitmessungen (Volllast, Wavetable, Oversampling, SSE/Pascal) laufen danach allein auf einem Kern und dürfen nie parallel laufen. Die Dauer je Check steht in `bin\<Plattform>\bench_zeiten.txt`. Globale, beim ersten Gebrauch angelegte Tabellen vor dem Parallel-Teil anlegen (z. B. eine Engine erzeugen und freigeben).
 - **Klang-Regression:** Alle Presets werden gerendert und Bit für Bit mit `Demos/regress_ref.txt` verglichen. Wer die Datei löscht, legt die Referenz neu an. Das ist nur erlaubt, wenn eine Klangänderung **gewollt** ist.
 - Neue Funktionen bekommen eine eigene `Check…`-Funktion in `Source/Host/Granular.Bench.pas`, die mit „-> OK“ oder „-> FEHLER“ endet.
 - **Auslieferung:**
