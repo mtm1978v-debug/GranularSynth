@@ -164,7 +164,7 @@ const
   LINES: array[0..8] of Double = (50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000);
   LABELS: array[0..8] of string = ('50', '100', '200', '500', '1k', '2k', '5k', '10k', '20k');
 var
-  I, X, Y, D: Integer;
+  I, X, Y, D, Tx, LastX: Integer;
 begin
   if FGrid = nil then
   begin
@@ -186,11 +186,18 @@ begin
     FGrid.Font.Name := 'Tahoma';
     FGrid.Font.Size := UiPt(7);
     FGrid.Font.Color := $808080;
+    LastX := -1000;
     for I := 0 to High(LINES) do
     begin
       X := FreqToX(LINES[I], W);
       FGrid.VertLineS(X, 0, H - 14, $FF262A31);
-      FGrid.Textout(Min(X + 2, W - 22), H - 13, LABELS[I]);
+      // Beschriftung nur, wenn sie nicht in die vorige laeuft (schmale Anzeige, z.B. im Mischpult)
+      Tx := Min(X + 2, W - 22);
+      if Tx >= LastX + 4 then
+      begin
+        FGrid.Textout(Tx, H - 13, LABELS[I]);
+        LastX := Tx + FGrid.TextWidth(LABELS[I]);
+      end;
     end;
     FGrid.Textout(4, 2, Tr('Spektrum (Ausgang)'));
   finally

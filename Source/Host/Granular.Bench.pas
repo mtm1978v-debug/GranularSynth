@@ -282,6 +282,452 @@ begin
     Result := Format('Saettigung: ABWEICHUNG %.3e gegenueber Pascal!', [D]);
 end;
 
+{ Saettigungs-Arten Roehre/Hart/Faltung: SIMD gegen Pascal, dazu Grenzen (Hart und Faltung nie ueber
+  Make, Roehre: Stille bleibt Stille) }
+function CheckShape: string;
+const
+  KN: array[1..3] of string = ('Roehre', 'Hart', 'Faltung');
+var
+  A, B: TShapeArgs;
+  XA, XB: array[0..255] of Single;
+  I, K: Integer;
+  D, Pk: Double;
+  Ok: Boolean;
+  Z: Single;
+begin
+  Result := 'Saettigungs-Arten (SIMD gegen Pascal):';
+  Ok := True;
+  for K := 1 to 3 do
+  begin
+    FillChar(A, SizeOf(A), 0);
+    A.Kind := K;
+    for I := 0 to 3 do
+    begin
+      A.Drive4[I] := 6; A.Make4[I] := 0.5; A.C27[I] := 27; A.C9[I] := 9;
+      A.One4[I] := 1; A.MOne4[I] := -1; A.Zero4[I] := 0;
+      if K = 3 then begin A.Hi4[I] := 5; A.Lo4[I] := -5; end
+      else begin A.Hi4[I] := 3; A.Lo4[I] := -3; end;
+      if K = 1 then
+      begin
+        A.Bias4[I] := 0.35;
+        A.Off4[I] := ((27 + 0.35 * 0.35) * 0.35) / (0.35 * 0.35 * 9 + 27);
+      end;
+    end;
+    B := A;
+    RandSeed := 5 + K;
+    for I := 0 to High(XA) do
+    begin
+      XA[I] := (Random - 0.5) * 2.4;
+      XB[I] := XA[I];
+    end;
+    A.P := @XA[0]; A.Count := Length(XA);
+    B.P := @XB[0]; B.Count := Length(XB);
+    RenderShape(@A);
+    ShapeBlockPas(@B);
+    D := 0;
+    Pk := 0;
+    for I := 0 to High(XA) do
+    begin
+      D := Max(D, Abs(XA[I] - XB[I]));
+      Pk := Max(Pk, Abs(XA[I]));
+    end;
+    Result := Result + Format(' %s %.1e (Spitze %.2f)', [KN[K], D, Pk]);
+    if D >= 1E-5 then Ok := False;
+    if (K >= 2) and (Pk > 0.5 + 1E-6) then Ok := False;
+    if K = 1 then
+    begin
+      Z := 0;
+      A.P := @Z; A.Count := 1;
+      ShapeBlockPas(@A);
+      if Abs(Z) > 1E-6 then Ok := False;
+    end;
+  end;
+  if Ok then Result := Result + ' -> OK' else Result := Result + ' -> FEHLER';
+end;
+
+{ Kompressor: Menge 0 = unveraendert (Baender ergeben wieder das Signal), Menge 100 = dichter
+  (der leise Ausklang kommt relativ zum gehaltenen Ton nach vorn), der Anschlag wird nicht
+  ueberhoeht (Spitze hoechstens 6 dB ueber ohne Kompressor), keine ungueltigen Werte }
+function CheckComp: string;
+var
+  RmsOff, RmsZero, RmsFull, PkOff, PkFull, Dev, TailOff, TailFull, Tail: Double;
+  Kl: Boolean;
+  Bad: Boolean;
+  Ref: array of Single;
+
+  // Mode 0 = Referenz merken, 1 = mit Referenz vergleichen, 2 = nur messen
+  procedure Run(OnV, Amt, Mode: Integer; out Rms, Pk: Double);
+  var
+    E: TGranularEngine;
+    L, R: array[0..511] of Single;
+    Blk, I, Cnt: Integer;
+    S, ST, SH: Double;
+    NT, NH: Integer;
+  begin
+    ST := 0; SH := 0; NT := 0; NH := 0;
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+      E.SetParamById(gpCompOn, StepToParam(Ord(gpCompOn), OnV));
+      E.SetParamById(gpCompAmt, PlainToParam(gpCompAmt, Amt));
+      E.SetParamById(gpMaster, PlainToParam(gpMaster, 0.5));
+      E.NoteOn(60, 0.7);
+      S := 0; Pk := 0; Cnt := 0;
+      for Blk := 0 to 99 do
+      begin
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        if Blk = 70 then E.NoteOff(60);
+        for I := 0 to 511 do
+        begin
+          if IsNan(L[I]) or IsInfinite(L[I]) then Bad := True;
+          S := S + Sqr(L[I]);
+          Pk := Max(Pk, Abs(L[I]));
+          if (Blk >= 20) and (Blk < 70) then begin SH := SH + Sqr(L[I]); Inc(NH); end;
+          if (Blk >= 74) and (Blk < 90) then begin ST := ST + Sqr(L[I]); Inc(NT); end;
+          if Mode = 0 then
+            Ref[Cnt] := L[I]
+          else if Mode = 1 then
+            Dev := Max(Dev, Abs(Ref[Cnt] - L[I]));
+          Inc(Cnt);
+        end;
+      end;
+      Rms := Sqrt(S / Cnt);
+      Tail := Sqrt(ST / Max(NT, 1)) / Max(Sqrt(SH / Max(NH, 1)), 1E-9);   // Ausklang relativ zum Ton
+    finally
+      E.Free;
+    end;
+  end;
+
+begin
+  Bad := False;
+  Dev := 0;
+  SetLength(Ref, 100 * 512);
+  Run(0, 0, 0, RmsOff, PkOff);
+  TailOff := Tail;
+  Run(1, 0, 1, RmsZero, PkFull);
+  Run(1, 100, 2, RmsFull, PkFull);
+  TailFull := Tail;
+  // Kennlinie: 12 dB ueber der Schwelle bei 4:1 = -9 dB; Knick 12 dB stetig an beiden Kanten
+  Kl := Abs(CompGainDb(-8, -20, 4, 0) + 9) < 1E-9;
+  Kl := Kl and (Abs(CompGainDb(-14, -20, 4, 12) - CompGainDb(-14 + 1E-7, -20, 4, 0)) < 1E-5);
+  Kl := Kl and (Abs(CompGainDb(-26, -20, 4, 12) - CompGainDb(-26 - 1E-7, -20, 4, 12)) < 1E-5);
+  Kl := Kl and (CompGainDb(-20, -20, 4, 12) < 0) and (CompGainDb(-20, -20, 1, 12) = 0);
+  Result := Format('Kompressor: Menge 0 Abweichung %.1e, Ausklang/Ton aus %.3f -> voll %.3f, Spitze aus %.2f -> voll %.2f, Kennlinie %s',
+    [Dev, TailOff, TailFull, PkOff, PkFull, BoolToStr(Kl, True)]);
+  if Kl and (Dev < 1E-4) and not Bad and (RmsFull > 0) and (TailFull > TailOff * 1.25) and (PkFull < PkOff * 2) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
+{ Bass mono: Mitte (L+R) bleibt unveraendert, das Seitensignal unter 120 Hz verschwindet weitgehend,
+  darueber bleibt es (Stereobreite 200 %, Demo-Klang tief gespielt) }
+function CheckBassMono: string;
+var
+  SumDev, LowOff, LowOn, HiOff, HiOn: Double;
+  Mid: array of Single;
+
+  procedure Run(OnV: Integer; out Low, Hi: Double);
+  var
+    E: TGranularEngine;
+    L, R: array[0..511] of Single;
+    Blk, I, Cnt: Integer;
+    S, Lp, Lp2, Lp3, Hp, C: Double;
+  begin
+    Low := 0; Hi := 0; Lp := 0; Lp2 := 0; Lp3 := 0; Cnt := 0;
+    C := 1 - Exp(-2 * Pi * 40 / SR);
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+      E.SetParamById(gpWidth, PlainToParam(gpWidth, 200));
+      E.SetParamById(gpMaster, PlainToParam(gpMaster, -18));    // leise: der Soft-Clip am Ausgang greift nicht
+      E.SetParamById(gpBassMonoOn, StepToParam(Ord(gpBassMonoOn), OnV));
+      E.NoteOn(36, 0.8);
+      E.NoteOn(72, 0.8);
+      for Blk := 0 to 79 do
+      begin
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        for I := 0 to 511 do
+        begin
+          S := (L[I] - R[I]) * 0.5;
+          // Messfilter: 3 Einpol-Tiefpaesse bei 40 Hz (steil genug, dass die hohe Note nicht durchrutscht)
+          Lp := Lp + (S - Lp) * C;
+          Lp2 := Lp2 + (Lp - Lp2) * C;
+          Lp3 := Lp3 + (Lp2 - Lp3) * C;
+          Hp := S - Lp;
+          if Blk >= 10 then
+          begin
+            Low := Low + Sqr(Lp3);
+            Hi := Hi + Sqr(Hp);
+          end;
+          if OnV = 0 then
+            Mid[Cnt] := L[I] + R[I]
+          else
+            SumDev := Max(SumDev, Abs(Mid[Cnt] - (L[I] + R[I])));
+          Inc(Cnt);
+        end;
+      end;
+    finally
+      E.Free;
+    end;
+  end;
+
+begin
+  SumDev := 0;
+  SetLength(Mid, 80 * 512);
+  Run(0, LowOff, HiOff);
+  Run(1, LowOn, HiOn);
+  Result := Format('Bass mono: Mitte Abweichung %.1e, Seite tief %.1f%% uebrig, Seite hoch %.0f%% uebrig',
+    [SumDev, 100 * Sqrt(LowOn / Max(LowOff, 1E-20)), 100 * Sqrt(HiOn / Max(HiOff, 1E-20))]);
+  if (LowOff > 1E-6) and (SumDev < 1E-4) and (LowOn < LowOff * 0.0225) and (HiOn > HiOff * 0.5) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
+{ Modulations-Huellkurven: Attack 100 ms erreicht 1, Decay faellt auf Sustain 30 %, Release nach
+  Note aus faellt auf 0; Huellkurve 2 mit anderen Zeiten laeuft unabhaengig }
+function CheckModEnv: string;
+var
+  E: TGranularEngine;
+  L, R: array[0..255] of Single;
+  I, Blk: Integer;
+  PkA, AtSus, AtRel, E2Mid: Single;
+  T, TA: Double;
+begin
+  TA := 0;
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    E.LoadSample(CreateDemoSample(SR));
+    E.SetParamById(gpRelease, PlainToParam(gpRelease, 20));
+    E.SetParamById(gpMEnv1Att, PlainToParam(gpMEnv1Att, 100));
+    E.SetParamById(gpMEnv1Dec, PlainToParam(gpMEnv1Dec, 200));
+    E.SetParamById(gpMEnv1Sus, PlainToParam(gpMEnv1Sus, 30));
+    E.SetParamById(gpMEnv1Rel, PlainToParam(gpMEnv1Rel, 100));
+    E.SetParamById(gpMEnv2Att, PlainToParam(gpMEnv2Att, 2000));
+    for Blk := 0 to 199 do
+      E.Process(nil, nil, @L[0], @R[0], 256);       // Regler-Glaettung ausklingen lassen
+    E.NoteOn(60, 0.8);
+    PkA := 0; AtSus := 0; AtRel := 1; E2Mid := 0;
+    T := 0;
+    for Blk := 0 to Round(2.0 * SR / 256) do
+    begin
+      E.Process(nil, nil, @L[0], @R[0], 256);
+      T := T + 256 / SR;
+      if T < 0.15 then PkA := Max(PkA, E.SourceValue[msModEnv1]);
+      if (TA = 0) and (E.SourceValue[msModEnv1] >= 0.97) then TA := T;
+      if Abs(T - 1.0) < 0.003 then
+      begin
+        AtSus := E.SourceValue[msModEnv1];
+        E2Mid := E.SourceValue[msModEnv2];
+        E.NoteOff(60);
+      end;
+      if Abs(T - 1.9) < 0.003 then AtRel := E.SourceValue[msModEnv1];
+    end;
+  finally
+    E.Free;
+  end;
+  I := 0;
+  Result := Format('Mod-Huellkurven: Spitze %.2f, Sustain %.2f (soll 0,30), nach Release %.3f, Huellk. 2 bei 1 s %.2f (soll ~0,5), Attack 1 fertig nach %.0f ms (soll 100)',
+    [PkA, AtSus, AtRel, E2Mid, TA * 1000]);
+  if (PkA > 0.97) and (Abs(AtSus - 0.3) < 0.02) and (AtRel < 0.01) and (E2Mid > 0.4) and (E2Mid < 0.6) and (Abs(TA - 0.1) < 0.01) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+  if I <> 0 then Result := '';
+end;
+
+{ Wavetable: zwei Frames (Sinus, Rechteck) im Speicher; Position 0 und 1 klingen verschieden, Position 0,5
+  ist genau die Mitte (gleiche Phase -> lineares Ueberblenden); Frame-Erkennung; Aufbauzeit je Frame }
+function CheckWavetable: string;
+var
+  Data: TArray<Single>;
+  I, K: Integer;
+  Out_: array[0..2] of TArray<Single>;
+  D01, DMid, Rms0, Ms: Double;
+  Sw: TStopwatch;
+  Fl: Boolean;
+
+  procedure Run(Pos: Double; var Dst: TArray<Single>);
+  var
+    E: TGranularEngine;
+    L, R: array[0..511] of Single;
+    Blk, J: Integer;
+  begin
+    SetLength(Dst, 20 * 512);
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpGrainOn, 0);
+      E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+      E.SetParamById(gpOscOn, 1);
+      E.SetParamById(gpOscWtOn, 1);
+      E.SetParamById(gpOscWtPos, PlainToParam(gpOscWtPos, Pos * 100));
+      E.SetParamById(gpMaster, PlainToParam(gpMaster, -12));
+      if Pos = 0 then
+      begin
+        Sw := TStopwatch.StartNew;
+        E.SetOscWavetable(0, Data, 2048, 'Test');
+        Ms := Sw.Elapsed.TotalMilliseconds / 2;
+      end
+      else
+        E.SetOscWavetable(0, Data, 2048, 'Test');
+      for Blk := 0 to 99 do
+        E.Process(nil, nil, @L[0], @R[0], 512);           // Regler-Glaettung abwarten
+      E.NoteOn(57, 0.8);
+      for Blk := 0 to 19 do
+      begin
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        for J := 0 to 511 do
+          Dst[Blk * 512 + J] := L[J];
+      end;
+      if E.WtFrameCount(0) <> 2 then
+        Fl := False;
+    finally
+      E.Free;
+    end;
+  end;
+
+begin
+  Fl := True;
+  SetLength(Data, 2 * 2048);
+  for I := 0 to 2047 do
+  begin
+    Data[I] := Sin(2 * Pi * I / 2048);
+    if I < 1024 then Data[2048 + I] := 0.8 else Data[2048 + I] := -0.8;
+  end;
+  Run(0, Out_[0]);
+  Run(1, Out_[1]);
+  Run(0.5, Out_[2]);
+  D01 := 0; DMid := 0; Rms0 := 0;
+  for K := 0 to High(Out_[0]) do
+  begin
+    Rms0 := Rms0 + Sqr(Out_[0][K]);
+    D01 := D01 + Sqr(Out_[0][K] - Out_[1][K]);
+    DMid := Max(DMid, Abs(Out_[2][K] - (Out_[0][K] + Out_[1][K]) / 2));
+  end;
+  Rms0 := Sqrt(Rms0 / Length(Out_[0]));
+  D01 := Sqrt(D01 / Length(Out_[0]));
+  Fl := Fl and (WtFrameLen(2048 * 16) = 2048) and (WtFrameLen(600) = 600) and (WtFrameLen(256 * 41) = 256);
+  Result := Format('Wavetable: Pegel %.3f, Unterschied Frame 0/1 %.3f, Mitte Abweichung %.1e, Aufbau %.0f ms je Frame',
+    [Rms0, D01, DMid, Ms]);
+  if Fl and (Rms0 > 0.001) and (D01 > Rms0 * 0.2) and (DMid < 1E-4) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
+{ Sub/Rauschen und Effekt-Reihenfolge: Sub 0 % / Rauschen 0 % = unveraendert; Sub -1 Oktave legt die
+  Grundfrequenz eine Oktave tiefer dazu (Nulldurchgaenge halbieren sich bei reinem Sub), Rauschen
+  macht das Signal dichter; Reihenfolge 0 = bisher, eine andere Reihenfolge klingt bei Crusher + Chorus anders }
+function CheckSubFx: string;
+var
+  Base, SubOnly, Noise, Ord0, OrdX: TArray<Single>;
+  ZcOsc, ZcSub: Integer;
+  DevSame, DevOrd: Double;
+  I, FollowZc: Integer;
+  DbgS: string;
+
+  function Rms(const X: TArray<Single>): Double;
+  var
+    K: Integer;
+  begin
+    Result := 0;
+    for K := 0 to High(X) do
+      Result := Result + Sqr(X[K]);
+    Result := Sqrt(Result / Length(X));
+  end;
+
+  function Render(SubL, NoiseL, OscL: Double; FxOrd: Integer; Fx: Boolean; Follow: Boolean = False): TArray<Single>;
+  var
+    E: TGranularEngine;
+    L, R: array[0..511] of Single;
+    Blk, J: Integer;
+  begin
+    SetLength(Result, 16 * 512);
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpGrainOn, 0);
+      E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+      E.SetParamById(gpMaster, PlainToParam(gpMaster, 0));
+      E.SetParamById(gpOscOn, 1);
+      E.SetParamById(gpOscLevel, PlainToParam(gpOscLevel, OscL));
+      E.SetParamById(gpSubLevel, PlainToParam(gpSubLevel, SubL));
+      E.SetParamById(gpNoiseLevel, PlainToParam(gpNoiseLevel, NoiseL));
+      E.SetParamById(gpFxOrder, StepToParam(Ord(gpFxOrder), FxOrd));
+      if Follow then
+      begin
+        E.SetParamById(gpOscFollowPitch, 1);
+        E.SetParamById(gpPitch, PlainToParam(gpPitch, 12));
+      end;
+      if Fx then
+      begin
+        E.SetParamById(gpCrushOn, 1);
+        E.SetParamById(gpCrushBits, PlainToParam(gpCrushBits, 6));
+        E.SetParamById(gpChoOn, 1);
+      end;
+      for Blk := 0 to 99 do
+        E.Process(nil, nil, @L[0], @R[0], 512);
+      E.NoteOn(57, 0.8);
+      for Blk := 0 to 15 do
+      begin
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        for J := 0 to 511 do
+          Result[Blk * 512 + J] := L[J];
+      end;
+      DbgS := DbgS + Format(' %.4f', [Rms(Result)]);
+    finally
+      E.Free;
+    end;
+  end;
+
+  function Zc(const X: TArray<Single>): Integer;
+  var
+    K: Integer;
+  begin
+    Result := 0;
+    for K := 2048 to High(X) do
+      if (X[K - 1] < 0) and (X[K] >= 0) then
+        Inc(Result);
+  end;
+
+begin
+  DbgS := '';
+  Base := Render(0, 0, 40, 0, False);
+  SubOnly := Render(100, 0, 40, 0, False);
+  Noise := Render(0, 60, 40, 0, False);
+  DevSame := 0;
+  for I := 0 to High(Base) do
+    DevSame := Max(DevSame, Abs(Base[I] - SubOnly[I]));        // muss sich unterscheiden
+  ZcOsc := Zc(Base);
+  // reiner Sub-Anteil = mit Sub minus ohne Sub (der Sub ist relativ zum Oszillator-Pegel) -> halbe Nulldurchgaenge
+  for I := 0 to High(Base) do
+    SubOnly[I] := SubOnly[I] - Base[I];
+  ZcSub := Zc(SubOnly);
+  // Osz folgen Pitch: Pitch +12 bei eingeschaltetem Schalter = Oszillator eine Oktave hoeher (doppelte Nulldurchgaenge)
+  FollowZc := Zc(Render(0, 0, 40, 0, False, True));
+  Ord0 := Render(0, 0, 40, 0, True);
+  OrdX := Render(0, 0, 40, 23, True);
+  DevOrd := 0;
+  for I := 0 to High(Ord0) do
+    DevOrd := Max(DevOrd, Abs(Ord0[I] - OrdX[I]));
+  Result := Format('Sub/Rauschen/Reihenfolge: Nulldurchgaenge Osz %d, nur Sub %d (soll ~halb), ' +
+    'Rauschen %d, Sub veraendert %.3f, andere Reihenfolge veraendert %.3f, folgt Pitch +12: %d',
+    [ZcOsc, ZcSub, Zc(Noise), DevSame, DevOrd, FollowZc]) + ', Pegel' + DbgS;
+  if (DevSame > 1E-3) and (Abs(ZcSub * 2 - ZcOsc) <= 3) and (Zc(Noise) > ZcOsc * 3) and (DevOrd > 1E-3) and (Abs(FollowZc - 2 * ZcOsc) <= 3) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
 { Kammfilter: SIMD gegen Pascal ueber mehrere Bloecke mit Zustand (Ring, Schreibposition) }
 function CheckComb: string;
 var
@@ -2828,6 +3274,48 @@ end;
 
 { Tonleiter: weisse Tasten spielen C-Moll (D4 = D, E4 = Es, A4 = As, C#4 stumm) und ein Sinus-Oszillator
   rastet in C-Moll ein (Taste E4 klingt als F4, gemessen mit YIN) }
+{ Gleiten je Stufe (freier LFO): markierte Stufe rutscht vom vorigen Wert herueber, unmarkierte
+  springen; Chunk speichert die Schalter nur, wenn welche gesetzt sind, und laedt sie wieder }
+function CheckFreeGlide: string;
+var
+  F: TFreeLfo;
+  E, E2: TGranularEngine;
+  Ch: TBytes;
+  Sp: string;
+  VHard, VGl, VEnd, VWant: Single;
+  Plain, Back: Boolean;
+begin
+  FreeLfoDefault(F);
+  F.Mode := 1;
+  F.Steps := 8;
+  F.Step[0] := 0;
+  F.Step[1] := 1;
+  VHard := FreeLfoValue(F, (1 + 0.1) / 8);          // Stufe 1 kurz nach Beginn, ohne Gleiten
+  F.Glide := UInt64(1) shl 1;
+  VGl := FreeLfoValue(F, (1 + 0.1) / 8);            // mit Gleiten: noch zwischen 0 und 1
+  VEnd := FreeLfoValue(F, (1 + 0.8) / 8);           // nach dem Gleiten: Zielwert
+  VWant := 0.5 - 0.5 * Cos(Pi * 0.1 / FREE_GLIDE_LEN);
+  E := TGranularEngine.Create;
+  E2 := TGranularEngine.Create;
+  try
+    Ch := SaveChunk(E, '');
+    Plain := Pos('FGLD', TEncoding.ANSI.GetString(Ch)) = 0;
+    E.FreeLfo[3].Glide := $8000000000000005;
+    Ch := SaveChunk(E, '');
+    Back := LoadChunk(E2, Ch, Sp) and (E2.FreeLfo[3].Glide = $8000000000000005) and (E2.FreeLfo[0].Glide = 0);
+  finally
+    E.Free;
+    E2.Free;
+  end;
+  Result := Format('Gleiten je Stufe: ohne %.3f, mit %.3f (soll %.3f), danach %.3f, Chunk ohne Gleiten unveraendert %s, ' +
+    'Speichern/Laden %s', [VHard, VGl, VWant, VEnd, BoolToStr(Plain, True), BoolToStr(Back, True)]);
+  if (Abs(VHard - 1) < 1E-6) and (Abs(VGl - VWant) < 1E-5) and (VGl > 0.01) and (VGl < 0.99) and
+    (Abs(VEnd - 1) < 1E-6) and Plain and Back then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
 function CheckScaleKeys: string;
 var
   E: TGranularEngine;
@@ -3211,7 +3699,7 @@ begin
   Result := Jmp;
 end;
 
-function CheckWavetable: string;
+function CheckWtFile: string;
 var
   SawC, SawW, SqC, SqW, BassC, BassW, JmpC, JmpW: Double;
   On: Boolean;
@@ -3980,6 +4468,12 @@ begin
     Lap('CheckSpectrumKernels', CheckSpectrumKernels) + sLineBreak +
     Lap('CheckReverb', CheckReverb) + sLineBreak +
     Lap('CheckSat', CheckSat) + sLineBreak +
+    Lap('CheckShape', CheckShape) + sLineBreak +
+    Lap('CheckComp', CheckComp) + sLineBreak +
+    Lap('CheckBassMono', CheckBassMono) + sLineBreak +
+    Lap('CheckModEnv', CheckModEnv) + sLineBreak +
+    Lap('CheckWtFile', CheckWtFile) + sLineBreak +
+    Lap('CheckSubFx', CheckSubFx) + sLineBreak +
     Lap('CheckComb', CheckComb) + sLineBreak +
     Lap('CheckPhaser', CheckPhaser) + sLineBreak +
     Lap('CheckChorus', CheckChorus) +
@@ -4016,6 +4510,7 @@ begin
     Lap('CheckResAutoAlloc', CheckResAutoAlloc) + sLineBreak +
     Lap('CheckSampleEdit', CheckSampleEdit) + sLineBreak +
     Lap('CheckScaleKeys', CheckScaleKeys) + sLineBreak +
+    Lap('CheckFreeGlide', CheckFreeGlide) + sLineBreak +
     Lap('CheckVst3', CheckVst3) + sLineBreak +
     Lap('CheckLfo58', CheckLfo58) + sLineBreak +
     Lap('CheckUserMacros', CheckUserMacros) + sLineBreak +

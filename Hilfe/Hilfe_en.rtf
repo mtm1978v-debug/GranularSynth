@@ -2,8 +2,9 @@
 {\colortbl;\red230\green230\blue230;\red255\green200\blue90;\red110\green200\blue255;\red150\green230\blue150;\red180\green180\blue180;\red40\green46\blue60;\red34\green34\blue38;\red40\green42\blue48;}
 \f0\fs20\cf1
 {\cf2\b\fs34 GRANULAR - Help\par}
-{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.16\par}\par
+{\cf5\i FM \'b7 Synthesis \'b7 HABI M \'b7 Version 2.17\par}\par
 {\cf5\fs16 GranularSynth \'a9 2026 Matthias Haberecht \'b7 free software under the GNU GPL version 3 or later, without warranty \'b7 licence text: LICENSE.txt in the plugin folder\par}\par
+{\cf5\fs16 Feedback and wishes: GitHub (issues) or the forum thread on KVR Audio. Do you like GranularSynth? A short rating on kvraudio.com/product/granularsynth-by-matthias-haberecht helps others find it.\par}\par
 {\cf3\b\fs26 Foreword\par}
 GranularSynth is a highly optimised granular synthesizer with a clear goal: {\b professional sound} on the level of commercial digital synthesizers, followed by low CPU load and easy operation. With HQ, oscillators and saturation use {\b 2x oversampling}, so even harsh FM and drive sounds stay free of metallic aliasing (can be switched off in the Performance tab). The CPU-heavy parts (grains, oscillator, reverb, equalizer, displays) are written in {\b assembler} (SSE, Win32 and Win64), each with a Pascal version for cross-checking. The result: {\b very low CPU load} with {\b high sound quality} - even on older computers and in old hosts. The interface language can be switched between Deutsch and English in the Extras tab ("Sprache / Language") or by clicking the small flag at the right end of the tab row.\par\par
 The {\b tabs follow the signal path} from left to right: create sound (Grain, Samples, Osc 1-3) \'b7 shape per note (Filter) \'b7 movement (Modulation, LFO, Timing) \'b7 overall sound (Effects, Delay / Reverb, Sum) \'b7 playing aids (Extras) \'b7 tools (Mixer, Performance).\par\par
@@ -207,18 +208,24 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Drawn / Draw ...}\cell\pard\intbl{own wave: checked = the oscillator plays the drawn shape instead of "Wave". "Draw ..." opens the drawing area: draw one period with the mouse (right-click = 0), basic shapes (sine, triangle, saw, square, pulse, random, invert) as a starting point, smoothing 0-100 % rounds off the overtones (100 % = almost sine). It is played band-limited - no aliasing, even very high up; sync, unison, envelope and filter work as usual. Saved with the preset.}\cell\pard\intbl{\cf4 yes (Osc Drawn (Osc2, Osc3 likewise))}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 follows pitch}\cell\pard\intbl{Checked = all three oscillators follow the grain control Pitch including its modulation (e.g. free LFO -> Pitch as a step sequencer, vibrato). Off (default) = Pitch only affects the grains. "Assign to Pitch" in the free shape window switches it on too.}\cell\pard\intbl{\cf4 yes (Osc follow pitch)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Wavetable on / Load ... / Position}\cell\pard\intbl{load a wavetable file (WAV, e.g. from Serum or Vital: 2048 points per frame; a single cycle works too). Up to 32 frames, each band-limited like the built-in waves. Checked = the oscillator plays the wavetable instead of "Wave" and the drawing. Position moves smoothly through the frames and can be modulated per note (e.g. mod envelope or LFO -> Position = a moving sound). Examples in Beispieltoene: WT_Saege_zu_Rechteck, WT_Formant_Vokale, WT_FM_Wachsend. Learning preset L44.}\cell\pard\intbl{\cf4 yes (Osc wavetable on, Osc WT position (Osc2, Osc3 likewise))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Sub / sub range / noise (Osc 1 only)}\cell\pard\intbl{Sub = an extra tone one or two octaves below oscillator 1 (sine or square), Noise = white noise on top (attack, air, hats). Both follow pitch, envelope, pan and filter of oscillator 1; level relative to its level. Learning preset L45.}\cell\pard\intbl{\cf4 yes (Sub level, Sub octave, Sub wave, Noise level)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Sync (overtones)}\cell\pard\intbl{Hard Sync: 0 = clean wave, higher = more and more harmonics, cutting (not with noise).}\cell\pard\intbl{\cf4 yes (Osc Sync (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Octave / Fine tune / Level / Pan}\cell\pard\intbl{Transpose, fine tune in cents, volume (up to 200 %) and position.}\cell\pard\intbl{\cf4 yes (Osc Octave, Osc Fine, Osc Level, Osc Pan (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 FM ratio / FM amount}\cell\pard\intbl{FM wave only: modulator frequency and strength - bells, e-piano, bass.}\cell\pard\intbl{\cf4 yes (Osc FM Ratio, Osc FM amount (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 FM tone}\cell\pard\intbl{its own envelope for the FM amount (not the volume): bright on the attack, then soft.}\cell\pard\intbl{\cf4 yes (Own FM env., FM Attack, FM Decay, FM Sustain, FM Release (Osc2, Osc3 likewise))}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Volume envelope}\cell\pard\intbl{Oscillator ADSR, with graph.}\cell\pard\intbl{\cf4 yes (Osc Attack, Osc Decay, Osc Sustain, Osc Release (Osc2, Osc3 likewise))}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Custom filter}\cell\pard\intbl{Filter for this oscillator only, bypassing Filter 1/2 (e.g. noise hats via high-pass).}\cell\pard\intbl{\cf4 yes (Osc Filter On, Osc Filter Type, Osc Filter Cutoff, Osc Filter Resonance, Osc Filter Contour, Osc filter Env. (Osc2 filter, Osc3 filter likewise))}\cell\row
+\pard\intbl{\cf2 Volume envelope}\cell\pard\intbl{Oscillator ADSR, with graph.}\cell\pard\intbl{\cf4 yes (Osc Attack, Osc Decay, Osc Sustain, Osc Release (Osc2, Osc3 likewise))}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Custom filter}\cell\pard\intbl{Filter for this oscillator only, bypassing Filter 1/2 (e.g. noise hats via high-pass).}\cell\pard\intbl{\cf4 yes (Osc Filter On, Osc Filter Type, Osc Filter Cutoff, Osc Filter Resonance, Osc Filter Contour, Osc filter Env. (Osc2 filter, Osc3 filter likewise))}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Unison / Detune / Width}\cell\pard\intbl{2 to 7 detuned voices per note, spread across the stereo field (fat pads and leads).}\cell\pard\intbl{\cf4 yes (Osc Unison, Osc Unison Detune, Osc Unison width (Osc2, Osc3 likewise))}\cell\row
 \pard\par
 {\cf3\b\fs22 Filter tab\par}
@@ -251,7 +258,7 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 LFO 1 to 8: Rate, Shape, Sync}\cell\pard\intbl{slow oscillation (sine, triangle, saw, square, random, free); Sync = in time with the host. Clicking the graphic opens the free shape. Switch at bottom right: LFO 1-4 / LFO 5-8 (in brackets: LFOs 5-8 in use; unused ones cost no CPU).}\cell\pard\intbl{\cf4 yes (free shape: no; LFO1..LFO8 Rate, Shape, Sync)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Free shape: keyboard, smoothing}\cell\pard\intbl{in the free shape window (click on the LFO graphic): in semitone mode a keyboard on the left shows which note each step plays (reference = the key you play; every C with its octave), and the steps carry the note name. Smoothing 0-100 %: 0 % = hard steps (every note holds), a little = short glide from note to note, 100 % = round curve; the yellow line shows the real course. Saved with the preset.}\cell\pard\intbl{\cf5 no}\cell\row
+\pard\intbl{\cf2 Free shape: keyboard, smoothing}\cell\pard\intbl{in the free shape window (click on the LFO graphic): in semitone mode a keyboard on the left shows which note each step plays (reference = the key you play; every C with its octave), and the steps carry the note name. Smoothing 0-100 %: 0 % = hard steps (every note holds), a little = short glide from note to note, 100 % = round curve; the yellow line shows the real course. "Glide" strip below the steps: a click lets a single step glide over from the previous note (like slide on a step sequencer), the others keep jumping hard. Saved with the preset.}\cell\pard\intbl{\cf5 no}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 One-shot}\cell\pard\intbl{the LFO runs only one cycle and then stops (melodies, effect entries).}\cell\pard\intbl{\cf4 yes (LFO1..LFO8 One-shot)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
@@ -259,7 +266,7 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Partner}\cell\pard\intbl{which LFO triggers the event "End of partner LFO (one-shot)" with its one-shot end - for start and stop. Default: 1 and 2 or 3 and 4 mutually; any chains possible (e.g. 1 -> 2 -> 3 -> 4). The partner must be set to "One-shot". Only active if start or stop uses this event.}\cell\pard\intbl{\cf4 yes (LFO1..LFO8 Partner)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Stop}\cell\pard\intbl{Off trigger: the event (Note on, Note off, End partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) halts the LFO - no modulation until its start event starts it again. "never" = keeps running. Only works with a start event (not with "free"); with Stop the LFO also waits for its first start initially. For per-note LFOs, "Note off" halts only the released note. Delay as for the start (Timing / Events tab). "after time": the LFO halts after a fixed run time from its start - in ms or as a note value (2/1, 1/1, 1/2, 1/4, 1/4T ...; a note value takes precedence over ms).}\cell\pard\intbl{\cf4 yes (LFO1..LFO8 Stop, Stop time, Stop time sync)}\cell\row
+\pard\intbl{\cf2 Stop}\cell\pard\intbl{Off trigger: the event (Note on, Note off, End partner LFO, Sidechain trigger, SC pitch, Threshold gate, Silence, Output > Threshold) halts the LFO - no modulation until its start event starts it again. "never" = keeps running. Only works with a start event (not with "free"); with Stop the LFO also waits for its first start initially. For per-note LFOs, "Note off" halts only the released note. Delay as for the start (Timing / Env. tab). "after time": the LFO halts after a fixed run time from its start - in ms or as a note value (2/1, 1/1, 1/2, 1/4, 1/4T ...; a note value takes precedence over ms).}\cell\pard\intbl{\cf4 yes (LFO1..LFO8 Stop, Stop time, Stop time sync)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Output > Threshold}\cell\pard\intbl{Trigger on the own output level: when it exceeds the threshold, an LFO with this retrigger mode starts. An LFO started this way does not retrigger itself while it is running (no feedback).}\cell\pard\intbl{\cf4 yes (Output threshold)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
@@ -267,22 +274,26 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Auto-Pitch}\cell\pard\intbl{pitch comes from the sidechain (sung note) instead of the key - continuous or in semitones.}\cell\pard\intbl{\cf4 yes (Auto-Pitch)}\cell\row
 \pard\par
-{\cf3\b\fs22 Timing / Events tab\par}
+{\cf3\b\fs22 Timing / Env. tab\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Control / Button}\cell\pard\intbl{\b What it does}\cell\pard\intbl{\b VST parameters}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Delay per event}\cell\pard\intbl{every event that restarts an LFO (note on, note off, end of partner LFO, sidechain trigger, SC pitch, threshold gate, silence, output > threshold) can take effect with a delay: free in ms or in sync (2/1 to 1/32, dotted and triplet; the note value wins). Note on with per-note LFOs: until then the LFO of that note rests - e.g. violin with vibrato only after a half note (preset 159).}\cell\pard\intbl{\cf4 yes (Dly. Note on, Dly. Note on sync, Delay note off ... Delay output sync)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Modulation envelopes 1 / 2}\cell\pard\intbl{two free ADSR envelopes per note, only for modulation: in the matrix, put source "Mod env 1" or "2" on any target (e.g. cutoff, FM amount, WT position, pitch). They run independently of the volume and filter envelopes. Learning preset L43.}\cell\pard\intbl{\cf4 yes (Mod env 1 attack/decay/sustain/release, Mod env 2 ...)}\cell\row
 \pard\par
 {\cf3\b\fs22 Effects tab\par}
 \trowd\trgaph90\trleft0\clcbpat6\cellx2500\clcbpat6\cellx7300\clcbpat6\cellx10200
 \pard\intbl{\b \cf2 Control / Button}\cell\pard\intbl{\b What it does}\cell\pard\intbl{\b VST parameters}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Effect order}\cell\pard\intbl{in which order gate, crusher, chorus and phaser process the signal (24 options). Examples: crusher before chorus = wide lo-fi sound; chorus before crusher = the crusher also chops the beating; gate at the end = the effects get chopped too. Learning preset L46.}\cell\pard\intbl{\cf4 yes (Effect order)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Chorus: Rate / Depth / Feedback / Mix}\cell\pard\intbl{delayed copies: wide and shimmering; lots of feedback = flanger.}\cell\pard\intbl{\cf4 yes (Chorus on, Chorus Rate, Chorus Depth, Chorus Feedback, Chorus Mix)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Phaser: Rate / Depth / Feedback / Mix}\cell\pard\intbl{six allpasses, moving notches in the spectrum.}\cell\pard\intbl{\cf4 yes (Phaser On, Phaser Rate, Phaser Depth, Phaser Feedback, Phaser Mix)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Bitcrusher: Bits / Sample rate / Mix}\cell\pard\intbl{Lo-Fi: lower resolution and sample rate.}\cell\pard\intbl{\cf4 yes (Bitcrusher on, Bitcrusher Bits, Bitcrusher Rate, Bitcrusher Mix)}\cell\row
+\pard\intbl{\cf2 Phaser: Rate / Depth / Feedback / Mix}\cell\pard\intbl{six allpasses, moving notches in the spectrum.}\cell\pard\intbl{\cf4 yes (Phaser On, Phaser Rate, Phaser Depth, Phaser Feedback, Phaser Mix)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Bitcrusher: Bits / Sample rate / Mix}\cell\pard\intbl{Lo-Fi: lower resolution and sample rate.}\cell\pard\intbl{\cf4 yes (Bitcrusher on, Bitcrusher Bits, Bitcrusher Rate, Bitcrusher Mix)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Trance gate}\cell\pard\intbl{16 clickable steps, note value, steps, depth, smoothing - chops the sound in song tempo.}\cell\pard\intbl{\cf4 yes (Pattern: no; Trance gate on, Note value, Steps, Depth, Smoothing; Trance gate on, Trance gate note value, Trance gate steps, Trance gate depth, Trance gate smoothing)}\cell\row
 \pard\par
 {\cf3\b\fs22 Delay / Reverb tab\par}
@@ -305,15 +316,19 @@ What every control and button does - tab by tab. Column {\b VST parameters}: {\c
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 EQ on, Bass, Treble}\cell\pard\intbl{Tone control at the end of the chain.}\cell\pard\intbl{\cf4 yes (EQ on, EQ Lows, EQ Highs)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Saturation}\cell\pard\intbl{warm overdrive.}\cell\pard\intbl{\cf4 yes (Saturation)}\cell\row
+\pard\intbl{\cf2 Saturation / type}\cell\pard\intbl{Overdrive of the sum. Type: Warm (soft, as before), Tube (asymmetric, even harmonics, fuller), Hard (hard clip, aggressive), Fold (wavefolder: strong drive folds the wave back - metallic, very rich in overtones).}\cell\pard\intbl{\cf4 yes (Saturation, Saturation type)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
+\pard\intbl{\cf2 Compressor: on, amount, speed, ratio, threshold, knee}\cell\pard\intbl{Three-band compressor after the EQ (chain of the sum: echo/reverb -> saturation -> EQ -> compressor -> stereo -> limiter; crossovers at 120 Hz and 2.5 kHz): quiet parts are lifted, loud peaks are held back - a denser, punchier sound like a multiband compressor. Amount = overall strength (also how much quiet parts are lifted), Speed = how fast it reacts (less = faster, more pumping). Ratio = how hard it brakes above the threshold (4:1 = 4 dB more input gives 1 dB more output), Threshold = from which level, Knee = how soft it sets in (0 dB = hard knee, aggressive; 12-24 dB = soft). The curve below shows it live.}\cell\pard\intbl{\cf4 yes (Compressor on, Compressor amount, Compressor speed, Compressor ratio, Compressor threshold, Compressor knee)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
 \pard\intbl{\cf2 Band A / B}\cell\pard\intbl{two freely placeable bands (frequency and level), also controllable via the matrix.}\cell\pard\intbl{\cf4 yes (EQ Band A Freq, EQ Band A Level, EQ Band B Freq, EQ Band B Level)}\cell\row
-\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
-\pard\intbl{\cf2 Curve}\cell\pard\intbl{draw with the mouse, right button = 0 dB; Linear, Warmer, Brighter ... are ready-made curves.}\cell\pard\intbl{\cf5 no}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
-\pard\intbl{\cf2 Lights}\cell\pard\intbl{the background shows the output: blue/white by level, bluer where the EQ cuts, redder where it boosts.}\cell\pard\intbl{\cf5 no}\cell\row
+\pard\intbl{\cf2 Curve}\cell\pard\intbl{draw with the mouse, right button = 0 dB; Linear, Warmer, Brighter ... are ready-made curves.}\cell\pard\intbl{\cf5 no}\cell\row
 \trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Lights}\cell\pard\intbl{the background shows the output: blue/white by level, bluer where the EQ cuts, redder where it boosts.}\cell\pard\intbl{\cf5 no}\cell\row
+\trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Stereo width / Pan}\cell\pard\intbl{Width and position of the sum in the stereo field.}\cell\pard\intbl{\cf4 yes (Master width, Master pan)}\cell\row
+\trowd\trgaph90\trleft0\clcbpat7\cellx2500\clcbpat7\cellx7300\clcbpat7\cellx10200
+\pard\intbl{\cf2 Bass mono / mono below}\cell\pard\intbl{puts everything below the frequency (default 120 Hz) in the centre: the bass stays punchy and phase-safe in the club and on mono systems, while width and space above it are kept. Comes after stereo width and pan, before the limiter.}\cell\pard\intbl{\cf4 yes (Bass mono, Bass mono below)}\cell\row
 \trowd\trgaph90\trleft0\clcbpat8\cellx2500\clcbpat8\cellx7300\clcbpat8\cellx10200
 \pard\intbl{\cf2 Limiter / HQ mode / Master}\cell\pard\intbl{the same controls as in the Quick tab, here at the end of the signal path: peak limiting, quality and overall volume.}\cell\pard\intbl{\cf4 yes (Limiter, HQ mode, Master)}\cell\row
 \pard\par

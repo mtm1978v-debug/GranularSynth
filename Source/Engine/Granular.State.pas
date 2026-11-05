@@ -75,6 +75,9 @@ function LoadChunkFromFile(Engine: TGranularEngine; const FileName: string; out 
 procedure LoadMorphSample(Engine: TGranularEngine; const BaseDir: string);
 { Zonen-Samples des Presets laden (Pfade aus dem Chunk) }
 procedure LoadZoneSamples(Engine: TGranularEngine; const BaseDir: string);
+{ Wavetable-Dateien der Oszillatoren laden (Verweise aus dem Chunk); wird von LoadZoneSamples mit erledigt }
+procedure LoadOscWavetables(Engine: TGranularEngine; const BaseDir: string);
+function WtFrameLen(N: Integer): Integer;
 
 { MIDI-Learn-Zuordnung gehoert zum Rechner/Controller, nicht zum Klang: Textdatei im Plugin-Ordner,
   je Zeile "CC=Parametername". Unbekannte Namen werden uebersprungen. }
@@ -84,7 +87,7 @@ procedure SaveMidiMap(Engine: TGranularEngine; const FileName: string);
 implementation
 
 uses
-  System.IOUtils, Granular.AudioDecode;
+  System.IOUtils, Granular.AudioDecode, Granular.Sample;
 
 const
   CHUNK_MAGIC: array[0..3] of AnsiChar = ('G', 'R', 'N', 'S');
@@ -101,7 +104,9 @@ const
   ZONE_MAGIC: array[0..3] of AnsiChar = ('Z', 'O', 'N', 'E');
   FLF8_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'F', '8');   // freie Formen LFO 5..8
   FLSM_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'S', 'M');   // Nov. 2026: Glaettung je freier Form
-  OSCW_MAGIC: array[0..3] of AnsiChar = ('O', 'S', 'C', 'W');   // Nov. 2026: gezeichnete Oszillator-Wellen (ganz hinten)
+  OSCW_MAGIC: array[0..3] of AnsiChar = ('O', 'S', 'C', 'W');   // Nov. 2026: gezeichnete Oszillator-Wellen
+  FGLD_MAGIC: array[0..3] of AnsiChar = ('F', 'G', 'L', 'D');   // Nov. 2026: Gleiten je Stufe der freien LFOs (nur wenn benutzt)
+  OSWT_MAGIC: array[0..3] of AnsiChar = ('O', 'S', 'W', 'T');   // Nov. 2026: Wavetable-Dateien der Oszillatoren (ganz hinten, nur wenn benutzt)
   MAX_STR = 4096;
 
 procedure WriteStr(S: TStream; const Value: string);
@@ -238,6 +243,30 @@ begin
       S.WriteBuffer(Engine.OscDraw[I].Pt[0], OSC_DRAW_N * SizeOf(Single));
       S.WriteBuffer(Engine.OscDraw[I].Smooth, 4);
     end;
+    // Gleiten je Stufe: nur schreiben, wenn eine Stufe gleitet (sonst bleibt der Chunk wie bisher)
+    N := 0;
+    for I := 0 to FREE_LFO_COUNT - 1 do
+      if Engine.FreeLfo[I].Glide <> 0 then
+        N := FREE_LFO_COUNT;
+    if N > 0 then
+    begin
+      S.WriteBuffer(FGLD_MAGIC, 4);
+      S.WriteBuffer(N, 4);
+      for I := 0 to FREE_LFO_COUNT - 1 do
+        S.WriteBuffer(Engine.FreeLfo[I].Glide, 8);
+    end;
+    // Wavetable-Dateien: nur schreiben, wenn ein Oszillator eine hat (sonst bleibt der Chunk wie bisher)
+    N := 0;
+    for I := 0 to OSC_COUNT - 1 do
+      if Engine.WtRef[I] <> '' then
+        N := OSC_COUNT;
+    if N > 0 then
+    begin
+      S.WriteBuffer(OSWT_MAGIC, 4);
+      S.WriteBuffer(N, 4);
+      for I := 0 to OSC_COUNT - 1 do
+        WriteStr(S, Engine.WtRef[I]);
+    end;
     Result := Copy(S.Bytes, 0, S.Size);
   finally
     S.Free;
@@ -256,6 +285,7 @@ var
   Fr8: TFreeLfo;
   ZS: string;
   ZRef: array[1..ZONE_COUNT] of string;
+  WtR: array[0..OSC_COUNT - 1] of string;
   ZLow: array[1..ZONE_COUNT] of Integer;
   Name, Text: string;
   V: Single;
@@ -601,6 +631,33 @@ begin
         Inc(P, 4);
       end;
   end;
+  if (P + 8 <= Length(Data)) and CompareMem(@Data[P], @FGLD_MAGIC[0], 4) then
+  begin
+    Inc(P, 4);
+    if ReadInt(ZN) then
+      for K := 0 to Min(ZN, 64) - 1 do
+      begin
+        if P + 8 > Length(Data) then
+          Break;
+        if K < FREE_LFO_COUNT then
+          Free[K].Glide := PUInt64(@Data[P])^;
+        Inc(P, 8);
+      end;
+  end;
+  for K := 0 to OSC_COUNT - 1 do
+    WtR[K] := '';
+  if (P + 8 <= Length(Data)) and CompareMem(@Data[P], @OSWT_MAGIC[0], 4) then
+  begin
+    Inc(P, 4);
+    if ReadInt(ZN) then
+      for K := 0 to Min(ZN, 16) - 1 do
+      begin
+        if not ReadStr(ZS) then
+          Break;
+        if K < OSC_COUNT then
+          WtR[K] := ZS;
+      end;
+  end;
 
   // Regler, die das Preset nicht kennt (aeltere Presets): Standardwert statt Rest vom vorigen
   // Preset. Master und Tempo gehoeren nicht zum Klang und bleiben.
@@ -628,6 +685,8 @@ begin
     Engine.SetZoneRef(K, ZRef[K]);
     Engine.SetZoneLow(K, ZLow[K]);
   end;
+  for K := 0 to OSC_COUNT - 1 do
+    Engine.WtRef[K] := WtR[K];
   Engine.EqCurve^ := EqC;
   Engine.EqChanged;
   if HasName then
@@ -713,11 +772,67 @@ begin
 end;
 
 { Zonen-Samples nach dem Laden eines Presets/Chunks: fehlende Dateien -> Zone leer }
+{ Punkte je Frame einer Wavetable-Datei: Serum & Co. = 2048; kurze Dateien = ein einzelner Zyklus;
+  sonst die groesste Zweierpotenz, die aufgeht }
+function WtFrameLen(N: Integer): Integer;
+begin
+  if (N >= 2048) and (N mod 2048 = 0) then
+    Result := 2048
+  else if N <= 4096 then
+    Result := N
+  else if N mod 1024 = 0 then
+    Result := 1024
+  else if N mod 512 = 0 then
+    Result := 512
+  else if N mod 256 = 0 then
+    Result := 256
+  else
+    Result := 2048;
+end;
+
+procedure LoadOscWavetables(Engine: TGranularEngine; const BaseDir: string);
+var
+  O, I: Integer;
+  Res: string;
+  D: TSampleData;
+  M: TArray<Single>;
+begin
+  for O := 0 to OSC_COUNT - 1 do
+  begin
+    if Engine.WtRef[O] = '' then
+      Res := ''
+    else
+      Res := ResolveSamplePath(Engine.WtRef[O], BaseDir);
+    if SameText(Res, Engine.WtLoaded[O]) and ((Res = '') = (Engine.WtFrameCount(O) = 0)) then
+      Continue;
+    if Res = '' then
+    begin
+      Engine.SetOscWavetable(O, nil, 0, '');
+      Continue;
+    end;
+    D := nil;
+    try
+      try
+        D := LoadAudioFile(Res);
+        SetLength(M, D.Frames);
+        for I := 0 to D.Frames - 1 do
+          M[I] := (D.L[I] + D.R[I]) * 0.5;
+        Engine.SetOscWavetable(O, M, WtFrameLen(D.Frames), Res);
+      except
+        Engine.SetOscWavetable(O, nil, 0, '');
+      end;
+    finally
+      D.Free;
+    end;
+  end;
+end;
+
 procedure LoadZoneSamples(Engine: TGranularEngine; const BaseDir: string);
 var
   Z: Integer;
   Res: string;
 begin
+  LoadOscWavetables(Engine, BaseDir);   // Nov. 2026: Wavetables der Oszillatoren gehoeren mit dazu
   for Z := 1 to ZONE_COUNT do
   begin
     if Engine.GetZoneRef(Z) = '' then

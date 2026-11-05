@@ -1,4 +1,4 @@
-﻿GranularSynth - Lernpfad (Presets L01 bis L37)
+﻿GranularSynth - Lernpfad (Presets L01 bis L46)
 ==============================================
 Jedes Preset zeigt ein Prinzip. Oeffnen, spielen, und im Reiter "Modulation"
 nachsehen, welche Matrix-Zeilen belegt sind. Der rote Strich unter einem Regler
@@ -67,14 +67,14 @@ Neue Funktionen
        Akkordtoene nacheinander anschlagen (je 1 s Abstand) und halten: jeder Ton
        oeffnet sich langsam fuer sich, die schon klingenden bleiben, wo sie sind.
 
-Teil 4 - Start, Stopp und Zeit (Reiter "LFO 1-4 / Trigger" und "Timing / Events")
+Teil 4 - Start, Stopp und Zeit (Reiter "LFO 1-4 / Trigger" und "Timing / Hüllk.")
   Im Namen: "FM" = Oszillatoren klingen mit, "Grains" = Grains klingen mit.
   Ein LFO mit Start-Ereignis laeuft, bis sein Stopp ihn anhaelt (dann keine Modulation).
   L27  Stopp "Note aus": Vibrato je Note, beim Loslassen ist der Ausklang ruhig.
        Stopp auf "nie" stellen: das Vibrato laeuft im Ausklang weiter.
   L28  Stopp "nach Zeit" 1/2: der Wobble auf der FM-Menge laeuft nur eine halbe Note.
        Tempo aendern - die Laenge folgt dem Takt.
-  L29  Verzoegerung + Stopp: das Tremolo setzt nach 1/4 ein (Timing / Events) und
+  L29  Verzoegerung + Stopp: das Tremolo setzt nach 1/4 ein (Timing / Hüllk.) und
        haelt nach 1/1 an - die Laufzeit zaehlt ab dem verzoegerten Start.
   L30  Stopp nach 120 ms: ein schneller Pitch-Fall nur im Anschlag. ms-Wert aendern.
   L31  Drei Oszillatoren, jeder mit eigener Huellkurve (Reiter Osz 1-3): Sinus
@@ -96,3 +96,24 @@ Teil 5: freie Makros (Reiter Modulation, rechts neben der Matrix)
        (Streuung, Rueckwaerts, Tonhoehen-Zufall, Echo). Die Dichte hat eine negative Menge.
   L37  Zwei Makros fuer die DAW: Makro 1 = Wobble schneller und heller, Makro 3 = Echo.
        In FL: Rechtsklick auf den Makro-Regler > Automation in der DAW.
+
+Teil 6: Step-Sequencer, Saettigungs-Arten, Kompressor
+  L38  Eine Taste halten: der freie LFO spielt eine Acid-Linie (16 Stufen, 1 Takt). Einige
+       Stufen gleiten vom vorigen Ton herueber - im LFO-Fenster (Klick auf die LFO-Grafik)
+       zeigt die Leiste "Gleiten" unten, welche. Felder anklicken und hoeren.
+  L39  Saettigung Art "Roehre" (Reiter Summe): voller, mit geraden Obertoenen. Art auf Warm,
+       Hart und Faltung umschalten und vergleichen. Modrad = mehr Drive.
+  L40  Art "Faltung": Modrad langsam hochdrehen - die Sinuswelle faltet sich immer oefter
+       zurueck, von rund ueber hohl bis metallisch.
+  L41  Kompressor (Reiter Summe): Akkorde kurz anschlagen. Ausklang und Hall bleiben dicht und
+       laut. Kompressor aus- und einschalten, Menge und Tempo veraendern.
+  L42  Bass mono (Reiter Summe): ein sehr breiter Reese-Bass. Bass mono aus- und einschalten -
+       mit "an" steht das Fundament fest in der Mitte, die Breite darueber bleibt.
+  L43  Modulations-Huellkurven (Reiter Timing / Hüllk., unten): Note lange halten. Huellkurve 1
+       macht nur den Anschlag hell, Huellkurve 2 oeffnet langsam das Filter (Matrix-Zeilen 1-2).
+  L44  Wavetable (Reiter Osz 1, rechts unten): jede Note faehrt durch die Frames von WT_FM_Wachsend,
+       das Modrad schiebt weiter. Mit "Laden ..." eine andere Wavetable probieren.
+  L45  Sub und Rauschen (Reiter Osz 1, Mitte unten): ein Sinus eine Oktave tiefer gibt Fundament,
+       Rauschen den Anschlag. Sub und Rauschen auf 0 ziehen und vergleichen.
+  L46  Reihenfolge der Effekte (Reiter Effekte, unten): Chorus vor Crusher - der Crusher zerhackt
+       auch die Schwebung. Andere Reihenfolgen waehlen und hoeren.

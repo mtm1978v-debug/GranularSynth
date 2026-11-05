@@ -43,6 +43,8 @@ type
     procedure EchoSync(Division: Integer);
     { Form 'Frei' mit Halbtonstufen (Modus 0) bzw. freien Stufen (Modus 1, Werte -1..1 * 24) }
     procedure FreeSteps(Lfo, Mode: Integer; const Semis: array of Double);
+    procedure FreeGlide(Lfo: Integer; const Steps: array of Integer);   // Stufen (ab 0), die gleiten
+    procedure Wavetable(Osc: Integer; const FileName: string);           // Osc 1..3, Datei in Beispieltoene
     procedure FreeDraw(Lfo: Integer; Kind: Integer);
     { LFO -> Pitch, Menge 50 %, Faktor x1: eine Stufe = ein Halbton }
     procedure PitchFromFree(Lfo: Integer);
@@ -177,6 +179,21 @@ begin
     F.Step[I] := EnsureRange(Semis[I] / FREE_SEMIS, -1, 1);
   if Lfo = 3 then P(gpMorphLfoShape, MORPH_LFO_FREE)
   else if Lfo = 1 then P(gpLfo1Shape, LFO_SHAPE_FREE) else P(gpLfo2Shape, LFO_SHAPE_FREE);
+end;
+
+procedure TPresetBuilder.FreeGlide(Lfo: Integer; const Steps: array of Integer);
+var
+  I: Integer;
+begin
+  FEngine.FreeLfo[Lfo - 1].Glide := 0;
+  for I := 0 to High(Steps) do
+    FEngine.FreeLfo[Lfo - 1].Glide := FEngine.FreeLfo[Lfo - 1].Glide or (UInt64(1) shl Steps[I]);
+end;
+
+procedure TPresetBuilder.Wavetable(Osc: Integer; const FileName: string);
+begin
+  FEngine.WtRef[Osc - 1] := FileName;          // relativ: wird gegen Plugin-Ordner bzw. Beispieltoene aufgeloest
+  FEngine.SetParamById(OSC_P[Osc - 1].WtOn, 1);
 end;
 
 procedure TPresetBuilder.FreeDraw(Lfo: Integer; Kind: Integer);
@@ -1736,7 +1753,7 @@ begin
   B.Save('158 FM - Zufalls-Arp mit wandernder Farbe');
 
   // 159: Geige - der Ton setzt glatt ein, nach einer halben Note beginnt das Vibrato (je Note,
-  // Reiter Timing / Events: "Note an" um 1/2 verzoegert). LFO 1 laeuft dauerhaft, Neustart Note an.
+  // Reiter Timing / Hüllk.: "Note an" um 1/2 verzoegert). LFO 1 laeuft dauerhaft, Neustart Note an.
   B.Start('Violine_C5.wav');
   B.P(gpGrainSize, 160); B.P(gpDensity, 45); B.P(gpSpray, 4); B.P(gpScan, 0.4); B.P(gpSpread, 55);
   B.P(gpAttack, 90); B.P(gpDecay, 1500); B.P(gpSustain, 90); B.P(gpRelease, 600);
@@ -2306,7 +2323,7 @@ begin
   B.P(gpVolume, -3);
   B.Save('L26 Filter je Note - jede Stimme blueht einzeln auf');
 
-  // ---------- Teil 4: Start, Stopp und Zeit (Reiter LFO 1-4 / Trigger und Timing / Events) ----------
+  // ---------- Teil 4: Start, Stopp und Zeit (Reiter LFO 1-4 / Trigger und Timing / Hüllk.) ----------
   // Namen: "FM" = nutzt die Oszillatoren, "Grains" = nutzt die Grains
 
   // L27: Stopp "Note aus" - Vibrato je Note, beim Loslassen haelt der LFO an: der Ausklang ist ruhig
@@ -2465,6 +2482,149 @@ begin
   B.M(msMacro3, gpEchoFeedback, 55);
   B.M(msMacro3, gpEchoMix, 35);
   B.Save('L37 Makro - Wobble und Echo fuer die DAW-Automation');
+
+  // ---------- Teil 6: Gleiten, Saettigungs-Arten, Kompressor (Nov. 2026) ----------
+  // L38: Acid-Linie aus dem freien LFO (16 Stufen in Halbtoenen, 1 Takt) auf Pitch; die Stufen 3, 7, 10,
+  // 14 und 16 gleiten vom vorigen Ton herueber, die anderen springen. Trance-Gate 1/16 macht Einzelnoten.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 2); B.P(gpOscFmRatio, 1); B.P(gpOscFmAmt, 45); B.P(gpOscLevel, 75);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 300); B.P(gpOscSustain, 90); B.P(gpOscRelease, 80);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 420); B.P(gpFltReso, 75); B.P(gpFltContour, 100);
+  B.LfoSync(1, D_1_1, SINUS);
+  B.FreeSteps(1, 0, [0, 0, 12, 0, 3, 0, 7, 10, 0, 12, 0, 3, 5, 0, 7, 12]);
+  B.FreeGlide(1, [2, 6, 9, 13, 15]);
+  B.PitchFromFree(1);
+  B.P(gpOscFollowPitch, 1);    // Pitch steuert sonst nur die Grains - hier spielen die Oszillatoren
+  B.LfoSync(2, D_1_2, DREIECK);
+  B.M(msLfo2, gpFltCutoff, 22);
+  B.P(gpTgOn, 1); B.P(gpTgRate, 3); B.P(gpTgDepth, 70); B.P(gpTgSmooth, 10);
+  B.P(gpDrive, 40); B.P(gpDriveType, 1);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8T); B.P(gpEchoFeedback, 25); B.P(gpEchoMix, 10);
+  B.P(gpVolume, -6);
+  B.Save('L38 FM - Step-Sequencer mit Gleiten je Stufe (Acid)');
+
+  // L39: Saettigungs-Arten im Vergleich - FM-Bass mit kraeftigem Drive auf "Roehre"; Art im Reiter EQ
+  // auf Warm / Hart / Faltung umschalten und vergleichen. Modrad = mehr Drive.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 2); B.P(gpOscFmRatio, 1); B.P(gpOscFmAmt, 30); B.P(gpOscLevel, 70);
+  B.P(gpOscAttack, 2); B.P(gpOscDecay, 500); B.P(gpOscSustain, 80); B.P(gpOscRelease, 160);
+  B.P(gpOsc3On, 1); B.P(gpOsc3Wave, 0); B.P(gpOsc3Oct, 1); B.P(gpOsc3Level, 50);
+  B.P(gpOsc3Attack, 2); B.P(gpOsc3Sustain, 100); B.P(gpOsc3Release, 160);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 1500); B.P(gpFltReso, 20); B.P(gpFltContour, 100);
+  B.P(gpDrive, 60); B.P(gpDriveType, 1);
+  B.M(msModWheel, gpDrive, 35);
+  B.P(gpVolume, -6);
+  B.Save('L39 FM - Saettigung Art Roehre (umschalten und vergleichen)');
+
+  // L40: Faltung (Wavefolder) - ein Sinus-Lead; das Modrad dreht den Drive auf, die Welle faltet sich
+  // immer oefter zurueck: von rund ueber hohl bis metallisch. Ein langsamer LFO bewegt es leicht.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 0); B.P(gpOscOct, 3); B.P(gpOscLevel, 70);
+  B.P(gpOscAttack, 5); B.P(gpOscDecay, 800); B.P(gpOscSustain, 85); B.P(gpOscRelease, 300);
+  B.P(gpDrive, 35); B.P(gpDriveType, 3);
+  B.M(msModWheel, gpDrive, 60);
+  B.LfoSync(1, D_1_2, SINUS);
+  B.M(msLfo1, gpDrive, 10);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8); B.P(gpEchoFeedback, 25); B.P(gpEchoMix, 12);
+  B.Hall(55, 2, 50, 10, 12);
+  B.P(gpVolume, -8);
+  B.Save('L40 FM - Saettigung Art Faltung (Modrad = Falten)');
+
+  // L41: Kompressor - gezupfte FM-Akkorde mit langem Hall. Kompressor an, Menge 85 %: der Ausklang und
+  // der Hall kommen nach vorn, der Anschlag wird gebremst. Im Reiter Summe an/aus schalten und vergleichen.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 3); B.P(gpOscFmRatio, 2); B.P(gpOscFmAmt, 40); B.P(gpOscLevel, 60);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 450); B.P(gpOscSustain, 15); B.P(gpOscRelease, 500);
+  B.P(gpOscFmEnvOn, 1); B.P(gpOscFmAttack, 1); B.P(gpOscFmDecay, 200); B.P(gpOscFmSustain, 20); B.P(gpOscFmRelease, 300);
+  B.M(msVelocity, gpOscFmAmt, 25);
+  B.P(gpDrive, 20); B.P(gpDriveType, 2);
+  B.Hall(75, 4, 50, 15, 28);
+  B.P(gpCompOn, 1); B.P(gpCompAmt, 85); B.P(gpCompTime, 100);
+  B.P(gpVolume, -8);
+  B.Save('L41 FM - Kompressor macht Ausklang und Hall dicht');
+
+  // L42: Bass mono - ein sehr breiter Reese-Bass (7 Unison-Stimmen, volle Breite, Chorus). Bass mono 120 Hz
+  // legt das Fundament in die Mitte, die Breite darueber bleibt. Im Reiter Summe ein-/ausschalten.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 2); B.P(gpOscOct, 2); B.P(gpOscLevel, 60);
+  B.P(gpOscAttack, 3); B.P(gpOscDecay, 800); B.P(gpOscSustain, 90); B.P(gpOscRelease, 200);
+  B.P(gpOscUnison, 7); B.P(gpOscDetune, 25); B.P(gpOscUniWidth, 100);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 900); B.P(gpFltReso, 20); B.P(gpFltContour, 100);
+  B.P(gpChoOn, 1); B.P(gpChoMix, 35);
+  B.P(gpWidth, 160);
+  B.P(gpBassMonoOn, 1); B.P(gpBassMonoFreq, 120);
+  B.P(gpDrive, 25);
+  B.P(gpVolume, -6);
+  B.Save('L42 FM - Bass mono haelt den breiten Bass in der Mitte');
+
+  // L43: Modulations-Huellkurven - FM-Pluck: Mod-Huellk. 1 (kurz) macht nur den Anschlag hell (FM-Menge),
+  // Mod-Huellk. 2 (langsam an) oeffnet waehrend des Haltens das Filter. Note lange halten.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 3); B.P(gpOscFmRatio, 2); B.P(gpOscFmAmt, 10); B.P(gpOscLevel, 65);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 1500); B.P(gpOscSustain, 70); B.P(gpOscRelease, 400);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 500); B.P(gpFltReso, 35); B.P(gpFltContour, 100);
+  B.P(gpMEnv1Att, 1); B.P(gpMEnv1Dec, 180); B.P(gpMEnv1Sus, 0); B.P(gpMEnv1Rel, 100);
+  B.P(gpMEnv2Att, 2500); B.P(gpMEnv2Dec, 500); B.P(gpMEnv2Sus, 100); B.P(gpMEnv2Rel, 800);
+  B.M(msModEnv1, gpOscFmAmt, 45);
+  B.M(msModEnv2, gpFltCutoff, 40);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8); B.P(gpEchoFeedback, 25); B.P(gpEchoMix, 12);
+  B.Hall(55, 2, 50, 10, 14);
+  B.P(gpVolume, -6);
+  B.Save('L43 FM - Mod-Huellkurven - heller Anschlag, Filter oeffnet beim Halten');
+
+  // L44: Wavetable - Oszillator 1 spielt WT_FM_Wachsend (Sinus -> harte FM). Mod-Huellk. 1 faehrt bei jeder
+  // Note durch die Frames, das Modrad schiebt die Position weiter; Roehren-Saettigung und Bass mono.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscOct, 2); B.P(gpOscLevel, 70);
+  B.Wavetable(1, 'WT_FM_Wachsend.wav');
+  B.P(gpOscWtPos, 10);
+  B.P(gpOscAttack, 2); B.P(gpOscDecay, 900); B.P(gpOscSustain, 85); B.P(gpOscRelease, 200);
+  B.P(gpOsc3On, 1); B.P(gpOsc3Wave, 0); B.P(gpOsc3Oct, 1); B.P(gpOsc3Level, 45);
+  B.P(gpOsc3Attack, 2); B.P(gpOsc3Sustain, 100); B.P(gpOsc3Release, 200);
+  B.P(gpMEnv1Att, 400); B.P(gpMEnv1Dec, 900); B.P(gpMEnv1Sus, 35); B.P(gpMEnv1Rel, 300);
+  B.M(msModEnv1, gpOscWtPos, 60);
+  B.M(msModWheel, gpOscWtPos, 40);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 2400); B.P(gpFltReso, 20); B.P(gpFltContour, 100);
+  B.P(gpDrive, 35); B.P(gpDriveType, 1);
+  B.P(gpBassMonoOn, 1);
+  B.P(gpVolume, -6);
+  B.Save('L44 FM - Wavetable faehrt bei jeder Note durch die Frames');
+
+  // L45: Sub und Rauschen an Osz 1 - Saegezahn-Bass mit Sinus-Sub eine Oktave tiefer (Fundament) und etwas
+  // Rauschen im Anschlag (die Huellkurve ist kurz, das Filter oeffnet beim Anschlag)
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 2); B.P(gpOscOct, 2); B.P(gpOscLevel, 60);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 400); B.P(gpOscSustain, 70); B.P(gpOscRelease, 150);
+  B.P(gpSubLevel, 80); B.P(gpSubOct, 0); B.P(gpSubWave, 0);
+  B.P(gpNoiseLevel, 25);
+  B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 400); B.P(gpFltReso, 30); B.P(gpFltContour, 100);
+  B.P(gpFltEnvAmt, 55); B.P(gpFltAttack, 1); B.P(gpFltDecay, 220); B.P(gpFltSustain, 10); B.P(gpFltRelease, 120);
+  B.P(gpBassMonoOn, 1);
+  B.P(gpVolume, -6);
+  B.Save('L45 FM - Sub und Rauschen geben dem Bass Fundament und Anschlag');
+
+  // L46: Reihenfolge der Effekte - Akkord-Flaeche mit Trance-Gate, Crusher und Chorus. Reihenfolge
+  // "Chorus > Crusher > ..." : der Crusher zerhackt auch die Schwebung. Im Reiter Effekte umschalten.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 2); B.P(gpOscOct, 3); B.P(gpOscLevel, 55);
+  B.P(gpOscAttack, 30); B.P(gpOscDecay, 1500); B.P(gpOscSustain, 85); B.P(gpOscRelease, 600);
+  B.P(gpOscUnison, 3); B.P(gpOscDetune, 12); B.P(gpOscUniWidth, 80);
+  B.P(gpTgOn, 1); B.P(gpTgRate, 3); B.P(gpTgDepth, 85); B.P(gpTgSmooth, 6);
+  B.P(gpCrushOn, 1); B.P(gpCrushBits, 7); B.P(gpCrushRate, 9000); B.P(gpCrushMix, 70);
+  B.P(gpChoOn, 1); B.P(gpChoDepth, 70); B.P(gpChoMix, 50);
+  B.P(gpFxOrder, 14);          // Chorus > Crusher > Gate > Phaser (siehe FX_ORDERS)
+  B.Hall(70, 3, 50, 15, 20);
+  B.P(gpVolume, -7);
+  B.Save('L46 FM - Reihenfolge der Effekte (Chorus vor Crusher)');
 end;
 
 procedure WriteLearningGuide(const Dir: string);
@@ -2473,7 +2633,7 @@ var
 begin
   T := TStringList.Create;
   try
-    T.Add('GranularSynth - Lernpfad (Presets L01 bis L37)');
+    T.Add('GranularSynth - Lernpfad (Presets L01 bis L46)');
     T.Add('==============================================');
     T.Add('Jedes Preset zeigt ein Prinzip. Oeffnen, spielen, und im Reiter "Modulation"');
     T.Add('nachsehen, welche Matrix-Zeilen belegt sind. Der rote Strich unter einem Regler');
@@ -2542,14 +2702,14 @@ begin
     T.Add('       Akkordtoene nacheinander anschlagen (je 1 s Abstand) und halten: jeder Ton');
     T.Add('       oeffnet sich langsam fuer sich, die schon klingenden bleiben, wo sie sind.');
     T.Add('');
-    T.Add('Teil 4 - Start, Stopp und Zeit (Reiter "LFO 1-4 / Trigger" und "Timing / Events")');
+    T.Add('Teil 4 - Start, Stopp und Zeit (Reiter "LFO 1-4 / Trigger" und "Timing / Hüllk.")');
     T.Add('  Im Namen: "FM" = Oszillatoren klingen mit, "Grains" = Grains klingen mit.');
     T.Add('  Ein LFO mit Start-Ereignis laeuft, bis sein Stopp ihn anhaelt (dann keine Modulation).');
     T.Add('  L27  Stopp "Note aus": Vibrato je Note, beim Loslassen ist der Ausklang ruhig.');
     T.Add('       Stopp auf "nie" stellen: das Vibrato laeuft im Ausklang weiter.');
     T.Add('  L28  Stopp "nach Zeit" 1/2: der Wobble auf der FM-Menge laeuft nur eine halbe Note.');
     T.Add('       Tempo aendern - die Laenge folgt dem Takt.');
-    T.Add('  L29  Verzoegerung + Stopp: das Tremolo setzt nach 1/4 ein (Timing / Events) und');
+    T.Add('  L29  Verzoegerung + Stopp: das Tremolo setzt nach 1/4 ein (Timing / Hüllk.) und');
     T.Add('       haelt nach 1/1 an - die Laufzeit zaehlt ab dem verzoegerten Start.');
     T.Add('  L30  Stopp nach 120 ms: ein schneller Pitch-Fall nur im Anschlag. ms-Wert aendern.');
     T.Add('  L31  Drei Oszillatoren, jeder mit eigener Huellkurve (Reiter Osz 1-3): Sinus');
@@ -2571,6 +2731,27 @@ begin
     T.Add('       (Streuung, Rueckwaerts, Tonhoehen-Zufall, Echo). Die Dichte hat eine negative Menge.');
     T.Add('  L37  Zwei Makros fuer die DAW: Makro 1 = Wobble schneller und heller, Makro 3 = Echo.');
     T.Add('       In FL: Rechtsklick auf den Makro-Regler > Automation in der DAW.');
+    T.Add('');
+    T.Add('Teil 6: Step-Sequencer, Saettigungs-Arten, Kompressor');
+    T.Add('  L38  Eine Taste halten: der freie LFO spielt eine Acid-Linie (16 Stufen, 1 Takt). Einige');
+    T.Add('       Stufen gleiten vom vorigen Ton herueber - im LFO-Fenster (Klick auf die LFO-Grafik)');
+    T.Add('       zeigt die Leiste "Gleiten" unten, welche. Felder anklicken und hoeren.');
+    T.Add('  L39  Saettigung Art "Roehre" (Reiter Summe): voller, mit geraden Obertoenen. Art auf Warm,');
+    T.Add('       Hart und Faltung umschalten und vergleichen. Modrad = mehr Drive.');
+    T.Add('  L40  Art "Faltung": Modrad langsam hochdrehen - die Sinuswelle faltet sich immer oefter');
+    T.Add('       zurueck, von rund ueber hohl bis metallisch.');
+    T.Add('  L41  Kompressor (Reiter Summe): Akkorde kurz anschlagen. Ausklang und Hall bleiben dicht und');
+    T.Add('       laut. Kompressor aus- und einschalten, Menge und Tempo veraendern.');
+    T.Add('  L42  Bass mono (Reiter Summe): ein sehr breiter Reese-Bass. Bass mono aus- und einschalten -');
+    T.Add('       mit "an" steht das Fundament fest in der Mitte, die Breite darueber bleibt.');
+    T.Add('  L43  Modulations-Huellkurven (Reiter Timing / Hüllk., unten): Note lange halten. Huellkurve 1');
+    T.Add('       macht nur den Anschlag hell, Huellkurve 2 oeffnet langsam das Filter (Matrix-Zeilen 1-2).');
+    T.Add('  L44  Wavetable (Reiter Osz 1, rechts unten): jede Note faehrt durch die Frames von WT_FM_Wachsend,');
+    T.Add('       das Modrad schiebt weiter. Mit "Laden ..." eine andere Wavetable probieren.');
+    T.Add('  L45  Sub und Rauschen (Reiter Osz 1, Mitte unten): ein Sinus eine Oktave tiefer gibt Fundament,');
+    T.Add('       Rauschen den Anschlag. Sub und Rauschen auf 0 ziehen und vergleichen.');
+    T.Add('  L46  Reihenfolge der Effekte (Reiter Effekte, unten): Chorus vor Crusher - der Crusher zerhackt');
+    T.Add('       auch die Schwebung. Andere Reihenfolgen waehlen und hoeren.');
     T.SaveToFile(IncludeTrailingPathDelimiter(Dir) + 'LERNPFAD.txt', TEncoding.UTF8);
   finally
     T.Free;

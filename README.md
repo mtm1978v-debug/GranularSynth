@@ -19,19 +19,19 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 ## Was er kann
 
 - **Granular-Synthese** aus beliebigen Samples (WAV, MP3 u. a.). Einstellbar sind Auswahl, Position, Spray, Scan, Graingröße, Dichte, Fenster und Rückwärts-Anteil. Dazu kommen ein Anlauf vor der Auswahl, eine Schleife hin und her und bis zu drei Zonen.
-- **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison, auch mit **selbst gezeichneter Welle** (bandbegrenzte Wavetable). Mit HQ rechnen Oszillatoren und Sättigung mit **2x-Oversampling**: auch harte FM- und Drive-Klänge bleiben frei von Spiegelfrequenzen.
+- **Drei FM-Oszillatoren** mit eigener Hüllkurve, eigenem Filter und Unison, auch mit **selbst gezeichneter Welle** oder **geladener Wavetable** (Serum-/Vital-WAV, bis 32 Frames, Position je Note modulierbar). Dazu **Sub-Oszillator und Rauschen** an Osz 1. Mit HQ rechnen Oszillatoren und Sättigung mit **2x-Oversampling**: auch harte FM- und Drive-Klänge bleiben frei von Spiegelfrequenzen.
 - **Audio bearbeiten:** Sample direkt im Plugin aufnehmen (Mikrofon oder „was der PC abspielt“), vorhören, zuschneiden, löschen, ein-/ausblenden, normalisieren, Stille entfernen, umkehren – Schnitte rasten auf Nulldurchgänge ein.
 - **Fenstergröße:** 100 bis 200 % für große und hochauflösende Bildschirme.
 - **Arp als MIDI:** Das Arp-Muster mit dem gespielten Akkord per Maus als MIDI-Datei in eine Spur der DAW ziehen.
 - **Feedback-Resampling:** Solange eine Taste gehalten wird, wird der eigene Klang Durchlauf für Durchlauf (frei oder im Takt) zur neuen Grain-Quelle – er entwickelt sich, je länger man hält.
-- **Modulationsmatrix mit 32 Zeilen**, 8 LFOs (auch frei gezeichnet oder in Stufen), Hüllkurven, Velocity, Sidechain-Pegel und Sidechain-Tonhöhe. Die Modulation wirkt je Note.
+- **Modulationsmatrix mit 32 Zeilen**, 8 LFOs (auch frei gezeichnet oder als **Step-Sequencer mit Gleiten je Stufe**), zwei freie **Modulations-Hüllkurven**, Velocity, Sidechain-Pegel und Sidechain-Tonhöhe. Die Modulation wirkt je Note.
 - **Vier freie Makros**: Ein Regler bewegt beliebig viele Ziele mit wählbarer Kurve. Die Makros lassen sich in der DAW automatisieren.
-- **Effekte**: zwei Filter, EQ, Echo, Hall, Gate, Crusher, Chorus, Phaser und Trance-Gate. Dazu ein Mischpult mit Pegelanzeigen.
+- **Effekte**: zwei Filter, EQ, Echo, Hall, Gate, Crusher, Chorus, Phaser (Reihenfolge wählbar) und Trance-Gate. **Sättigung** in vier Arten (Warm, Röhre, Hart, Faltung), **3-Band-Kompressor** im OTT-Stil mit Verhältnis, Schwelle, Knick und Kennlinie, **Bass mono**. Dazu ein Mischpult mit Pegelanzeigen.
 - **Sidechain**: Tonhöhe erkennen (Auto-Pitch), Trigger aus Pegel und Ton, Aufnahme.
 - **Morph**: zwischen zwei kompletten Klängen überblenden.
 - **Oberfläche auf Deutsch oder Englisch**, umschaltbar per Klick auf die Flagge.
 - **Bedienung**: MIDI-Learn, Rückgängig/Wiederholen, A/B-Vergleich, Variieren, Preset-Kategorien und Favoriten. Presets lassen sich mit eingebetteten Samples speichern.
-- **Mitgeliefert**: über 160 Presets, darunter ein **Lernpfad (L01–L37)**, der die Matrix Schritt für Schritt erklärt. Dazu Beispieltöne und eine ausführliche Hilfe.
+- **Mitgeliefert**: über 160 Presets, darunter ein **Lernpfad (L01–L46)**, der die Matrix und alle neuen Funktionen Schritt für Schritt erklärt. Dazu Beispieltöne und eine ausführliche Hilfe.
 - **GranularHost**: ein kleiner Test-Host für VST2 und VST3 mit Klaviatur, Autoplay, Audio-Ein- und -Ausgang, Sidechain und einem Prüfstand (`-bench`).
 
 ## Alle Reiter
@@ -44,9 +44,9 @@ Die Reiter folgen dem Weg des Signals. Klick auf ein Bild zeigt es groß.
 | **Samples: Zonen und Aufnahme**<br>[![Samples: Zonen und Aufnahme](docs/screenshots/samples.png)](docs/screenshots/samples.png) | **Osz 1-3: FM-Oszillatoren**<br>[![Osz 1-3: FM-Oszillatoren](docs/screenshots/osz.png)](docs/screenshots/osz.png) |
 | **Gezeichnete Oszillator-Welle**<br>[![Gezeichnete Oszillator-Welle](docs/screenshots/osz_welle.png)](docs/screenshots/osz_welle.png) | **Filter 1 + 2 (je Note)**<br>[![Filter 1 + 2 (je Note)](docs/screenshots/filter.png)](docs/screenshots/filter.png) |
 | **Modulationsmatrix und freie Makros**<br>[![Modulationsmatrix und freie Makros](docs/screenshots/modulation.png)](docs/screenshots/modulation.png) | **LFO 1-8 und Trigger**<br>[![LFO 1-8 und Trigger](docs/screenshots/lfo.png)](docs/screenshots/lfo.png) |
-| **Freier LFO mit Klaviatur und Glättung**<br>[![Freier LFO mit Klaviatur und Glättung](docs/screenshots/lfo_frei.png)](docs/screenshots/lfo_frei.png) | **Timing / Events**<br>[![Timing / Events](docs/screenshots/timing.png)](docs/screenshots/timing.png) |
+| **Freier LFO / Step-Sequencer mit Gleiten**<br>[![Freier LFO / Step-Sequencer mit Gleiten](docs/screenshots/lfo_frei.png)](docs/screenshots/lfo_frei.png) | **Timing / Modulations-Hüllkurven**<br>[![Timing / Modulations-Hüllkurven](docs/screenshots/timing.png)](docs/screenshots/timing.png) |
 | **Effekte: Chorus, Phaser, Crusher, Trance-Gate**<br>[![Effekte: Chorus, Phaser, Crusher, Trance-Gate](docs/screenshots/effekte.png)](docs/screenshots/effekte.png) | **Echo / Hall**<br>[![Echo / Hall](docs/screenshots/echo_hall.png)](docs/screenshots/echo_hall.png) |
-| **Summe: EQ, Sättigung, Stereo, Limiter**<br>[![Summe: EQ, Sättigung, Stereo, Limiter](docs/screenshots/summe.png)](docs/screenshots/summe.png) | **Extras: Arpeggiator, Harmonie, Morph**<br>[![Extras: Arpeggiator, Harmonie, Morph](docs/screenshots/extras.png)](docs/screenshots/extras.png) |
+| **Summe: EQ, Kompressor, Sättigung, Stereo, Limiter**<br>[![Summe: EQ, Kompressor, Sättigung, Stereo, Limiter](docs/screenshots/summe.png)](docs/screenshots/summe.png) | **Extras: Arpeggiator, Harmonie, Morph**<br>[![Extras: Arpeggiator, Harmonie, Morph](docs/screenshots/extras.png)](docs/screenshots/extras.png) |
 | **Mischpult**<br>[![Mischpult](docs/screenshots/mischpult.png)](docs/screenshots/mischpult.png) | **Leistung: Rechenlast, Oversampling**<br>[![Leistung: Rechenlast, Oversampling](docs/screenshots/leistung.png)](docs/screenshots/leistung.png) |
 | **Audio bearbeiten: Aufnahme, Vorhören, Schnitt**<br>[![Audio bearbeiten: Aufnahme, Vorhören, Schnitt](docs/screenshots/audio_bearbeiten.png)](docs/screenshots/audio_bearbeiten.png) | |
 
@@ -89,7 +89,8 @@ Aufbau, Regeln und Werkzeuge stehen in [CLAUDE.md](CLAUDE.md). Diese Datei ist f
 
 ## Mitmachen
 
-Fehlermeldungen und Feature-Wünsche sind willkommen: bitte über **[Issues](../../issues)** mit den Vorlagen dort.
+Fehlermeldungen und Feature-Wünsche sind willkommen: bitte über **[Issues](../../issues)** mit den Vorlagen dort oder im [Forum-Thread auf KVR](https://www.kvraudio.com/product/granularsynth-by-matthias-haberecht).
+Gefällt dir GranularSynth? Eine kurze Bewertung auf **[KVR Audio](https://www.kvraudio.com/product/granularsynth-by-matthias-haberecht)** hilft anderen, es zu finden.
 Wenn du Code beitragen möchtest, frag bitte vorher in einem Issue an. Die Regeln stehen in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Lizenz

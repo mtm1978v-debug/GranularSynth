@@ -31,7 +31,7 @@ const
   { Polyphone Modulation: diese Ziele werden je Note berechnet (Grain-Erzeugung, Oszillator).
     Quellen, die an einer Note haengen (Velocity, Zufall je Note, Notenhoehe, Grain-/Osz-Huellkurven und
     LFOs mit Neustart "Note an/aus"), wirken auf diese Ziele nur in der eigenen Note. }
-  PND_COUNT = 85;
+  PND_COUNT = 88;
   PND_IDS: array[0..PND_COUNT - 1] of TGranularParamId = (gpPosition, gpSpray, gpPitch, gpPitchRand,
     gpSpread, gpGrainPan, gpReverse, gpVolume, gpGrainSize, gpDensity,
     gpOscFine, gpOscLevel, gpOscPan, gpOscFmAmt, gpOscFmRatio, gpOscSync,
@@ -47,7 +47,9 @@ const
     // Oszillator 2 je Note
     gpOsc2Fine, gpOsc2Level, gpOsc2Pan, gpOsc2FmAmt, gpOsc2FmRatio, gpOsc2Sync, gpOsc2FltCutoff, gpOsc2FltReso, gpOsc2FltEnvAmt, gpOsc2FltContour, gpOsc2Attack, gpOsc2Decay, gpOsc2Sustain, gpOsc2Release, gpOsc2FmAttack, gpOsc2FmDecay, gpOsc2FmSustain, gpOsc2FmRelease,
     // Oszillator 3 je Note
-    gpOsc3Fine, gpOsc3Level, gpOsc3Pan, gpOsc3FmAmt, gpOsc3FmRatio, gpOsc3Sync, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltEnvAmt, gpOsc3FltContour, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease);
+    gpOsc3Fine, gpOsc3Level, gpOsc3Pan, gpOsc3FmAmt, gpOsc3FmRatio, gpOsc3Sync, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltEnvAmt, gpOsc3FltContour, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease,
+    // Nov. 2026: Wavetable-Position je Oszillator
+    gpOscWtPos, gpOsc2WtPos, gpOsc3WtPos);
   PND_POS = 0; PND_SPRAY = 1; PND_PITCH = 2; PND_PRAND = 3; PND_SPREAD = 4; PND_GPAN = 5;
   PND_REV = 6; PND_VOL = 7; PND_SIZE = 8; PND_DENS = 9; PND_OFINE = 10; PND_OLVL = 11;
   PND_OPAN = 12; PND_OFM = 13; PND_ORATIO = 14; PND_OSYNC = 15;
@@ -62,12 +64,14 @@ const
   { je Oszillator: Index der Noten-Werte (Oszillator 1 verstreut, 2 und 3 ab 49 bzw. 67 am Stueck) }
   OP_FINE = 0; OP_LVL = 1; OP_PAN = 2; OP_FM = 3; OP_RATIO = 4; OP_SYNC = 5; OP_FCUT = 6; OP_FRES = 7;
   OP_FENV = 8; OP_FCON = 9; OP_ATT = 10; OP_DEC = 11; OP_SUS = 12; OP_REL = 13; OP_FMATT = 14;
-  OP_FMDEC = 15; OP_FMSUS = 16; OP_FMREL = 17;
-  OSC_PND: array[0..2, 0..17] of Integer = (
+  OP_FMDEC = 15; OP_FMSUS = 16; OP_FMREL = 17; OP_WTPOS = 18;
+  OSC_PND: array[0..2, 0..18] of Integer = (
     (PND_OFINE, PND_OLVL, PND_OPAN, PND_OFM, PND_ORATIO, PND_OSYNC, PND_OFCUT, PND_OFRES, PND_OFENV,
-     PND_OFCON, PND_OATT, PND_ODEC, PND_OSUS, PND_OREL, PND_FATT, PND_FDEC, PND_FSUS, PND_FREL),
-    (49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66),
-    (67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84));
+     PND_OFCON, PND_OATT, PND_ODEC, PND_OSUS, PND_OREL, PND_FATT, PND_FDEC, PND_FSUS, PND_FREL, 85),
+    (49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 86),
+    (67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 87));
+  WT_MAX_FRAMES = 32;    // so viele Frames einer geladenen Wavetable (je Frame eine volle Stufen-Tabelle, ~1 MB)
+  WT_FRAME_N = 2048;     // Punkte je Frame nach dem Umrechnen (Serum-Format)
   MAX_GRAINS    = 1024;
   { Mischpult-Pegel: Grains, Osz 1..3, Echo, Hall, Summe, Ausgang }
   MIX_METERS = 12;
@@ -116,6 +120,13 @@ const
   RES_BUFS = 3;          // Feedback-Resampling: spielend, vorig, Ziel
 
 type
+  { geladene Wavetable eines Oszillators: Count Frames, jeder als bandbegrenzte Stufen-Tabelle (WT_TOTAL) }
+  PWtSet = ^TWtSet;
+  TWtSet = record
+    Count: Integer;
+    Frames: array[0..WT_MAX_FRAMES - 1] of PSingle;
+  end;
+
   TGrain = record
     Zone: Integer;       // 0 = Hauptsample, 1..ZONE_COUNT = Zonen-Sample
     Active: Boolean;
@@ -308,6 +319,25 @@ type
     FOscLast: Integer;               // zuletzt angeschlagene Oszillator-Stimme (Anzeige)
     FRevWasOn: Boolean;
     FSat: TSatArgs;
+    FShape: TShapeArgs;                  // weitere Saettigungs-Arten
+    FDrvKind: Integer;                   // 0 Warm, 1 Roehre, 2 Hart, 3 Faltung
+    FDcX, FDcY: array[0..1] of Double;   // Gleichanteil-Filter nach der Roehre
+    FCmpLp1, FCmpLp2: array[0..1] of Double;   // Kompressor: Bandweichen je Kanal
+    FCmpEnv, FCmpG: array[0..2] of Double;     // Kompressor: Pegel und Verstaerkung je Band
+    FCmpWas: Boolean;
+    FWtData: array[0..OSC_COUNT - 1, 0..1, 0..WT_MAX_FRAMES - 1] of TArray<Single>;   // Doppelpuffer
+    FWtSets: array[0..OSC_COUNT - 1, 0..1] of TWtSet;
+    FWtActive: array[0..OSC_COUNT - 1] of PWtSet;     // liest der Audio-Thread (nil = keine)
+    FWtSlot: array[0..OSC_COUNT - 1] of Integer;
+    FWtRef, FWtLoaded: array[0..OSC_COUNT - 1] of string;
+    FVMEnv: array[0..MAX_VOICES - 1, 0..MENV_COUNT - 1] of Single;       // Modulations-Huellkurven je Note
+    FVMStage: array[0..MAX_VOICES - 1, 0..MENV_COUNT - 1] of TEnvStage;
+    FVMTime: array[0..MAX_VOICES - 1, 0..MENV_COUNT - 1] of Integer;    // Samples in der Phase (Anzeige)
+    FMEnvLast: Integer;                                                  // juengste Stimme (Anzeige)
+    FSubPh: array[0..MAX_VOICES - 1] of Single;                          // Sub-Oszillator: Phase je Stimme
+    FBmX1, FBmX2, FBmY1, FBmY2: array[0..1] of Double;   // Bass mono: 2 Hochpaesse (24 dB/Okt.) auf dem Seitensignal
+    FBmFreq, FBmB0, FBmB1, FBmB2, FBmA1, FBmA2: Double;
+    FBmWas: Boolean;
     FGainPrev: Double;                   // Lautstaerke des vorigen Subblocks (Rampe -> klickfrei)
     FGrainGainPrev: Double;              // Grain-Pegel des vorigen Subblocks (Rampe)
     FScale, FScaleRoot: Integer;
@@ -527,9 +557,15 @@ type
     procedure ProcessReverb(N: Integer);
     procedure ProcessDrive(N: Integer);
     procedure SatBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
+    procedure ShapeBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
+    procedure ProcessComp(N: Integer);
+    procedure UpdateModEnvs(N: Integer);
+    procedure ProcessBassMono(N: Integer);
+    procedure DcBlockTube(N, Mode: Integer);
     procedure DriveOs(N: Integer; Drive, Make: Single);
     procedure HbDecimate(W: PSingle; N: Integer; Dst: PSingle);
     procedure RenderWtOsc(Tab: PSingle);
+    procedure RenderWtPos(S: PWtSet; Pos: Double);
     function GetOscDraw(O: Integer): POscDraw;
     procedure ProcessEq(N: Integer);
     procedure ProcessStereo(N: Integer);
@@ -551,6 +587,9 @@ type
     function GetLfoPhase(Index: Integer): Double;
     function GetLfoValue(Index: Integer): Single;
     function GetSourceValue(Src: TModSource): Single;
+    function GetWtRef(O: Integer): string;
+    procedure SetWtRef(O: Integer; const Value: string);
+    function GetWtLoaded(O: Integer): string;
     function GetFreeLfo(Index: Integer): PFreeLfo;
   public
     constructor Create;
@@ -639,6 +678,7 @@ type
     function VoiceOfNote(Note: Integer): Integer;
     { Oszillator-Huellkurve bzw. eigene FM-Huellkurve der zuletzt angeschlagenen Oszillator-Stimme }
     function GetOscEnvState(Fm: Boolean; Osc: Integer = 0): TEnvelopeState;
+    function GetModEnvState(K: Integer): TEnvelopeState;
     { kopiert die letzten Count Werte (aelteste zuerst) }
     procedure GetScope(var OutBuf, InBuf: array of Single; Count: Integer);
     { Summe vor dem Equalizer (fuer die Filteransicht) }
@@ -654,6 +694,14 @@ type
     property LfoPhase[Index: Integer]: Double read GetLfoPhase;
     property LfoValue[Index: Integer]: Single read GetLfoValue;
     property SourceValue[Src: TModSource]: Single read GetSourceValue;
+    { Wavetables: Verweis wie im Preset, geladene Datei; Daten = Mono-Samples, FrameLen Punkte je Frame.
+      Baut die Tabellen (nicht im Audio-Thread!) und schaltet danach um. Data leer = keine Wavetable. }
+    property WtRef[O: Integer]: string read GetWtRef write SetWtRef;
+    property WtLoaded[O: Integer]: string read GetWtLoaded;
+    procedure SetOscWavetable(O: Integer; const Data: TArray<Single>; FrameLen: Integer; const Loaded: string);
+    function WtFrameCount(O: Integer): Integer;
+    { eine Periode des Frames bei Position Pos (0..1) fuer die Anzeige, N Punkte }
+    procedure WtPreview(O: Integer; Pos: Double; var Dst: array of Single);
     { Daten der Form 'Frei' je LFO; die Oberflaeche schreibt direkt hinein (einzelne Singles, lockfrei) }
     property FreeLfo[Index: Integer]: PFreeLfo read GetFreeLfo;
     { gezeichnete Oszillator-Welle O (0..2); nach Aenderungen OscDrawChanged aufrufen (nicht im Audio-Thread) }
@@ -731,6 +779,11 @@ function ArpBuildSeq(const Held: array of Integer; const Vel: array of Single; C
   var Seq: array of Integer; var SeqVel: array of Single): Integer;
 { Index in der Tonfolge fuer den Zaehler Count (Modi ausser Zufall und Akkord) }
 function ArpSeqIndex(Mode, Count, Len: Integer): Integer;
+
+{ Kennlinie des Kompressors: Verstaerkung in dB fuer den Bandpegel Lv (dBFS), bei voller Menge.
+  Ueber der Schwelle abwaerts im Verhaeltnis Ratio:1, im Knick (Breite Knee dB um die Schwelle) weich
+  quadratisch; darunter aufwaerts (OTT-Art, bis +18 dB, unter -66 dBFS ausgeblendet). }
+function CompGainDb(Lv, Thresh, Ratio, Knee: Double): Double;
 
 implementation
 
@@ -1578,6 +1631,138 @@ begin
   FOscArgs.Ph := FWtArgs.Ph;
 end;
 
+{ Wavetable-Position: zwei benachbarte Frames ueberblendet (Pos 0..1 ueber alle Frames); beide mit
+  derselben Phase, daher kein Kammeffekt - nur der Klang wandert }
+procedure TGranularEngine.RenderWtPos(S: PWtSet; Pos: Double);
+var
+  F, Fr: Double;
+  I0: Integer;
+  Ph0, Ph1, GL0, GR0: Single;
+begin
+  F := EnsureRange(Pos, 0, 1) * (S.Count - 1);
+  I0 := Min(Trunc(F), S.Count - 1);
+  Fr := F - I0;
+  if (Fr < 0.0005) or (I0 >= S.Count - 1) then
+  begin
+    RenderWtOsc(S.Frames[I0]);
+    Exit;
+  end;
+  if Fr > 0.9995 then
+  begin
+    RenderWtOsc(S.Frames[I0 + 1]);
+    Exit;
+  end;
+  Ph0 := FOscArgs.Ph;
+  GL0 := FOscArgs.GL;
+  GR0 := FOscArgs.GR;
+  FOscArgs.GL := GL0 * (1 - Fr);
+  FOscArgs.GR := GR0 * (1 - Fr);
+  RenderWtOsc(S.Frames[I0]);
+  Ph1 := FOscArgs.Ph;
+  FOscArgs.Ph := Ph0;
+  FOscArgs.GL := GL0 * Fr;
+  FOscArgs.GR := GR0 * Fr;
+  RenderWtOsc(S.Frames[I0 + 1]);
+  FOscArgs.GL := GL0;
+  FOscArgs.GR := GR0;
+  FOscArgs.Ph := Ph1;
+end;
+
+function TGranularEngine.GetWtRef(O: Integer): string;
+begin
+  Result := FWtRef[EnsureRange(O, 0, OSC_COUNT - 1)];
+end;
+
+procedure TGranularEngine.SetWtRef(O: Integer; const Value: string);
+begin
+  FWtRef[EnsureRange(O, 0, OSC_COUNT - 1)] := Value;
+end;
+
+function TGranularEngine.GetWtLoaded(O: Integer): string;
+begin
+  Result := FWtLoaded[EnsureRange(O, 0, OSC_COUNT - 1)];
+end;
+
+function TGranularEngine.WtFrameCount(O: Integer): Integer;
+var
+  S: PWtSet;
+begin
+  S := FWtActive[EnsureRange(O, 0, OSC_COUNT - 1)];
+  if S = nil then Result := 0 else Result := S.Count;
+end;
+
+{ Data = Mono-Samples, FrameLen Punkte je Frame. Mehr als WT_MAX_FRAMES Frames: gleichmaessig ausgewaehlt.
+  Jeder Frame wird auf WT_FRAME_N Punkte gebracht, in Obertoene zerlegt und als Stufen-Tabelle gebaut
+  (Spitze = 1, damit alle Frames gleich laut sind). In den freien Puffer, danach umschalten. }
+procedure TGranularEngine.SetOscWavetable(O: Integer; const Data: TArray<Single>; FrameLen: Integer;
+  const Loaded: string);
+var
+  Nxt, NF, NSrc, K, I, Src: Integer;
+  X: array of Single;
+  A, B: array of Double;
+  T, Pos: Double;
+  J: Integer;
+  S: PWtSet;
+begin
+  O := EnsureRange(O, 0, OSC_COUNT - 1);
+  FWtLoaded[O] := Loaded;
+  if (FrameLen < 16) or (Length(Data) < FrameLen) then
+  begin
+    FWtActive[O] := nil;
+    Exit;
+  end;
+  NSrc := Length(Data) div FrameLen;
+  NF := Min(NSrc, WT_MAX_FRAMES);
+  Nxt := 1 - FWtSlot[O];
+  S := @FWtSets[O, Nxt];
+  SetLength(X, WT_FRAME_N);
+  SetLength(A, WT_FRAME_N div 2 + 1);
+  SetLength(B, WT_FRAME_N div 2 + 1);
+  for K := 0 to NF - 1 do
+  begin
+    if NF > 1 then Src := Round(K * (NSrc - 1) / (NF - 1)) else Src := 0;
+    for I := 0 to WT_FRAME_N - 1 do
+    begin
+      // zyklisch linear auf WT_FRAME_N Punkte (bei 2048 unveraendert)
+      Pos := I * FrameLen / WT_FRAME_N;
+      J := Trunc(Pos);
+      T := Pos - J;
+      X[I] := Data[Src * FrameLen + J] * (1 - T) + Data[Src * FrameLen + (J + 1) mod FrameLen] * T;
+    end;
+    WtAnalyze(X, WT_FRAME_N, A, B);
+    if Length(FWtData[O, Nxt, K]) <> WT_TOTAL then
+      SetLength(FWtData[O, Nxt, K], WT_TOTAL);
+    WtBuild(A, B, WT_FRAME_N div 2 - 1, @FWtData[O, Nxt, K][0], True);
+    S.Frames[K] := @FWtData[O, Nxt, K][0];
+  end;
+  S.Count := NF;
+  FWtSlot[O] := Nxt;
+  FWtActive[O] := S;
+end;
+
+procedure TGranularEngine.WtPreview(O: Integer; Pos: Double; var Dst: array of Single);
+var
+  S: PWtSet;
+  F, Fr: Double;
+  I0, I, L: Integer;
+  P0, P1: PFloatArr;
+begin
+  S := FWtActive[EnsureRange(O, 0, OSC_COUNT - 1)];
+  if (S = nil) or (S.Count = 0) then
+  begin
+    for I := 0 to High(Dst) do Dst[I] := 0;
+    Exit;
+  end;
+  F := EnsureRange(Pos, 0, 1) * (S.Count - 1);
+  I0 := Min(Trunc(F), S.Count - 1);
+  Fr := F - I0;
+  P0 := PFloatArr(S.Frames[I0]);
+  P1 := PFloatArr(S.Frames[Min(I0 + 1, S.Count - 1)]);
+  L := WT_LEN[0];
+  for I := 0 to High(Dst) do
+    Dst[I] := P0[I * L div Length(Dst)] * (1 - Fr) + P1[I * L div Length(Dst)] * Fr;
+end;
+
 { Tabellen der gezeichneten Welle O neu: in den freien Puffer (beim ersten Mal angelegt - nie im
   Audio-Thread), dann umschalten; der Audio-Thread liest nur die aktive Tabelle. }
 procedure TGranularEngine.OscDrawChanged(O: Integer);
@@ -1955,6 +2140,12 @@ begin
   end;
   FVFltEnv[V] := 0;
   FVFltStage[V] := esAttack;
+  for I := 0 to MENV_COUNT - 1 do
+  begin
+    FVMEnv[V, I] := 0;
+    FVMStage[V, I] := esAttack;
+    FVMTime[V, I] := 0;
+  end;
   for I := 0 to LFO_COUNT - 1 do
   begin
     FVLfoPh[V, I] := 0;
@@ -2026,6 +2217,8 @@ begin
     begin
       FOsc[O, V].Ph := 0;
       FOsc[O, V].PhM := 0;
+      if O = 0 then
+        FSubPh[V] := 0;
       for K := 0 to UNI_MAX - 2 do
       begin
         FOsc[O, V].UPh[K] := Rand;      // Unison: freie Phasen -> breiter, kein Phasing beim Anschlag
@@ -2452,7 +2645,7 @@ var
   Ev, Dly, StopS, Vc: Integer;
   Fire, Stopped: Boolean;
 
-  { ist Ereignis Ev (0..7, Reiter Timing / Events) in diesem Block fuer LFO K eingetreten? }
+  { ist Ereignis Ev (0..7, Reiter Timing / Hüllk.) in diesem Block fuer LFO K eingetreten? }
   function EvFired(Ev, K: Integer): Boolean;
   begin
     case Ev of
@@ -2532,6 +2725,19 @@ begin
     FSource[msAmpEnv] := FVoices[Best].Env
   else
     FSource[msAmpEnv] := 0;
+  // Modulations-Huellkurven je Note weiterrechnen; global = juengste Stimme
+  UpdateModEnvs(N);
+  if Best >= 0 then
+  begin
+    FMEnvLast := Best;
+    FSource[msModEnv1] := FVMEnv[Best, 0];
+    FSource[msModEnv2] := FVMEnv[Best, 1];
+  end
+  else
+  begin
+    FSource[msModEnv1] := 0;
+    FSource[msModEnv2] := 0;
+  end;
   // Oszillator-Huellkurven (global = juengste Stimme; je Note in UpdateVoiceModulation)
   FSource[msOsc1Env] := FOsc[0, EnsureRange(FOscLast, 0, MAX_VOICES - 1)].Env;
   FSource[msOsc2Env] := FOsc[1, EnsureRange(FOscLast, 0, MAX_VOICES - 1)].Env;
@@ -2678,7 +2884,7 @@ begin
     // 4 = Ende des anderen LFOs (dessen Ereignis stammt aus diesem oder dem vorigen Subblock
     // und wird genau einmal gesehen: jeder LFO loescht sein eigenes Ereignis vor der Neuberechnung)
     Trig := Round(Eff(LFO_TRIG_IDS[K]));
-    // welches Ereignis feuert fuer diesen LFO? (0..7 wie im Reiter Timing / Events, -1 = keins)
+    // welches Ereignis feuert fuer diesen LFO? (0..7 wie im Reiter Timing / Hüllk., -1 = keins)
     Ev := -1;
     if (Trig in [1, 3]) and FTrigOn then Ev := 0
     else if (Trig in [2, 3]) and FTrigOff then Ev := 1
@@ -3057,7 +3263,8 @@ end;
 function TGranularEngine.IsNoteSource(Src: Integer): Boolean;
 begin
   case TModSource(Src) of
-    msVelocity, msNoteRandom, msNote, msAmpEnv, msFilterEnv, msOsc1Env, msOsc2Env, msOsc3Env: Result := True;
+    msVelocity, msNoteRandom, msNote, msAmpEnv, msFilterEnv, msOsc1Env, msOsc2Env, msOsc3Env,
+    msModEnv1, msModEnv2: Result := True;
   else
     if LfoOfSource(Src) >= 0 then
       Result := Round(Eff(LFO_TRIG_IDS[LfoOfSource(Src)])) in [1..3]
@@ -3207,6 +3414,8 @@ begin
         msOsc1Env:    Sv := FOsc[0, V].Env;
         msOsc2Env:    Sv := FOsc[1, V].Env;
         msOsc3Env:    Sv := FOsc[2, V].Env;
+        msModEnv1:    Sv := FVMEnv[V, 0];
+        msModEnv2:    Sv := FVMEnv[V, 1];
         msFilterEnv:  Sv := FVFltEnv[V];
         msLfo1, msLfo2, msLfo3, msLfo4, msLfo5, msLfo6, msLfo7, msLfo8:
           begin
@@ -3738,7 +3947,7 @@ end;
 
 procedure TGranularEngine.RenderSub(SubInL, SubInR, Sc2L, Sc2R: PSingle; N: Integer; Audible: Boolean);
 var
-  I: Integer;
+  I, FxOrd, FxK: Integer;
   T: Int64;
 begin
   if GSectProfOn then T := TStopwatch.GetTimeStamp;
@@ -3805,14 +4014,31 @@ begin
     Move(FMix[0], FMeterTmp[0], N * 2 * SizeOf(Single));
   end;
   // Summen-Effekte; mit Pegelanzeige (Mischpult offen): je Effekt, was er am Klang veraendert
-  ProcessTranceGate(N);   // Gate auf den trockenen Klang: Echo und Hall klingen frei aus
-  if FMeterOn then FxMeter(MM_GATE, N);
-  ProcessCrush(N);
-  if FMeterOn then FxMeter(MM_CRUSH, N);
-  ProcessChorus(N);
-  if FMeterOn then FxMeter(MM_CHO, N);
-  ProcessPhaser(N);
-  if FMeterOn then FxMeter(MM_PHA, N);
+  // Reihenfolge waehlbar (Effekt-Reihenfolge, Index 0 = Gate > Crusher > Chorus > Phaser wie bisher)
+  FxOrd := EnsureRange(Round(Eff(gpFxOrder)), 0, FX_ORDER_COUNT - 1);
+  for FxK := 0 to 3 do
+    case FX_ORDERS[FxOrd, FxK] of
+      0:
+        begin
+          ProcessTranceGate(N);   // Gate auf den trockenen Klang: Echo und Hall klingen frei aus
+          if FMeterOn then FxMeter(MM_GATE, N);
+        end;
+      1:
+        begin
+          ProcessCrush(N);
+          if FMeterOn then FxMeter(MM_CRUSH, N);
+        end;
+      2:
+        begin
+          ProcessChorus(N);
+          if FMeterOn then FxMeter(MM_CHO, N);
+        end;
+    else
+      begin
+        ProcessPhaser(N);
+        if FMeterOn then FxMeter(MM_PHA, N);
+      end;
+    end;
   if GSectProfOn then SectMark(26, T);
   if GSectProfOn then SectMark(7, T);
   ProcessEcho(N);
@@ -3830,8 +4056,10 @@ begin
   ProcessDrive(N);
   if GSectProfOn then SectMark(22, T);
   ProcessEq(N);       // Equalizer vor dem Limiter
+  ProcessComp(N);     // Kompressor nach dem EQ (Nov. 2026)
   if GSectProfOn then SectMark(23, T);
   ProcessStereo(N);   // Breite + Panorama der Summe
+  ProcessBassMono(N); // Bass in die Mitte (Nov. 2026)
   if GSectProfOn then SectMark(24, T);
   ProcessLimiter(N);
   if GSectProfOn then SectMark(25, T);
@@ -4930,11 +5158,17 @@ var
   VAtt, VDec, VSus, VRel, VFAtt, VFDec, VFSus, VFRel: Double;
   V, I, Wave: Integer;
   Hz, Dt, Lvl, Pn, AttInc, DecCoef, Sus, RelCoef, Ratio, FmIdx: Double;
-  VFine, VLvl, VPn, VRatio: Double;
+  VFine, VLvl, VPn, VRatio, VWtPos, WtPosG: Double;
   FAtt, FDec, FSus, FRel: Double;
   E, F: Single;
   OwnFm, OwnFlt, OsV, DrawOn, UseWt: Boolean;
   WtTab: PSingle;
+  WtSet: PWtSet;
+  SubLvl, NoiseLvl, SubDiv: Double;
+  SubWave, SvWave, SvCnt: Integer;
+  FollowP: Boolean;
+  PitchG, VPit: Double;
+  SvSync, SvPh, SvPhM: Single;
   Dst: PSingle;
   G0, R0: Single;
   P: TOscParamIds;
@@ -4952,6 +5186,30 @@ begin
   end;
   Wave := EnsureRange(Round(Eff(P.Wave)), 0, 5);
   DrawOn := Eff(P.Draw) >= 0.5;                  // gezeichnete Welle ersetzt 'Welle'
+  // geladene Wavetable ersetzt beides (nur wenn eine geladen ist)
+  WtSet := nil;
+  if (Eff(P.WtOn) >= 0.5) and (FWtActive[O] <> nil) and (FWtActive[O].Count > 0) then
+  begin
+    WtSet := FWtActive[O];
+    DrawOn := True;                              // Welle 0, Oversampling wie bei der gezeichneten Welle
+  end;
+  WtPosG := Eff(P.WtPos) / 100;
+  FollowP := Eff(gpOscFollowPitch) >= 0.5;
+  PitchG := Eff(gpPitch);
+  if O = 0 then
+  begin
+    SubLvl := Eff(gpSubLevel) / 100;
+    NoiseLvl := Eff(gpNoiseLevel) / 100;
+    if Round(Eff(gpSubOct)) = 1 then SubDiv := 4 else SubDiv := 2;
+    if Round(Eff(gpSubWave)) = 1 then SubWave := 3 else SubWave := 0;
+  end
+  else
+  begin
+    SubLvl := 0;
+    NoiseLvl := 0;
+    SubDiv := 2;
+    SubWave := 0;
+  end;
   if DrawOn then
   begin
     Wave := 0;
@@ -5014,10 +5272,12 @@ begin
         FOscArgs.FmIdx := FVPlain[V, OSC_PND[O, OP_FM]] / 100 * 6 / (2 * Pi);
         VRatio := FVPlain[V, OSC_PND[O, OP_RATIO]];
         FOscArgs.SyncR := 1 + FVPlain[V, OSC_PND[O, OP_SYNC]] / 100 * 7;
+        VWtPos := FVPlain[V, OSC_PND[O, OP_WTPOS]] / 100;
       end
       else
       begin
         VFine := Eff(P.Fine); VLvl := Lvl; VPn := Pn; VRatio := Ratio;
+        VWtPos := WtPosG;
         FOscArgs.FmIdx := FmIdx;
         FOscArgs.SyncR := 1 + Eff(P.Sync) / 100 * 7;
       end;
@@ -5039,13 +5299,20 @@ begin
       end;
       FOscArgs.GL := Sqrt((1 - VPn) / 2) * Sqrt(2);
       FOscArgs.GR := Sqrt((1 + VPn) / 2) * Sqrt(2);
+      // Osz folgen Pitch: der Grain-Regler Pitch samt Modulation (je Note) transponiert auch die Oszillatoren
+      if FollowP then
+      begin
+        if FVModOn[V] then VPit := FVPlain[V, PND_PITCH] else VPit := PitchG;
+      end
+      else
+        VPit := 0;
       // Tonleiter: wie die Grains auf den naechsten Ton einrasten (die Taste; Glide und Bend bleiben stufenlos)
       if FScale > 0 then
         Hz := 440 * Power(2, (ScaleSnap(Note - ROOT_NOTE) + ROOT_NOTE - 69 + FGlideOfs[V] +
-          (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 + FBend * FBendRange) / 12)
+          (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 + FBend * FBendRange + VPit) / 12)
       else
         Hz := 440 * Power(2, (Note - 69 + FGlideOfs[V] + (Round(Eff(P.Oct)) - 3) * 12 + VFine / 100 +
-          FBend * FBendRange) / 12);
+          FBend * FBendRange + VPit) / 12);
       OsV := FOsOn and FOscOsGroup and ((Wave <> 5) or DrawOn);   // Rauschen: nichts zu spiegeln
       if OsV then
         Dt := Min(Hz / (FSampleRate * 2), 0.45)
@@ -5126,7 +5393,9 @@ begin
         FOscArgs.DtP := Dt;
         FOscArgs.Dt := Min(Dt * FOscArgs.SyncR, 0.45);   // PolyBLEP-Breite der schnelleren Folgewelle
         FOscArgs.DtM := Min(Dt * VRatio, 0.45);
-        if UseWt then
+        if WtSet <> nil then
+          RenderWtPos(WtSet, VWtPos)
+        else if UseWt then
           RenderWtOsc(WtTab)
         else
           RenderOscBlock(@FOscArgs);
@@ -5155,7 +5424,9 @@ begin
           FOscArgs.DtP := UDt;
           FOscArgs.Dt := Min(UDt * FOscArgs.SyncR, 0.45);
           FOscArgs.DtM := Min(UDt * VRatio, 0.45);
-          if UseWt then
+          if WtSet <> nil then
+            RenderWtPos(WtSet, VWtPos)
+          else if UseWt then
             RenderWtOsc(WtTab)
           else
             RenderOscBlock(@FOscArgs);
@@ -5169,6 +5440,43 @@ begin
           end;
         end;
         FOscArgs.GL := GL0; FOscArgs.GR := GR0;
+      end;
+      // Sub-Oszillator und Rauschen (nur Osz 1): gleiche Huellkurve und Mitte wie der Oszillator, SIMD-Kern
+      if (O = 0) and ((SubLvl > 0) or (NoiseLvl > 0)) then
+      begin
+        SvWave := FOscArgs.Wave;
+        SvSync := FOscArgs.SyncR;
+        GL0 := FOscArgs.GL; GR0 := FOscArgs.GR;
+        SvPh := FOscArgs.Ph; SvPhM := FOscArgs.PhM;
+        if OsV then SvCnt := N * 2 else SvCnt := N;   // der SSE-Kern zaehlt Count im Record herunter
+        FOscArgs.SyncR := 1;
+        if SubLvl > 0 then
+        begin
+          FOscArgs.Wave := SubWave;
+          FOscArgs.Ph := FSubPh[V];
+          FOscArgs.PhM := 0;
+          FOscArgs.DtP := Dt / SubDiv;
+          FOscArgs.Dt := FOscArgs.DtP;
+          FOscArgs.DtM := FOscArgs.DtP;
+          FOscArgs.GL := GL0 * SubLvl;
+          FOscArgs.GR := GR0 * SubLvl;
+          FOscArgs.Count := SvCnt;
+          RenderOscBlock(@FOscArgs);
+          FSubPh[V] := FOscArgs.Ph;
+        end;
+        if NoiseLvl > 0 then
+        begin
+          FOscArgs.Wave := 5;
+          FOscArgs.GL := GL0 * NoiseLvl * 0.5;
+          FOscArgs.GR := GR0 * NoiseLvl * 0.5;
+          FOscArgs.Count := SvCnt;
+          RenderOscBlock(@FOscArgs);
+        end;
+        FOscArgs.Wave := SvWave;
+        FOscArgs.SyncR := SvSync;
+        FOscArgs.GL := GL0; FOscArgs.GR := GR0;
+        FOscArgs.Ph := SvPh; FOscArgs.PhM := SvPhM;
+        FOscArgs.Count := SvCnt;
       end;
       if OsV and OwnFlt then
       begin
@@ -5440,6 +5748,62 @@ begin
   end;
 end;
 
+{ Bass mono: unter der Frequenz wird das Seitensignal (L-R) weggefiltert - der Bass steht in der Mitte,
+  Breite und Raum darueber bleiben. zwei Butterworth-Hochpaesse hintereinander (24 dB/Oktave) nur auf S, M bleibt unberuehrt. }
+procedure TGranularEngine.ProcessBassMono(N: Integer);
+var
+  I, K: Integer;
+  F, W0, Al, Cw, A0, M, S, Y: Double;
+begin
+  if Eff(gpBassMonoOn) < 0.5 then
+  begin
+    FBmWas := False;
+    Exit;
+  end;
+  F := Eff(gpBassMonoFreq);
+  if not FBmWas then
+  begin
+    for K := 0 to 1 do
+    begin
+      FBmX1[K] := 0; FBmX2[K] := 0; FBmY1[K] := 0; FBmY2[K] := 0;
+    end;
+    FBmFreq := -1;
+    FBmWas := True;
+  end;
+  if Abs(F - FBmFreq) > 0.01 then
+  begin
+    FBmFreq := F;
+    W0 := 2 * Pi * F / FSampleRate;
+    Cw := Cos(W0);
+    Al := Sin(W0) / (2 * 0.70710678);
+    A0 := 1 + Al;
+    FBmB0 := (1 + Cw) / 2 / A0;
+    FBmB1 := -(1 + Cw) / A0;
+    FBmB2 := FBmB0;
+    FBmA1 := -2 * Cw / A0;
+    FBmA2 := (1 - Al) / A0;
+  end;
+  for I := 0 to N - 1 do
+  begin
+    M := (FMix[I * 2] + FMix[I * 2 + 1]) * 0.5;
+    S := (FMix[I * 2] - FMix[I * 2 + 1]) * 0.5;
+    for K := 0 to 1 do
+    begin
+      Y := FBmB0 * S + FBmB1 * FBmX1[K] + FBmB2 * FBmX2[K] - FBmA1 * FBmY1[K] - FBmA2 * FBmY2[K];
+      FBmX2[K] := FBmX1[K]; FBmX1[K] := S;
+      FBmY2[K] := FBmY1[K]; FBmY1[K] := Y;
+      S := Y;
+    end;
+    FMix[I * 2] := M + S;
+    FMix[I * 2 + 1] := M - S;
+  end;
+  for K := 0 to 1 do
+  begin
+    if Abs(FBmY1[K]) < 1E-20 then FBmY1[K] := 0;
+    if Abs(FBmY2[K]) < 1E-20 then FBmY2[K] := 0;
+  end;
+end;
+
 procedure TGranularEngine.ProcessEq(N: Integer);
 var
   I, P: Integer;
@@ -5470,6 +5834,11 @@ procedure TGranularEngine.SatBuffer(P: PSingle; Count: Integer; Drive, Make: Sin
 var
   I, Cnt: Integer;
 begin
+  if FDrvKind <> 0 then
+  begin
+    ShapeBuffer(P, Count, Drive, Make);
+    Exit;
+  end;
   for I := 0 to 3 do
   begin
     FSat.Drive4[I] := Drive;
@@ -5484,6 +5853,55 @@ begin
     FSat.P := @PFloatArr(P)[Cnt];
     FSat.Count := Count - Cnt;
     SatBlockPas(@FSat);
+  end;
+end;
+
+{ Roehre / Hart / Faltung (Kind aus FDrvKind) }
+procedure TGranularEngine.ShapeBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
+const
+  TUBE_BIAS = 0.35;           // Arbeitspunkt der Roehre: verschiebt die Kurve -> gerade Obertoene
+var
+  I, Cnt: Integer;
+  B, Off, Hi, Lo: Single;
+begin
+  B := 0;
+  Off := 0;
+  Hi := 3;
+  Lo := -3;
+  if FDrvKind = 1 then
+  begin
+    B := TUBE_BIAS;
+    Off := ((27 + B * B) * B) / (B * B * 9 + 27);   // Ruhelage abziehen: Stille bleibt Stille
+  end
+  else if FDrvKind = 3 then
+  begin
+    Hi := 5;                  // Faltung: bis +/-5, zweimal gespiegelt landet alles in +/-1
+    Lo := -5;
+  end;
+  FShape.Kind := FDrvKind;
+  for I := 0 to 3 do
+  begin
+    FShape.Drive4[I] := Drive;
+    FShape.Make4[I] := Make;
+    FShape.Bias4[I] := B;
+    FShape.Off4[I] := Off;
+    FShape.Hi4[I] := Hi;
+    FShape.Lo4[I] := Lo;
+    FShape.C27[I] := 27;
+    FShape.C9[I] := 9;
+    FShape.One4[I] := 1;
+    FShape.MOne4[I] := -1;
+    FShape.Zero4[I] := 0;
+  end;
+  Cnt := Count and not 3;
+  FShape.P := P;
+  FShape.Count := Cnt;
+  RenderShape(@FShape);
+  if Cnt < Count then
+  begin
+    FShape.P := @PFloatArr(P)[Cnt];
+    FShape.Count := Count - Cnt;
+    ShapeBlockPas(@FShape);
   end;
 end;
 
@@ -5538,6 +5956,7 @@ var
   I, Mode: Integer;
 begin
   A := Eff(gpDrive) / 100;
+  FDrvKind := EnsureRange(Round(Eff(gpDriveType)), 0, 3);
   if A <= 0.001 then
     Mode := 0
   else if FOsOn then
@@ -5552,11 +5971,13 @@ begin
     if Mode = 1 then
       SatBuffer(@FMix[0], N * 2, Drive, Make);
     FDrvMode := Mode;
+    DcBlockTube(N, Mode);
     Exit;
   end;
   if Mode = FDrvMode then
   begin
     DriveOs(N, Drive, Make);
+    DcBlockTube(N, Mode);
     Exit;
   end;
   // Wechsel von/zu Oversampling (andere Laufzeit): ueber den Block ueberblenden statt springen
@@ -5578,6 +5999,207 @@ begin
     FMix[I * 2 + 1] := FDrvAlt[I * 2 + 1] + (FMix[I * 2 + 1] - FDrvAlt[I * 2 + 1]) * T;
   end;
   FDrvMode := Mode;
+  DcBlockTube(N, Mode);
+end;
+
+{ Roehre: die asymmetrische Kurve erzeugt bei Klang einen Gleichanteil -> Hochpass ~10 Hz.
+  Andere Arten (und Warm wie bisher) bleiben unberuehrt. }
+procedure TGranularEngine.DcBlockTube(N, Mode: Integer);
+var
+  I, C: Integer;
+  Rc, X, Y: Double;
+begin
+  if (FDrvKind <> 1) or (Mode = 0) then
+  begin
+    FDcX[0] := 0; FDcX[1] := 0; FDcY[0] := 0; FDcY[1] := 0;
+    Exit;
+  end;
+  Rc := 1 - 2 * Pi * 10 / FSampleRate;
+  for C := 0 to 1 do
+  begin
+    X := FDcX[C];
+    Y := FDcY[C];
+    for I := 0 to N - 1 do
+    begin
+      Y := FMix[I * 2 + C] - X + Rc * Y;
+      X := FMix[I * 2 + C];
+      FMix[I * 2 + C] := Y;
+    end;
+    if Abs(Y) < 1E-20 then Y := 0;
+    FDcX[C] := X;
+    FDcY[C] := Y;
+  end;
+end;
+
+function CompGainDb(Lv, Thresh, Ratio, Knee: Double): Double;
+var
+  Ov, Up: Double;
+begin
+  Ov := Lv - Thresh;
+  if (Knee > 0) and (Abs(Ov) * 2 <= Knee) then
+    Result := -(1 - 1 / Ratio) * Sqr(Ov + Knee / 2) / (2 * Knee)
+  else if Ov > 0 then
+    Result := (Thresh - Lv) * (1 - 1 / Ratio)
+  else
+  begin
+    Up := Min((Thresh - Knee / 2 - Lv) * 0.7, 18);             // aufwaerts, begrenzt
+    Result := Up * EnsureRange((Lv + 76) / 10, 0, 1);          // Rauschen/Stille nicht hochziehen
+  end;
+end;
+
+{ Freie Modulations-Huellkurven (ADSR je Note, im Blocktakt wie die Filter-Huellkurve): nur Matrix-Quelle,
+  sie veraendern selbst nichts. Release beginnt, wenn die Note losgelassen ist und nichts mehr haelt. }
+procedure TGranularEngine.UpdateModEnvs(N: Integer);
+var
+  V, K: Integer;
+  AttK, DecK, RelK, Sus: array[0..MENV_COUNT - 1] of Double;
+  St0: TEnvStage;
+begin
+  for K := 0 to MENV_COUNT - 1 do
+  begin
+    AttK[K] := N / Max(1.0, Eff(MENV_IDS[K, 0]) * FSampleRate / 1000);
+    DecK[K] := Power(0.001, N / Max(1.0, Eff(MENV_IDS[K, 1]) * FSampleRate / 1000));
+    Sus[K] := Eff(MENV_IDS[K, 2]) / 100;
+    RelK[K] := Power(0.0001, N / Max(1.0, Eff(MENV_IDS[K, 3]) * FSampleRate / 1000));
+  end;
+  for V := 0 to MAX_VOICES - 1 do
+    for K := 0 to MENV_COUNT - 1 do
+    begin
+      if FVMStage[V, K] = esIdle then
+        Continue;
+      St0 := FVMStage[V, K];
+      if (FVMStage[V, K] in [esAttack, esDecay, esSustain]) and
+         not (FVoices[V].Stage in [esAttack, esDecay, esSustain]) and not OscSounding(V, True) then
+        FVMStage[V, K] := esRelease;
+      case FVMStage[V, K] of
+        esAttack:
+          begin
+            FVMEnv[V, K] := FVMEnv[V, K] + AttK[K];
+            if FVMEnv[V, K] >= 1 then begin FVMEnv[V, K] := 1; FVMStage[V, K] := esDecay; end;
+          end;
+        esDecay:
+          begin
+            FVMEnv[V, K] := Sus[K] + (FVMEnv[V, K] - Sus[K]) * DecK[K];
+            if Abs(FVMEnv[V, K] - Sus[K]) < 0.001 then FVMStage[V, K] := esSustain;
+          end;
+        esSustain:
+          FVMEnv[V, K] := FVMEnv[V, K] + (Sus[K] - FVMEnv[V, K]) * 0.1;
+        esRelease:
+          begin
+            FVMEnv[V, K] := FVMEnv[V, K] * RelK[K];
+            if FVMEnv[V, K] < 0.0001 then begin FVMEnv[V, K] := 0; FVMStage[V, K] := esIdle; end;
+          end;
+      end;
+      if FVMStage[V, K] <> St0 then
+        FVMTime[V, K] := 0
+      else
+        Inc(FVMTime[V, K], N);
+    end;
+end;
+
+function TGranularEngine.GetModEnvState(K: Integer): TEnvelopeState;
+var
+  V: Integer;
+begin
+  K := EnsureRange(K, 0, MENV_COUNT - 1);
+  V := EnsureRange(FMEnvLast, 0, MAX_VOICES - 1);
+  Result.Stage := FVMStage[V, K];
+  Result.Active := Result.Stage <> esIdle;
+  Result.StageSeconds := FVMTime[V, K] / FSampleRate;
+  Result.Level := FVMEnv[V, K];
+end;
+
+{ Kompressor der Summe (OTT-Art): drei Baender (Weichen bei 120 Hz und 2,5 kHz, Einpol-Filter, die
+  Summe der Baender ergibt exakt wieder das Eingangssignal). Je Band ein Pegelfolger (Stereo
+  gekoppelt); ueber dem Zielpegel wird abwaerts (4:1), darunter aufwaerts (bis +18 dB) gerechnet -
+  leise Details kommen nach vorn, laute Spitzen werden gebremst: dichter, druckvoller Klang.
+  Menge = wie stark (0 % = unveraendert), Tempo = Ansprech-/Rueckstellzeit (100 % = 4/90 ms).
+  Verstaerkung wird alle 16 Samples neu bestimmt und dazwischen linear gefuehrt (klickfrei, wenig CPU). }
+procedure TGranularEngine.ProcessComp(N: Integer);
+const
+  CTRL = 16;
+var
+  I, K, B, C, Cnt: Integer;
+  Amt, Tf, A1, A2, At, Rl, Lv, Gd, X, Rest, Pk, Tg, GUp, Th, Rt, Kn: Double;
+  Dg: array[0..2] of Double;
+  Bd: array[0..1, 0..2] of Double;
+begin
+  if Eff(gpCompOn) < 0.5 then
+  begin
+    FCmpWas := False;
+    Exit;
+  end;
+  if not FCmpWas then
+  begin
+    for C := 0 to 1 do
+    begin
+      FCmpLp1[C] := 0;
+      FCmpLp2[C] := 0;
+    end;
+    for B := 0 to 2 do
+    begin
+      FCmpEnv[B] := 0;
+      FCmpG[B] := 1;
+    end;
+    FCmpWas := True;
+  end;
+  Amt := Eff(gpCompAmt) / 100;
+  Tf := Eff(gpCompTime) / 100;
+  // auf 0,1 gerundet: die Standardwerte (4:1, -20 dB, 0 dB) sind damit exakt
+  Th := Round(Eff(gpCompThresh) * 10) / 10;
+  Rt := Max(1, Round(Eff(gpCompRatio) * 10) / 10);
+  Kn := Max(0, Round(Eff(gpCompKnee) * 10) / 10);
+  A1 := 1 - Exp(-2 * Pi * 120 / FSampleRate);
+  A2 := 1 - Exp(-2 * Pi * 2500 / FSampleRate);
+  At := 1 - Exp(-1 / (0.004 * Tf * FSampleRate));
+  Rl := 1 - Exp(-1 / (0.090 * Tf * FSampleRate));
+  GUp := 1 - Exp(-CTRL / (0.060 * Tf * FSampleRate));   // Verstaerkung steigt langsam (kein Anschlag-Sprung)
+  I := 0;
+  while I < N do
+  begin
+    Cnt := Min(CTRL, N - I);
+    for B := 0 to 2 do
+    begin
+      Lv := 20 * Log10(FCmpEnv[B] + 1E-9);
+      Gd := CompGainDb(Lv, Th, Rt, Kn);
+      Tg := Power(10, Gd * Amt / 20);
+      if Tg > FCmpG[B] then
+        Tg := FCmpG[B] + (Tg - FCmpG[B]) * GUp;        // hoch: weich; runter: sofort im Block
+      Dg[B] := (Tg - FCmpG[B]) / Cnt;
+    end;
+    for K := 0 to Cnt - 1 do
+    begin
+      for C := 0 to 1 do
+      begin
+        X := FMix[(I + K) * 2 + C];
+        FCmpLp1[C] := FCmpLp1[C] + (X - FCmpLp1[C]) * A1;
+        Rest := X - FCmpLp1[C];
+        FCmpLp2[C] := FCmpLp2[C] + (Rest - FCmpLp2[C]) * A2;
+        Bd[C, 0] := FCmpLp1[C];
+        Bd[C, 1] := FCmpLp2[C];
+        Bd[C, 2] := Rest - FCmpLp2[C];
+      end;
+      for B := 0 to 2 do
+      begin
+        FCmpG[B] := FCmpG[B] + Dg[B];
+        Pk := Max(Abs(Bd[0, B]), Abs(Bd[1, B]));
+        if Pk > FCmpEnv[B] then
+          FCmpEnv[B] := FCmpEnv[B] + (Pk - FCmpEnv[B]) * At
+        else
+          FCmpEnv[B] := FCmpEnv[B] + (Pk - FCmpEnv[B]) * Rl;
+      end;
+      for C := 0 to 1 do
+        FMix[(I + K) * 2 + C] := Bd[C, 0] * FCmpG[0] + Bd[C, 1] * FCmpG[1] + Bd[C, 2] * FCmpG[2];
+    end;
+    Inc(I, Cnt);
+  end;
+  for C := 0 to 1 do
+  begin
+    if Abs(FCmpLp1[C]) < 1E-20 then FCmpLp1[C] := 0;
+    if Abs(FCmpLp2[C]) < 1E-20 then FCmpLp2[C] := 0;
+  end;
+  for B := 0 to 2 do
+    if FCmpEnv[B] < 1E-20 then FCmpEnv[B] := 0;
 end;
 
 function TGranularEngine.EnsureMorphLayer: TGranularEngine;

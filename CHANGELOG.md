@@ -6,6 +6,28 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.17 – 05.11.2026
+
+### Neu
+- **Gleiten je Stufe** (Fenster *Freier LFO*, Stufen-Modi): Unter den Stufen liegt eine Leiste *Gleiten*. Ein Klick lässt die Stufe weich vom vorigen Ton herübergleiten – wie Slide an einem Step-Sequencer, ideal für Acid- und Basslinien. Andere Stufen springen weiter hart; die *Glättung* gilt wie bisher für alle.
+- **Sättigung: Art** (Reiter *Summe*, Bereich Sättigung): neben *Warm* (wie bisher) jetzt **Röhre** (asymmetrisch, gerade Obertöne, voller), **Hart** (harter Clip, aggressiv) und **Faltung** (Wavefolder – kräftiger Drive faltet die Welle zurück, metallisch und obertonreich). Mit Oversampling ohne Spiegelfrequenzen.
+- **Kompressor** der Summe (nach dem EQ, vor dem Limiter): drei Bänder wie bei einem Multiband-Kompressor im OTT-Stil – leise Anteile werden angehoben, laute Spitzen gebremst. Eigene Spalte im Reiter *Summe* mit *Menge*, *Tempo*, **Verhältnis** (1:1 bis 20:1), **Schwelle** und **Knick** (harter oder weicher Einsatz) sowie einer **Kennlinie**, die die Kurve live zeigt. Macht Bässe und Leads dichter und druckvoller.
+- **Bass mono** (Reiter *Summe*): legt alles unter einer einstellbaren Frequenz (Standard 120 Hz, 24 dB/Oktave) in die Mitte – der Bass bleibt im Club und auf Mono-Anlagen druckvoll, Breite und Raum darüber bleiben.
+- **Modulations-Hüllkurven 1 und 2** (Reiter *Timing / Hüllk.* (bisher *Timing / Events*), unten mit Grafik wie bei den Oszillatoren): zwei freie ADSR-Hüllkurven je Note, nur zum Modulieren – in der Matrix als Quelle *Mod-Hüllk. 1/2* auf jedes Ziel.
+- **Wavetables laden** (Reiter *Osz 1–3*, Bereich *Wavetable*): WAV-Dateien im Serum-/Vital-Format (2048 Punkte je Frame) oder einzelne Zyklen; bis zu 32 Frames, jeder bandbegrenzt. *Position* fährt stufenlos durch die Frames und ist je Note modulierbar. Ist eine Wavetable aktiv, sind *Welle* und *Gezeichnet* ausgegraut (bei aktiver Zeichnung *Welle*). Drei Beispiel-Wavetables liegen in *Beispieltoene* (`WT_…`).
+- **Sub-Oszillator und Rauschen** an Oszillator 1 (Reiter *Osz 1*): Sinus oder Rechteck eine bzw. zwei Oktaven tiefer, dazu weißes Rauschen – folgen Tonhöhe, Hüllkurve und Filter von Osz 1.
+- **Reihenfolge der Effekte** (Reiter *Effekte*, unten): Gate, Crusher, Chorus und Phaser in jeder der 24 Reihenfolgen, automatisierbar.
+- **Preset-Kategorien** *Techno*, *FM / Synth*, *Grains* und **Zuletzt benutzt** (die letzten 20 geladenen Presets, gemerkt in *Zuletzt.txt*).
+- **Osz folgen Pitch** (Reiter *Osz*, neben *Oktave*): die Oszillatoren folgen dem Regler *Pitch* samt Modulation – so spielt der Step-Sequencer (freier LFO → Pitch) auch reine Oszillator-Klänge. *Auf Pitch legen* schaltet ihn mit ein.
+- **Lern-Presets L38–L46** für alle neuen Funktionen (Lernpfad Teil 6).
+
+### Hinweis
+- Presets ohne gleitende Stufen bleiben Byte für Byte gleich; ältere Versionen laden neue Presets, nur ohne das Gleiten.
+- Wavetables werden wie Samples als Datei-Verweis im Preset gespeichert (beim Speichern nach *Eigene Toene* kopiert, wenn sie außerhalb des Plugin-Ordners liegen).
+- Neue Automations-Parameter hinten angefügt (Sättigung Art, Kompressor an/Menge/Tempo/Verhältnis/Schwelle/Knick, Bass mono, Mod-Hüllkurven, Wavetable an/Position je Oszillator, Sub, Rauschen, Effekt-Reihenfolge); vorhandene Nummern bleiben. Alle Presets klingen unverändert (Kompressor aus, Art *Warm*).
+
+---
+
 ## Version 2.16 – 04.11.2026
 
 ### Geändert

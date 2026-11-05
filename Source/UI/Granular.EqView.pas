@@ -27,6 +27,19 @@ uses
   Granular.Params, Granular.Engine, Granular.Eq, Granular.GfxAsm, Granular.Spectrum;
 
 type
+  { Kennlinie des Kompressors (Reiter Summe): waagrecht Eingang -60..0 dBFS, senkrecht Ausgang;
+    gestrichelte Diagonale = unveraendert, gelbe Linie = Schwelle. Rechnet mit CompGainDb der Engine
+    und der eingestellten Menge - zeigt also genau, was der Kompressor je Band tut. }
+  TCompCurveView = class(TCustomPaintBox32)
+  private
+    FEngine: TGranularEngine;
+  protected
+    procedure DoPaintBuffer; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    property Engine: TGranularEngine read FEngine write FEngine;
+  end;
+
   TEqView = class(TCustomPaintBox32)
   private
     FEngine: TGranularEngine;
@@ -62,6 +75,94 @@ type
   end;
 
 implementation
+
+constructor TCompCurveView.Create(AOwner: TComponent);
+begin
+  inherited;
+  BufferOversize := 0;      // Puffer = sichtbare Flaeche (sonst liegen rechte Beschriftung und Raster daneben)
+end;
+
+procedure TCompCurveView.DoPaintBuffer;
+const
+  DB_MIN = -60.0;
+  C_BG = $FF17191D;
+  C_GRID = $FF2A2E35;
+  C_DIAG = $FF4A505A;
+  C_THR = $FFE8B040;
+  C_CURVE = $FF9FE0FF;
+  C_OFF = $FF5A6470;
+var
+  B: TBitmap32;
+  W, H, Px, I, Y: Integer;
+  Th, Rt, Kn, Amt, Lv, Out_, YF, YPrev: Double;
+  On_: Boolean;
+
+  function DbToY(D: Double): Double;
+  begin
+    Result := (H - 1) * (1 - (EnsureRange(D, DB_MIN, 0) - DB_MIN) / -DB_MIN);
+  end;
+
+begin
+  B := Buffer;
+  B.BeginUpdate;
+  try
+    W := B.Width;
+    H := B.Height;
+    B.Clear(C_BG);
+    if (W < 20) or (H < 20) or (FEngine = nil) then
+      Exit;
+    // Raster alle 12 dB
+    I := 12;
+    while I < 60 do
+    begin
+      Px := Round((W - 1) * (1 - I / 60));
+      B.VertLineS(Px, 0, H - 1, C_GRID);
+      B.HorzLineS(0, Round(DbToY(-I)), W - 1, C_GRID);
+      Inc(I, 12);
+    end;
+    // unveraendert (Diagonale), gestrichelt
+    for Px := 0 to W - 1 do
+      if (Px div 3) mod 2 = 0 then
+        B.PixelS[Px, Round(DbToY(DB_MIN + -DB_MIN * Px / (W - 1)))] := C_DIAG;
+    Th := Round(ParamToPlain(gpCompThresh, FEngine.GetParamById(gpCompThresh)) * 10) / 10;
+    Rt := Max(1, Round(ParamToPlain(gpCompRatio, FEngine.GetParamById(gpCompRatio)) * 10) / 10);
+    Kn := Max(0, Round(ParamToPlain(gpCompKnee, FEngine.GetParamById(gpCompKnee)) * 10) / 10);
+    Amt := ParamToPlain(gpCompAmt, FEngine.GetParamById(gpCompAmt)) / 100;
+    On_ := FEngine.GetParamById(gpCompOn) >= 0.5;
+    Px := Round((W - 1) * (Th - DB_MIN) / -DB_MIN);
+    B.VertLineS(Px, 0, H - 1, C_THR);
+    YPrev := -1;
+    for Px := 0 to W - 1 do
+    begin
+      Lv := DB_MIN + -DB_MIN * Px / (W - 1);
+      Out_ := Lv + CompGainDb(Lv, Th, Rt, Kn) * Amt;
+      YF := DbToY(Out_);
+      if YPrev < 0 then YPrev := YF;
+      if On_ then
+      begin
+        AASpan(B, Px, YPrev, YF, C_CURVE);
+        AASpan(B, Px, YPrev + 1, YF + 1, C_CURVE);
+      end
+      else
+        AASpan(B, Px, YPrev, YF, C_OFF);
+      YPrev := YF;
+    end;
+    B.Font.Name := 'Tahoma';
+    B.Font.Size := UiPt(7);
+    B.Font.Color := $00909090;
+    B.Textout(3, 2, Tr('Ausgang'));
+    Y := H - 14;
+    B.Textout(W - B.TextWidth(Tr('Eingang')) - 3, Y, Tr('Eingang'));
+    if not On_ then
+    begin
+      B.Font.Color := $0060B0FF;
+      B.Textout(3, Y, Tr('aus'));
+    end;
+  finally
+    B.EndUpdate;
+  end;
+  inherited;
+end;
 
 const
   COL_BG = $FF16181C;

@@ -107,8 +107,23 @@ type
   end;
   TSatProc = procedure(Args: PSatArgs);
 
+  { weitere Saettigungs-Arten, Count = Vielfaches von 4:
+      Kind 1 Roehre:  y = (t(clamp(x * Drive + Bias, Lo, Hi)) - Off) * Make   (asymmetrisch -> gerade Obertoene)
+      Kind 2 Hart:    y = clamp(x * Drive, -1, 1) * Make
+      Kind 3 Faltung: y = zweimal an +/-1 gespiegelt (Wavefolder), vorher clamp(x * Drive, Lo, Hi) }
+  PShapeArgs = ^TShapeArgs;
+  TShapeArgs = record
+    P: PSingle;
+    Count: Integer;
+    Kind: Integer;
+    Drive4, Make4, Bias4, Off4, Hi4, Lo4, C27, C9, One4, MOne4, Zero4: array[0..3] of Single;
+  end;
+  TShapeProc = procedure(Args: PShapeArgs);
+
 procedure SatBlockPas(Args: PSatArgs);
 procedure SatBlockSSE(Args: PSatArgs);
+procedure ShapeBlockPas(Args: PShapeArgs);
+procedure ShapeBlockSSE(Args: PShapeArgs);
 
 type
   { Huellkurven-Abschnitt (eine Stufe ohne Wechsel): je 4 Werte  x = Base + D;  Raw = x;  Gain = x * G;
@@ -308,6 +323,7 @@ var
   RenderGrainHQ: TGrainRenderProc = RenderGrainHQPas;
   RenderSvf: TSvfProc = SvfBlockPas;
   RenderSat: TSatProc = SatBlockPas;
+  RenderShape: TShapeProc = ShapeBlockPas;
   RenderOscBlock: TOscProc = OscBlockPas;
   RenderEnvSeg: TEnvSegProc = EnvSegPas;
   RenderComb: TCombProc = CombBlockPas;
@@ -1173,6 +1189,247 @@ end;
 procedure SatBlockSSE(Args: PSatArgs);
 begin
   SatBlockPas(Args);
+end;
+{$IFEND}
+
+{ ------------------------------------------------------------------------------
+  Weitere Saettigungs-Arten (Roehre, Hart, Faltung)
+  ------------------------------------------------------------------------------ }
+procedure ShapeBlockPas(Args: PShapeArgs);
+var
+  I, K: Integer;
+  Y, Y2, U: Single;
+begin
+  for I := 0 to Args.Count - 1 do
+  begin
+    Y := Args.P[I] * Args.Drive4[0];
+    case Args.Kind of
+      1:
+        begin
+          Y := Y + Args.Bias4[0];
+          if Y > Args.Hi4[0] then Y := Args.Hi4[0];
+          if Y < Args.Lo4[0] then Y := Args.Lo4[0];
+          Y2 := Y * Y;
+          Y := ((Args.C27[0] + Y2) * Y) / (Y2 * Args.C9[0] + Args.C27[0]);
+          Y := Y - Args.Off4[0];
+        end;
+      2:
+        begin
+          if Y > Args.One4[0] then Y := Args.One4[0];
+          if Y < Args.MOne4[0] then Y := Args.MOne4[0];
+        end;
+    else
+      begin
+        if Y > Args.Hi4[0] then Y := Args.Hi4[0];
+        if Y < Args.Lo4[0] then Y := Args.Lo4[0];
+        for K := 0 to 1 do
+        begin
+          U := Y - Args.One4[0];
+          if U < 0 then U := 0;
+          U := U + U;
+          Y := Y - U;
+          U := Y + Args.One4[0];
+          if U > 0 then U := 0;
+          U := U + U;
+          Y := Y - U;
+        end;
+      end;
+    end;
+    Args.P[I] := Y * Args.Make4[0];
+  end;
+end;
+
+{$IF Defined(CPUX86)}
+{ SSE1, 4 Werte je Schritt; eax = Args. Nur xmm0..xmm4. }
+procedure ShapeBlockSSE(Args: PShapeArgs);
+asm
+        mov     edx, [eax].TShapeArgs.P
+        mov     ecx, [eax].TShapeArgs.Count
+        shr     ecx, 2
+        jz      @done
+        cmp     dword ptr [eax].TShapeArgs.Kind, 2
+        je      @hard
+        ja      @fold
+@tube:
+        movups  xmm0, [edx]
+        movups  xmm1, [eax+TShapeArgs.Drive4]
+        mulps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Bias4]
+        addps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Hi4]
+        minps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Lo4]
+        maxps   xmm0, xmm1
+        movaps  xmm2, xmm0
+        mulps   xmm2, xmm2
+        movups  xmm3, [eax+TShapeArgs.C27]
+        movaps  xmm4, xmm3
+        addps   xmm3, xmm2
+        mulps   xmm3, xmm0
+        movups  xmm1, [eax+TShapeArgs.C9]
+        mulps   xmm2, xmm1
+        addps   xmm2, xmm4
+        divps   xmm3, xmm2
+        movups  xmm1, [eax+TShapeArgs.Off4]
+        subps   xmm3, xmm1
+        movups  xmm1, [eax+TShapeArgs.Make4]
+        mulps   xmm3, xmm1
+        movups  [edx], xmm3
+        add     edx, 16
+        dec     ecx
+        jnz     @tube
+        jmp     @done
+@hard:
+        movups  xmm0, [edx]
+        movups  xmm1, [eax+TShapeArgs.Drive4]
+        mulps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.One4]
+        minps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.MOne4]
+        maxps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Make4]
+        mulps   xmm0, xmm1
+        movups  [edx], xmm0
+        add     edx, 16
+        dec     ecx
+        jnz     @hard
+        jmp     @done
+@fold:
+        movups  xmm0, [edx]
+        movups  xmm1, [eax+TShapeArgs.Drive4]
+        mulps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Hi4]
+        minps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Lo4]
+        maxps   xmm0, xmm1
+        movups  xmm3, [eax+TShapeArgs.One4]
+        movups  xmm4, [eax+TShapeArgs.Zero4]
+        // zweimal spiegeln: oben an +1, unten an -1
+        movaps  xmm1, xmm0
+        subps   xmm1, xmm3
+        maxps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movaps  xmm1, xmm0
+        addps   xmm1, xmm3
+        minps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movaps  xmm1, xmm0
+        subps   xmm1, xmm3
+        maxps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movaps  xmm1, xmm0
+        addps   xmm1, xmm3
+        minps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movups  xmm1, [eax+TShapeArgs.Make4]
+        mulps   xmm0, xmm1
+        movups  [edx], xmm0
+        add     edx, 16
+        dec     ecx
+        jnz     @fold
+@done:
+end;
+{$ELSEIF Defined(CPUX64)}
+procedure ShapeBlockSSE(Args: PShapeArgs);
+asm
+        mov     rdx, [rcx].TShapeArgs.P
+        mov     r8d, [rcx].TShapeArgs.Count
+        shr     r8d, 2
+        jz      @done
+        cmp     dword ptr [rcx].TShapeArgs.Kind, 2
+        je      @hard
+        ja      @fold
+@tube:
+        movups  xmm0, [rdx]
+        movups  xmm1, [rcx+TShapeArgs.Drive4]
+        mulps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Bias4]
+        addps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Hi4]
+        minps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Lo4]
+        maxps   xmm0, xmm1
+        movaps  xmm2, xmm0
+        mulps   xmm2, xmm2
+        movups  xmm3, [rcx+TShapeArgs.C27]
+        movaps  xmm4, xmm3
+        addps   xmm3, xmm2
+        mulps   xmm3, xmm0
+        movups  xmm1, [rcx+TShapeArgs.C9]
+        mulps   xmm2, xmm1
+        addps   xmm2, xmm4
+        divps   xmm3, xmm2
+        movups  xmm1, [rcx+TShapeArgs.Off4]
+        subps   xmm3, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Make4]
+        mulps   xmm3, xmm1
+        movups  [rdx], xmm3
+        add     rdx, 16
+        dec     r8d
+        jnz     @tube
+        jmp     @done
+@hard:
+        movups  xmm0, [rdx]
+        movups  xmm1, [rcx+TShapeArgs.Drive4]
+        mulps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.One4]
+        minps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.MOne4]
+        maxps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Make4]
+        mulps   xmm0, xmm1
+        movups  [rdx], xmm0
+        add     rdx, 16
+        dec     r8d
+        jnz     @hard
+        jmp     @done
+@fold:
+        movups  xmm0, [rdx]
+        movups  xmm1, [rcx+TShapeArgs.Drive4]
+        mulps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Hi4]
+        minps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Lo4]
+        maxps   xmm0, xmm1
+        movups  xmm3, [rcx+TShapeArgs.One4]
+        movups  xmm4, [rcx+TShapeArgs.Zero4]
+        // zweimal spiegeln: oben an +1, unten an -1
+        movaps  xmm1, xmm0
+        subps   xmm1, xmm3
+        maxps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movaps  xmm1, xmm0
+        addps   xmm1, xmm3
+        minps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movaps  xmm1, xmm0
+        subps   xmm1, xmm3
+        maxps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movaps  xmm1, xmm0
+        addps   xmm1, xmm3
+        minps   xmm1, xmm4
+        addps   xmm1, xmm1
+        subps   xmm0, xmm1
+        movups  xmm1, [rcx+TShapeArgs.Make4]
+        mulps   xmm0, xmm1
+        movups  [rdx], xmm0
+        add     rdx, 16
+        dec     r8d
+        jnz     @fold
+@done:
+end;
+{$ELSE}
+procedure ShapeBlockSSE(Args: PShapeArgs);
+begin
+  ShapeBlockPas(Args);
 end;
 {$IFEND}
 
@@ -3112,6 +3369,7 @@ begin
     RenderGrainHQ := RenderGrainHQSSE;
     RenderSvf := SvfBlockSSE;
     RenderSat := SatBlockSSE;
+    RenderShape := ShapeBlockSSE;
     RenderOscBlock := OscBlockSSE;
     RenderEnvSeg := EnvSegSSE;
     RenderComb := CombBlockSSE;
@@ -3132,6 +3390,7 @@ begin
     RenderGrainHQ := RenderGrainHQPas;
     RenderSvf := SvfBlockPas;
     RenderSat := SatBlockPas;
+    RenderShape := ShapeBlockPas;
     RenderOscBlock := OscBlockPas;
     RenderEnvSeg := EnvSegPas;
     RenderComb := CombBlockPas;

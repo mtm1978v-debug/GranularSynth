@@ -1,4 +1,4 @@
-﻿GranularSynth - Learning path (presets L01 to L37)
+﻿GranularSynth - Learning path (presets L01 to L46)
 ==================================================
 Each preset demonstrates one principle. Load it, play it, and check in the "Modulation" tab
 which matrix rows are in use. The red line under a control shows live how far the matrix is
@@ -67,14 +67,14 @@ New features
        Strike the chord notes one after another (1 s apart) and hold them: each note
        slowly opens on its own, the ones already sounding stay where they are.
 
-Part 4 - Start, Stop and time ("LFO 1-4 / Trigger" and "Timing / Events" tabs)
+Part 4 - Start, Stop and time ("LFO 1-4 / Trigger" and "Timing / Env." tabs)
   In the name: "FM" = oscillators sound too, "Grains" = grains sound too.
   An LFO with a start event runs until its Stop halts it (then no modulation).
   L27  Stop "Note off": vibrato per note, on release the tail is calm.
        Set Stop to "never": the vibrato keeps running in the tail.
   L28  Stop "after time" 1/2: the wobble on the FM amount runs for only a half note.
        Change the tempo - the length follows the beat.
-  L29  Delay + Stop: the tremolo kicks in after 1/4 (Timing / Events) and stops
+  L29  Delay + Stop: the tremolo kicks in after 1/4 (Timing / Env.) and stops
        after 1/1 - the run time counts from the delayed start.
   L30  Stop after 120 ms: a fast pitch drop on the attack only. Change the ms value.
   L31  Three oscillators, each with its own envelope (Osc 1-3 tabs): the sine swells
@@ -96,3 +96,24 @@ Part 5: free macros (Modulation tab, to the right of the matrix)
        (scatter, reverse, pitch randomness, echo). Density has a negative Amount.
   L37  Two macros for the DAW: Macro 1 = wobble faster and brighter, Macro 3 = echo.
        In FL: right-click the macro control > Automate in DAW.
+
+Part 6: step sequencer, saturation types, compressor
+  L38  Hold one key: the free LFO plays an acid line (16 steps, 1 bar). Some steps glide
+       over from the previous note - in the LFO window (click the LFO graphic) the "Glide"
+       strip at the bottom shows which. Click the fields and listen.
+  L39  Saturation type "Tube" (Sum tab): fuller, with even harmonics. Switch the type to Warm,
+       Hard and Fold and compare. Mod wheel = more drive.
+  L40  Type "Fold": slowly turn up the mod wheel - the sine wave folds back more and more,
+       from round to hollow to metallic.
+  L41  Compressor (Sum tab): strike chords briefly. The decay and the reverb stay dense and
+       loud. Switch the compressor off and on, change amount and speed.
+  L42  Bass mono (Sum tab): a very wide reese bass. Switch bass mono off and on - with "on"
+       the fundamental sits firmly in the centre, the width above it stays.
+  L43  Modulation envelopes (Timing / Env. tab, bottom): hold a note for a long time. Envelope 1
+       only brightens the attack, envelope 2 slowly opens the filter (matrix rows 1-2).
+  L44  Wavetable (Osc 1 tab, bottom right): every note moves through the frames of WT_FM_Wachsend,
+       the mod wheel pushes it further. Try another wavetable with "Load ...".
+  L45  Sub and noise (Osc 1 tab, middle bottom): a sine one octave lower adds the fundamental,
+       noise adds the attack. Pull sub and noise to 0 and compare.
+  L46  Effect order (Effects tab, bottom): chorus before crusher - the crusher also chops
+       the beating. Choose other orders and listen.

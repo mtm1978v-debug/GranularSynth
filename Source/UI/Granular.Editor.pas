@@ -148,6 +148,14 @@ type
     FTabOsc: array[0..OSC_COUNT - 1] of TTabSheet;
     FMixMeters: array[0..MIX_METERS - 1] of TMixMeter;   // Pegel neben den Mischpult-Fadern
     FEqView: TEqView;
+    FCompCurve: TCompCurveView;
+    FRecent: TArray<string>;   // zuletzt geladene Presets (Dateinamen, neueste zuerst)
+    FMEnvView: array[0..MENV_COUNT - 1] of TEnvelopeView;
+    FWaveIdx, FDrawIdx, FWaveState: array[0..OSC_COUNT - 1] of Integer;   // Welle/Gezeichnet ausgrauen
+    FMEnvKey: array[0..MENV_COUNT - 1] of Double;
+    FWtName: array[0..OSC_COUNT - 1] of TLabel;
+    FWtShown: array[0..OSC_COUNT - 1] of string;
+    FCompSig: string;
     // Fenster 'Frei-LFO' (modal, je LFO): Editor + Bedienelemente; keine automatisierbaren
     // Parameter, die Daten liegen nur im Chunk. Felder sind nur bei offenem Fenster belegt.
     FFreeView: array[0..FREE_LFO_COUNT - 1] of TFreeLfoView;
@@ -287,6 +295,8 @@ type
     procedure PollMidiLearn;
     function PresetInCategory(const Name: string; Cat: Integer): Boolean;
     function IsFavorite(const FileName: string): Boolean;
+    function IsRecent(const FileName: string): Boolean;
+    procedure AddRecent(const FileName: string);
     procedure LoadFavorites;
     procedure SaveFavorites;
     procedure UpdateFavButton;
@@ -301,6 +311,8 @@ type
     procedure BuildMixTab;
     procedure BuildFx2Tab;
     procedure ApplyParamHint(const B: TParamBinding);
+    procedure WtLoadClick(Sender: TObject);
+    procedure UpdateWtNames;
     procedure ApplyCaptionHints;
   protected
     procedure CreateWnd; override;
@@ -471,14 +483,19 @@ implementation
 const
   MAT_ROWS = 8;        // Matrix-Zeilen je Seite im Reiter Modulation
   // Presetliste: 0 = alle, 1 = Favoriten, danach Stichwort-Kategorien (Stichworte durch Komma getrennt)
-  PRESET_CATS: array[0..12] of string = ('Alle Presets', '★ Favoriten', 'Flächen / Pads', 'Bass', 'Lead',
-    'Arp', 'Glocken / Zupfen', 'Instrumente', 'Stimme / Chor', 'Natur / FX', 'Morph / Doppel', 'Lernen', 'Init');
-  PRESET_CAT_WORDS: array[0..12] of string = ('', '', 'flaeche,pad,teppich,nebel,wolke,ozean,weite',
+  // Nov. 2026: Techno, FM / Synth, Grains, Zuletzt benutzt hinten angefuegt (Index der alten bleibt)
+  PRESET_CATS: array[0..16] of string = ('Alle Presets', '★ Favoriten', 'Flächen / Pads', 'Bass', 'Lead',
+    'Arp', 'Glocken / Zupfen', 'Instrumente', 'Stimme / Chor', 'Natur / FX', 'Morph / Doppel', 'Lernen', 'Init',
+    'Techno', 'FM / Synth', 'Grains', '⟲ Zuletzt benutzt');
+  PRESET_CAT_WORDS: array[0..16] of string = ('', '', 'flaeche,pad,teppich,nebel,wolke,ozean,weite',
     'bass,sub', 'lead', 'arp', 'glock,marimba,vibraphon,kalimba,steeldrum,harfe,gitarre,pluck,zupf,kristall,spieluhr',
     'floete,oboe,trompete,horn,tuba,cello,violin,geige,klarinette,klavier,orgel,piano,rhodes,blech,kontrabass,didgeridoo',
     'stimme,chor,oper,vokal,kennedy,armstrong,caruso,saenger', 'natur,wasser,dschungel,voegel,industrie,weltraum,stotter,gate,wind,regen',
-    'morph,doppel', '', 'init');
+    'morph,doppel', '', 'init', 'techno,acid,rumble,reese,industrial', 'fm -,fm +,+ fm,fm-,osz', 'grains', '');
   CAT_LEARN = 11;
+  CAT_RECENT = 16;
+  RECENT_MAX = 20;
+  RECENT_FILE = 'Zuletzt.txt';
 
 type
   TControlAccess = class(TControl);   // Zugriff auf OnClick der Grafik-Anzeigen
@@ -1028,7 +1045,7 @@ begin
   FTabMod2.Caption := Tr('   LFO 1-8 / Trigger   ');
   FTabTiming := TTabSheet.Create(Self);
   FTabTiming.PageControl := FPages;
-  FTabTiming.Caption := Tr('   Timing / Events   ');
+  FTabTiming.Caption := Tr('   Timing / Hüllk.   ');
   FTabFx2 := TTabSheet.Create(Self);
   FTabFx2.PageControl := FPages;
   FTabFx2.Caption := Tr('   Effekte   ');
@@ -1470,7 +1487,7 @@ const
     (gpRevOn, gpRevSize, gpRevDecay, gpRevDamp, gpRevPreDelay, gpRevWidth, gpRevMix);
   REV_CAP: array[0..6] of string = ('Hall an', 'Größe', 'Zeit', 'Dämpfung', 'Predelay', 'Breite', 'Mix');
 var
-  Area, PE, PR: TPanel;
+  Area, PE, PR, PInfo: TPanel;
   I: Integer;
   L: TLabel;
 begin
@@ -1481,10 +1498,13 @@ begin
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
 
-  // Gesamtklang: Echo | Hall (Signalweg)
+  // Gesamtklang: Echo | Hall (Signalweg) | Erklaerung - gleiche Spaltenbreite wie auf den anderen Reitern
   PE := MakePanel(Area, alLeft, Tr('Echo (Ping-Pong)'));
   PE.Width := 360;
-  PR := MakePanel(Area, alClient, Tr('Hall'));
+  PR := MakePanel(Area, alLeft, Tr('Hall'));
+  PR.Width := 360;
+  PR.Left := PE.Left + PE.Width + 1;
+  PInfo := MakePanel(Area, alClient, Tr('So wirken Echo und Hall'));
 
   for I := 0 to High(ECHO) do
     AddParam(PE, Ord(ECHO[I]), 8, 24 + I * ROW_H, 92, 62);
@@ -1494,8 +1514,8 @@ begin
   AddParam(PR, Ord(gpRevLowCut), 8, 24 + 8 * ROW_H, 100, 62, 150, Tr('Bass-Schnitt'));
   AddParam(PR, Ord(gpRevHighCut), 8, 24 + 9 * ROW_H, 100, 62, 150, Tr('Höhen-Schnitt'));
   L := TLabel.Create(Self);
-  L.Parent := PE;
-  L.SetBounds(8, 24 + 8 * ROW_H + 8, 290, 150);
+  L.Parent := PInfo;
+  L.SetBounds(8, 24, 290, 330);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -1503,18 +1523,9 @@ begin
   L.Caption :=
     Tr('Echo und Hall wirken auf den Gesamtklang (alle Noten zusammen). Echo-Zeit mit Sync = Notenwert zum Tempo. ' +
     'Echo Pitch transponiert jede Wiederholung um den eingestellten Wert (+5 = jede ' +
-    'Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.');
-  L := TLabel.Create(Self);
-  L.Parent := PR;
-  L.SetBounds(8, 24 + 11 * ROW_H + 6, 290, 110);
-  L.AutoSize := False;
-  L.WordWrap := True;
-  L.Font.Color := $00A0A0A0;
-  L.Transparent := True;
-  L.Caption :=
+    'Wiederholung eine Quarte höher). Alle Regler sind auch Ziele der Modulationsmatrix.') + sLineBreak + sLineBreak +
     Tr('Größe = Raumgröße, Zeit = Nachhallzeit, Dämpfung = wie schnell die Höhen verklingen, Raum = Wandmaterial. ' +
     'Bass-/Höhen-Schnitt filtern nur den Hall (der trockene Klang bleibt): Bass-Schnitt hoch = kein Dröhnen.');
-  AddStretch(L, 10);
   AddStretch(L, 10);
 end;
 
@@ -2265,11 +2276,12 @@ begin
   end;
 end;
 
-{ --- Reiter Timing / Events: jedes Ereignis, das LFOs neu startet, kann verzoegert wirken --- }
+{ --- Reiter Timing / Hüllk.: jedes Ereignis, das LFOs neu startet, kann verzoegert wirken --- }
 
 procedure TGranularEditor.BuildTimingTab;
 const
   X_MS = 8; NAME_W = 170; TRACK_W = 240; X_SYNC = 8 + 170 + 240 + 90;
+  MENV_CAP: array[0..3] of string = ('Attack', 'Decay', 'Sustain', 'Release');
 var
   Area, P: TPanel;
   I, Y: Integer;
@@ -2322,6 +2334,22 @@ begin
     'nach der Wartezeit neu; ein neues Ereignis in der Wartezeit beginnt sie von vorn. Als Stopp-Ereignis ' +
     'hält es den LFO nach derselben Wartezeit an.');
   AddStretch(L, 10);
+
+  // freie Modulations-Huellkurven (Nov. 2026): unten ueber die ganze Breite, zwei Spalten
+  P := MakePanel(Area, alBottom, Tr('Modulations-Hüllkurven (je Note; in der Matrix als Quelle "Mod-Hüllk. 1" und "Mod-Hüllk. 2")'));
+  P.Height := 24 + 4 * ROW_H + 6;
+  // je Huellkurve: Grafik links (wie bei den Oszillatoren, roter Punkt = juengste Note), Regler rechts daneben
+  for I := 0 to MENV_COUNT - 1 do
+  begin
+    FMEnvView[I] := TEnvelopeView.Create(Self, FEngine);
+    FMEnvView[I].Kind := ekMod;
+    FMEnvView[I].OscIndex := I;
+    FMEnvView[I].Title := Tr(MOD_SOURCE_NAMES[MENV_SRC[I]]);
+    FMEnvView[I].Parent := P;
+    FMEnvView[I].SetBounds(8 + I * 620, 26, 210, 4 * ROW_H - 6);
+    for Y := 0 to 3 do
+      AddParam(P, Ord(MENV_IDS[I, Y]), 228 + I * 620, 24 + Y * ROW_H, 64, 70, 0, Tr(MENV_CAP[Y]), 230);
+  end;
 end;
 
 { --- Reiter Oszillator 1..3 (gleicher Aufbau) --- }
@@ -2366,7 +2394,7 @@ begin
     AddParam(P2, Ord(OFlt[I]), 8, 24 + I * ROW_H, 80, 62, 150, OFLT_CAP[I]);
   L := TLabel.Create(Self);
   L.Parent := P2;
-  L.SetBounds(8, 24 + 6 * ROW_H + 10, 380, 80);
+  L.SetBounds(8, 24 + 6 * ROW_H + 6, 380, 48);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -2374,6 +2402,36 @@ begin
   L.Caption :=
     Tr('Eingeschaltet läuft der Oszillator nur durch diesen Filter, an Filter 1/2 vorbei - z.B. Rausch-' +
     'Hats per Hochpass, während die Fläche tief gefiltert bleibt. Echo, Hall und EQ wirken weiter.');
+
+  // Wavetable (Nov. 2026): geladene Datei ersetzt Welle und Zeichnung, Position je Note modulierbar
+  L := TLabel.Create(Self);
+  L.Parent := P2;
+  L.SetBounds(8, 24 + 8 * ROW_H + 8, 200, 16);
+  L.Caption := Tr('Wavetable');
+  L.Font.Color := COL_VAL;
+  L.Font.Style := [fsBold];
+  L.Transparent := True;
+  AddParam(P2, Ord(Op.WtOn), 80, 24 + 8 * ROW_H + 4, 80, 0, 0, Tr('Wavetable an'));
+  with TButton.Create(Self) do
+  begin
+    Parent := P2;
+    SetBounds(270, 24 + 8 * ROW_H + 4, 110, 24);
+    Caption := Tr('Laden ...');
+    Icon := eiOpen;
+    Tag := O;
+    TabStop := False;
+    OnClick := WtLoadClick;
+    Hint := Tr('Wavetable-Datei laden (WAV, z.B. aus Serum oder Vital: 2048 Punkte je Frame, oder ein einzelner ' +
+      'Zyklus). Bis zu 32 Frames, jeder bandbegrenzt; "WT-Position" fährt durch die Frames.');
+    ShowHint := True;
+  end;
+  AddParam(P2, Ord(Op.WtPos), 8, 24 + 9 * ROW_H + 4, 80, 62, 0, Tr('Position'));
+  FWtName[O] := TLabel.Create(Self);
+  FWtName[O].Parent := P2;
+  FWtName[O].SetBounds(8, 24 + 10 * ROW_H + 8, 380, 16);
+  FWtName[O].Font.Color := $00A0A0A0;
+  FWtName[O].Transparent := True;
+  FWtName[O].Caption := '';
   P1 := MakePanel(Area, alClient, Format(Tr('Lautstärke-Hüllkurve (Oszillator %d)'), [O + 1]));
   // Anzeige der Oszillator-Huellkurve (roter Punkt = juengste Stimme)
   FOscEnvView[O] := TEnvelopeView.Create(Self, FEngine);
@@ -2385,10 +2443,15 @@ begin
   for I := 0 to High(Col0) do
     if I = 2 then
       FSyncIdx[O] := AddParam(P0, Ord(Col0[I]), 8, 24 + I * ROW_H, 110, 62, 150, CAP0[I])
+    else if I = 1 then
+      FWaveIdx[O] := AddParam(P0, Ord(Col0[I]), 8, 24 + I * ROW_H, 110, 62, 150, CAP0[I])
     else
       AddParam(P0, Ord(Col0[I]), 8, 24 + I * ROW_H, 110, 62, 150, CAP0[I]);
   // gezeichnete Welle: Haken ersetzt die Auswahl 'Welle', Knopf oeffnet die Zeichenflaeche
-  AddParam(P0, Ord(Op.Draw), 286, 24 + ROW_H, 0, 0, 0, Tr('Gezeichnet'));
+  FDrawIdx[O] := AddParam(P0, Ord(Op.Draw), 286, 24 + ROW_H, 0, 0, 0, Tr('Gezeichnet'));
+  // gilt fuer alle drei Oszillatoren (derselbe Schalter in jedem Osz-Reiter)
+  AddParam(P0, Ord(gpOscFollowPitch), 286, 24 + 3 * ROW_H, 0, 0, 0, Tr('folgt Pitch'));
+  FWaveState[O] := -1;
   with TButton.Create(Self) do
   begin
     Parent := P0;
@@ -2424,18 +2487,29 @@ begin
   AddParam(P1, Ord(UNI[O, 0]), 8, ENV_Y + 4 * ROW_H + 6, 70, 0, 120, Tr('Unison'));
   AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 78, 62, 0, Tr('Verstimmung'));
   AddParam(P1, Ord(UNI[O, 2]), 8, ENV_Y + 6 * ROW_H + 6, 70, 62, 0, Tr('Breite'));
-  L := TLabel.Create(Self);
-  L.Parent := P1;
-  L.SetBounds(8, ENV_Y + 7 * ROW_H + 10, 420, 80);
-  L.AutoSize := False;
-  L.WordWrap := True;
-  L.Font.Color := $00A0A0A0;
-  L.Transparent := True;
-  L.Caption :=
-    Tr('Spielt jede Note mit: z.B. Bass (Sinus, Oktave -1/-2), Glocke (FM 3,5 / 40 %), Kick (FM + kurzer ' +
-    'Decay) oder Hats (Rauschen + Hochpass). Drei Oszillatoren lassen sich schichten (z.B. zwei ' +
-    'leicht verstimmte Sägezähne + Sub-Sinus). Alle Regler sind Matrix-Ziele, auch je Note.');
-  AddStretch(L, 10);
+  if O = 0 then
+  begin
+    // Sub-Oszillator und Rauschanteil (Nov. 2026): folgen Tonhoehe, Huellkurve und Filter von Osz 1
+    AddParam(P1, Ord(gpSubLevel), 8, ENV_Y + 7 * ROW_H + 12, 78, 62, 0, Tr('Sub'));
+    AddParam(P1, Ord(gpSubOct), 8, ENV_Y + 8 * ROW_H + 12, 78, 0, 0, Tr('2 Oktaven tiefer'));
+    AddParam(P1, Ord(gpSubWave), 230, ENV_Y + 8 * ROW_H + 12, 0, 0, 0, Tr('Rechteck statt Sinus'));
+    AddParam(P1, Ord(gpNoiseLevel), 8, ENV_Y + 9 * ROW_H + 12, 78, 62, 0, Tr('Rauschen'));
+  end
+  else
+  begin
+    L := TLabel.Create(Self);
+    L.Parent := P1;
+    L.SetBounds(8, ENV_Y + 7 * ROW_H + 10, 420, 80);
+    L.AutoSize := False;
+    L.WordWrap := True;
+    L.Font.Color := $00A0A0A0;
+    L.Transparent := True;
+    L.Caption :=
+      Tr('Spielt jede Note mit: z.B. Bass (Sinus, Oktave -1/-2), Glocke (FM 3,5 / 40 %), Kick (FM + kurzer ' +
+      'Decay) oder Hats (Rauschen + Hochpass). Drei Oszillatoren lassen sich schichten (z.B. zwei ' +
+      'leicht verstimmte Sägezähne + Sub-Sinus). Alle Regler sind Matrix-Ziele, auch je Note.');
+    AddStretch(L, 10);
+  end;
 end;
 
 { --- Reiter Mischpult: alle Lautstaerken an einem Ort - dieselben Parameter wie in den anderen
@@ -2574,7 +2648,7 @@ begin
   FRecLabel.Transparent := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(8, 82, 420, 108);
+  L.SetBounds(8, 82, 420, 64);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -2586,7 +2660,7 @@ begin
 
   // Feedback-Resampling: der eigene Klang wird Durchlauf fuer Durchlauf zur neuen Grain-Quelle
   PF := MakePanel(PR, alNone, Tr('Feedback-Resampling'));
-  PF.SetBounds(0, 196, 440, 290);
+  PF.SetBounds(0, 150, 440, 300);
   PF.Anchors := [akLeft, akTop, akRight];
   AddParam(PF, Ord(gpResOn), 8, 24, 0, 0, 0, Tr('Resampling an'));
   AddParam(PF, Ord(gpResMix), 8, 24 + ROW_H, 90, 66, 0, Tr('Anteil neu'));
@@ -2737,6 +2811,62 @@ begin
   FEngine.SetZoneLoaded(Z, FileName);
   FEngine.SetZoneRef(Z, MakePortablePath(FileName, FBaseDir));
   UpdateZoneUi;
+end;
+
+procedure TGranularEditor.WtLoadClick(Sender: TObject);
+var
+  O: Integer;
+  Dlg: TOpenDialog;
+begin
+  O := (Sender as TComponent).Tag;
+  Dlg := TOpenDialog.Create(nil);
+  try
+    Dlg.Filter := AUDIO_FILE_FILTER;
+    if DirectoryExists(FBaseDir + 'Beispieltoene') then
+      Dlg.InitialDir := FBaseDir + 'Beispieltoene';
+    Dlg.Options := Dlg.Options + [ofFileMustExist];
+    if not Dlg.Execute then
+      Exit;
+    PushUndo;
+    FEngine.WtRef[O] := MakePortablePath(Dlg.FileName, FBaseDir);
+    Screen.Cursor := crHourGlass;
+    try
+      LoadOscWavetables(FEngine, FBaseDir);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    if FEngine.WtFrameCount(O) > 0 then
+      FEngine.SetParamById(OSC_P[O].WtOn, 1)
+    else
+      MessageDlg(Format(Tr('Die Datei "%s" ließ sich nicht als Wavetable laden.'), [ExtractFileName(Dlg.FileName)]),
+        mtWarning, [mbOK], 0);
+    UpdateFromEngine;
+    UpdateWtNames;
+  finally
+    Dlg.Free;
+  end;
+end;
+
+{ Name und Frame-Zahl der geladenen Wavetable je Oszillator (nur bei Aenderung neu setzen) }
+procedure TGranularEditor.UpdateWtNames;
+var
+  O: Integer;
+  S: string;
+begin
+  for O := 0 to OSC_COUNT - 1 do
+  begin
+    if FWtName[O] = nil then
+      Continue;
+    if FEngine.WtFrameCount(O) > 0 then
+      S := Format(Tr('%s - %d Frames'), [ChangeFileExt(ExtractFileName(FEngine.WtLoaded[O]), ''), FEngine.WtFrameCount(O)])
+    else
+      S := Tr('keine Wavetable geladen');
+    if S <> FWtShown[O] then
+    begin
+      FWtShown[O] := S;
+      FWtName[O].Caption := S;
+    end;
+  end;
 end;
 
 procedure TGranularEditor.ZoneLoadClick(Sender: TObject);
@@ -2934,6 +3064,10 @@ begin
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
   Area.Color := BG_MAIN;
+  // Reihenfolge der vier Effekte (Nov. 2026): unten, ueber die ganze Breite
+  P4 := MakePanel(Area, alBottom, Tr('Reihenfolge der Effekte im Signalweg (der erste bearbeitet zuerst)'));
+  P4.Height := 24 + ROW_H + 8;
+  AddParam(P4, Ord(gpFxOrder), 8, 24, 100, 0, 300, Tr('Reihenfolge'));
   P1 := MakePanel(Area, alLeft, Tr('Chorus / Flanger'));
   P1.Width := 300;
   P2 := MakePanel(Area, alLeft, Tr('Phaser'));
@@ -3224,7 +3358,7 @@ const
   EQ_C1 = 110;          // Spalte Baesse / Band A
   EQ_C2 = 520;          // Spalte Hoehen / Band B
 var
-  Area, Top, PS: TPanel;
+  Area, Top, PS, PC: TPanel;
   I: Integer;
   B: TButton;
   L: TLabel;
@@ -3239,23 +3373,35 @@ begin
   PS := MakePanel(Area, alRight, Tr('Sättigung, Stereo, Ausgang'));   // rechts; die EQ-Kurve sitzt links
   PS.Width := 330;
   AddParam(PS, Ord(gpDrive), 8, 24, 100, 62);
-  AddParam(PS, Ord(gpWidth), 8, 24 + ROW_H, 100, 62, 0, Tr('Stereobreite'));
-  AddParam(PS, Ord(gpPan), 8, 24 + 2 * ROW_H, 100, 62, 0, Tr('Panorama'));
-  AddParam(PS, Ord(gpLimiter), 8, 24 + 3 * ROW_H, 100, 0, 0);
-  AddParam(PS, Ord(gpQuality), 8, 24 + 4 * ROW_H, 100, 0, 100);
-  AddParam(PS, Ord(gpMaster), 8, 24 + 5 * ROW_H, 100, 62, 0, Tr('Master'));
-  L := TLabel.Create(Self);
-  L.Parent := PS;
-  L.SetBounds(8, 24 + 6 * ROW_H + 8, 310, 150);
-  L.AutoSize := False;
-  L.WordWrap := True;
-  L.Font.Color := $00A0A0A0;
-  L.Transparent := True;
-  L.Caption :=
-    Tr('Hier endet der Signalweg: alles wirkt auf den Gesamtklang. Reihenfolge: Echo/Hall -> Sättigung -> ' +
-    'EQ -> Stereo -> Limiter. Sättigung: warme Übersteuerung (mit HQ und Oversampling ohne ' +
-    'Spiegelfrequenzen). Breite: 0 % mono, 200 % extra breit; Panorama per LFO = Auto-Pan.');
-  AddStretch(L, 10);
+  AddParam(PS, Ord(gpDriveType), 8, 24 + ROW_H, 100, 0, 100, Tr('Art'));
+  AddParam(PS, Ord(gpWidth), 8, 24 + 2 * ROW_H, 100, 62, 0, Tr('Stereobreite'));
+  AddParam(PS, Ord(gpPan), 8, 24 + 3 * ROW_H, 100, 62, 0, Tr('Panorama'));
+  AddParam(PS, Ord(gpBassMonoOn), 8, 24 + 4 * ROW_H, 100, 0, 0, Tr('Bass mono'));
+  AddParam(PS, Ord(gpBassMonoFreq), 8, 24 + 5 * ROW_H, 100, 62, 0, Tr('mono bis'));
+  AddParam(PS, Ord(gpLimiter), 8, 24 + 6 * ROW_H, 100, 0, 0);
+  AddParam(PS, Ord(gpQuality), 8, 24 + 7 * ROW_H, 100, 0, 100);
+  AddParam(PS, Ord(gpMaster), 8, 24 + 8 * ROW_H, 100, 62, 0, Tr('Master'));
+  // Signalweg und Arten stehen in Tooltip und Hilfe (die Spalte ist voll)
+
+  // Kompressor: eigene Spalte links neben der Ausgangs-Spalte (Signalweg EQ -> Kompressor -> Ausgang)
+  PC := MakePanel(Area, alRight, Tr('Kompressor (drei Bänder)'));
+  PC.Width := 330;
+  PC.Left := PS.Left - 1;
+  AddParam(PC, Ord(gpCompOn), 8, 24, 100, 0, 0, Tr('Kompressor an'));
+  AddParam(PC, Ord(gpCompAmt), 8, 24 + ROW_H, 100, 62, 0, Tr('Menge'));
+  AddParam(PC, Ord(gpCompTime), 8, 24 + 2 * ROW_H, 100, 62, 0, Tr('Tempo'));
+  AddParam(PC, Ord(gpCompRatio), 8, 24 + 3 * ROW_H, 100, 62, 0, Tr('Verhältnis'));
+  AddParam(PC, Ord(gpCompThresh), 8, 24 + 4 * ROW_H, 100, 62, 0, Tr('Schwelle'));
+  AddParam(PC, Ord(gpCompKnee), 8, 24 + 5 * ROW_H, 100, 62, 0, Tr('Knick'));
+  FCompCurve := TCompCurveView.Create(Self);
+  FCompCurve.Engine := FEngine;
+  FCompCurve.Parent := PC;
+  FCompCurve.SetBounds(8, 24 + 6 * ROW_H + 4, 312, 86);
+  FCompCurve.Hint := Tr('Kennlinie: waagrecht der Eingangspegel, senkrecht der Ausgang (je Band). Gestrichelt = ' +
+    'unverändert, gelb = Schwelle. Über der Schwelle flacher (Verhältnis), darunter angehoben (Menge); ' +
+    'der Knick rundet den Übergang.');
+  FCompCurve.ShowHint := True;
+  AddStretch(FCompCurve, 8);
   Top := MakePanel(Area, alTop, Tr('Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)'));
   Top.Height := 112;
   AddParam(Top, Ord(gpEqOn), 8, 24, 0, 0, 0, Tr('EQ an'));
@@ -3499,7 +3645,7 @@ begin
     Frm.BorderIcons := [biSystemMenu];
     Frm.Position := poScreenCenter;
     Frm.ClientWidth := 990;
-    Frm.ClientHeight := 420;
+    Frm.ClientHeight := 440;
     Frm.Constraints.MinWidth := 880;
     Frm.Constraints.MinHeight := 300;
     Frm.Color := BG_MAIN;
@@ -3629,7 +3775,7 @@ begin
     L.AlignWithMargins := True;
     L.Margins.SetBounds(10, 2, 10, 6);
     L.AutoSize := False;
-    L.Height := 52;
+    L.Height := 72;
     L.WordWrap := True;
     L.Font.Color := $00A0A0A0;
     L.Transparent := True;
@@ -3638,11 +3784,12 @@ begin
       '"Auf Pitch legen" stellt Form Frei, Neustart bei Note an und einen Matrix-Slot LFO -> Pitch ' +
       '(Menge 50 %, Faktor x1) ein: jede Stufe trifft genau ihren Halbton, jede Note spielt die Folge von vorn. ' +
       'Rate/Sync gilt für einen ganzen Durchlauf. Klaviatur links: welche Note eine Stufe spielt (Bezugston = gespielte Taste). ' +
-      'Glättung: weiche Übergänge, die gelbe Linie zeigt den echten Verlauf. Änderungen wirken sofort.');
+      'Glättung: weiche Übergänge, die gelbe Linie zeigt den echten Verlauf. Leiste „Gleiten“ unten: Klick lässt eine Stufe ' +
+      'vom vorigen Ton herübergleiten (wie Slide am Sequencer). Änderungen wirken sofort.');
 
     FFreeView[K] := TFreeLfoView.Create(Frm, FEngine, K);
     FFreeView[K].Parent := P;
-    FFreeView[K].SetBounds(8, 84, P.ClientWidth - 16, P.ClientHeight - 84 - 56);
+    FFreeView[K].SetBounds(8, 84, P.ClientWidth - 16, P.ClientHeight - 84 - 76);
     FFreeView[K].Anchors := [akLeft, akTop, akRight, akBottom];
 
     Tmr := TTimer.Create(Frm);
@@ -3998,6 +4145,8 @@ begin
     if MOD_FACTORS[S] = 1 then
       F1 := S;
   SetSlot(Slot, Src, Dst, 50, F1);
+  // Oszillatoren sollen die Melodie mitspielen (Pitch steuert sonst nur die Grains)
+  FEngine.SetParamById(gpOscFollowPitch, 1);
   UpdateFromEngine;
 end;
 
@@ -5790,6 +5939,17 @@ begin
   if FLearnBinding >= 0 then
     PollMidiLearn;
   FEngine.MetersOn := FPages.ActivePage = FTabMix;
+  UpdateWtNames;
+  if (FCompCurve <> nil) and (FPages.ActivePage = FTabEq) then
+  begin
+    AnimInfo := Format('%.4f|%.4f|%.4f|%.4f|%.4f', [FEngine.GetParamById(gpCompOn), FEngine.GetParamById(gpCompAmt),
+      FEngine.GetParamById(gpCompRatio), FEngine.GetParamById(gpCompThresh), FEngine.GetParamById(gpCompKnee)]);
+    if AnimInfo <> FCompSig then
+    begin
+      FCompSig := AnimInfo;
+      FCompCurve.Invalidate;
+    end;
+  end;
   if FPages.ActivePage = FTabTiming then
     for I := 0 to DLY_EVENT_COUNT - 1 do
       with FBindings[FDlyMsIdx[I]] do
@@ -5880,9 +6040,23 @@ begin
           (FPages.ActivePage = FTabOsc[2]) then
   begin
     O := FPages.ActivePage.PageIndex - FTabOsc[0].PageIndex;
+    // Welle / Gezeichnet ausgrauen, wenn etwas Vorrangiges spielt: Wavetable > Zeichnung > Welle
+    PC := 0;
+    if (FEngine.GetParam(Ord(OSC_P[O].WtOn)) >= 0.5) and (FEngine.WtFrameCount(O) > 0) then
+      PC := 2
+    else if FEngine.GetParam(Ord(OSC_P[O].Draw)) >= 0.5 then
+      PC := 1;
+    if PC <> FWaveState[O] then
+    begin
+      FWaveState[O] := PC;
+      SetBindingEnabled(FWaveIdx[O], PC = 0);
+      SetBindingEnabled(FDrawIdx[O], PC < 2);
+    end;
     // FM-Klangfarbe ausgrauen, solange sie nicht wirkt (andere Welle bzw. Haken aus)
     I := 0;
-    if ParamStep(Ord(OSC_P[O].Wave), FEngine.GetParam(Ord(OSC_P[O].Wave))) = 5 then
+    if PC > 0 then
+      I := 0                             // Wavetable/Zeichnung: keine FM-Welle
+    else if ParamStep(Ord(OSC_P[O].Wave), FEngine.GetParam(Ord(OSC_P[O].Wave))) = 5 then
       I := 3                             // Rauschen: Sync wirkungslos
     else if ParamStep(Ord(OSC_P[O].Wave), FEngine.GetParam(Ord(OSC_P[O].Wave))) = 4 then
     begin
@@ -5905,6 +6079,20 @@ begin
       FOscEnvKey[O] := EnvKey;
       FOscEnvView[O].ForceFullInvalidate;
     end;
+  end
+  else if FPages.ActivePage = FTabTiming then
+  begin
+    for I := 0 to MENV_COUNT - 1 do
+      if FMEnvView[I] <> nil then
+      begin
+        EnvKey := FEngine.EffParam[Ord(MENV_IDS[I, 0])] + 3.1 * FEngine.EffParam[Ord(MENV_IDS[I, 1])] +
+          7.3 * FEngine.EffParam[Ord(MENV_IDS[I, 2])] + 13.7 * FEngine.EffParam[Ord(MENV_IDS[I, 3])];
+        if FEngine.GetModEnvState(I).Active or (EnvKey <> FMEnvKey[I]) then
+        begin
+          FMEnvKey[I] := EnvKey;
+          FMEnvView[I].ForceFullInvalidate;
+        end;
+      end;
   end
   else if FPages.ActivePage = FTabMod2 then
     begin FLevelView.UpdateLevel; FOutLevelView.UpdateLevel; end           // zeichnet nur bei Aenderung; LFO-Anzeigen im Banner-Takt
@@ -6176,7 +6364,9 @@ begin
       if ((F = '') or (Pos(F, LowerCase(FAllPresetNames[I])) > 0)) and
          ((FPresetCat = nil) or (FPresetCat.ItemIndex <= 0) or
           ((FPresetCat.ItemIndex = 1) and IsFavorite(FAllPresetFiles[I])) or
-          ((FPresetCat.ItemIndex > 1) and PresetInCategory(FAllPresetNames[I], FPresetCat.ItemIndex))) then
+          ((FPresetCat.ItemIndex = CAT_RECENT) and IsRecent(FAllPresetFiles[I])) or
+          ((FPresetCat.ItemIndex > 1) and (FPresetCat.ItemIndex <> CAT_RECENT) and
+           PresetInCategory(FAllPresetNames[I], FPresetCat.ItemIndex))) then
       begin
         if IsFavorite(FAllPresetFiles[I]) then
           FPresetCombo.Items.Add('★ ' + FAllPresetNames[I])
@@ -6229,10 +6419,63 @@ begin
   Result := False;
 end;
 
+function TGranularEditor.IsRecent(const FileName: string): Boolean;
+var
+  F, X: string;
+begin
+  F := ExtractFileName(FileName);
+  for X in FRecent do
+    if SameText(X, F) then
+      Exit(True);
+  Result := False;
+end;
+
+{ Preset an den Anfang der Liste "Zuletzt benutzt" (hoechstens RECENT_MAX), in Zuletzt.txt gemerkt }
+procedure TGranularEditor.AddRecent(const FileName: string);
+var
+  F: string;
+  L: TStringList;
+  I: Integer;
+begin
+  F := ExtractFileName(FileName);
+  if F = '' then
+    Exit;
+  L := TStringList.Create;
+  try
+    L.Add(F);
+    for I := 0 to High(FRecent) do
+      if not SameText(FRecent[I], F) and (L.Count < RECENT_MAX) then
+        L.Add(FRecent[I]);
+    FRecent := L.ToStringArray;
+    if FBaseDir <> '' then
+      try
+        L.SaveToFile(FBaseDir + RECENT_FILE, TEncoding.UTF8);
+      except
+        // Ordner schreibgeschuetzt: gilt bis zum Schliessen
+      end;
+  finally
+    L.Free;
+  end;
+end;
+
 procedure TGranularEditor.LoadFavorites;
 var
   L: TStringList;
 begin
+  FRecent := nil;
+  if (FBaseDir <> '') and FileExists(FBaseDir + RECENT_FILE) then
+  begin
+    L := TStringList.Create;
+    try
+      try
+        L.LoadFromFile(FBaseDir + RECENT_FILE, TEncoding.UTF8);
+        FRecent := L.ToStringArray;
+      except
+      end;
+    finally
+      L.Free;
+    end;
+  end;
   FFavorites := nil;
   if (FBaseDir = '') or not FileExists(FBaseDir + 'Favoriten.txt') then
     Exit;
@@ -6361,6 +6604,7 @@ begin
   LoadMorphSample(FEngine, FBaseDir);   // Sample des Morph-Ziels B (Grain-Ueberblendung)
   LoadZoneSamples(FEngine, FBaseDir);
   UpdateFromEngine;
+  AddRecent(FileName);
 end;
 
 procedure TGranularEditor.PresetComboChange(Sender: TObject);
@@ -6478,6 +6722,9 @@ begin
       for var Z := 1 to ZONE_COUNT do
         if FEngine.GetZoneLoaded(Z) <> '' then
           FEngine.SetZoneRef(Z, MakeSharedSamplePath(FEngine.GetZoneLoaded(Z), FBaseDir));
+      for var W := 0 to OSC_COUNT - 1 do
+        if FEngine.WtLoaded[W] <> '' then
+          FEngine.WtRef[W] := MakeSharedSamplePath(FEngine.WtLoaded[W], FBaseDir);
       Embed := Dlg.FilterIndex = 2;
       try
         TFile.WriteAllText(FBaseDir + EMBED_OPT_FILE, 'Samples einbetten=' + IntToStr(Ord(Embed)));

@@ -46,13 +46,14 @@ type
     constructor Create(AOwner: TComponent; AEngine: TGranularEngine); reintroduce;
   end;
 
-  TEnvKind = (ekAmp, ekFilter, ekOsc, ekOscFm);
+  TEnvKind = (ekAmp, ekFilter, ekOsc, ekOscFm, ekMod);   // ekMod: Modulations-Huellkurve OscIndex 0/1
 
   { ADSR-Kurve; roter Strich + Punkt = aktueller Stand der juengsten Stimme }
   TEnvelopeView = class(TEngineView)
   private
     FKind: TEnvKind;
     FOscIndex: Integer;
+    FTitle: string;
     FCurve: TBitmap32;       // Kurve + Fuellung + Beschriftung, nur bei Regler-Aenderung neu
     FCurveKey: Double;
     FTA, FTD, FTR, FAttMs, FSus, FScale: Double;
@@ -70,7 +71,8 @@ type
     { True = Filter-Huellkurve (F-Attack...), sonst Amplituden-Huellkurve }
     property FilterEnv: Boolean read GetFilterEnv write SetFilterEnv;
     property Kind: TEnvKind read FKind write FKind;
-    property OscIndex: Integer read FOscIndex write FOscIndex;   // ekOsc/ekOscFm: Oszillator 0..2
+    property OscIndex: Integer read FOscIndex write FOscIndex;   // ekOsc/ekOscFm: Oszillator 0..2, ekMod: Huellkurve 0..1
+    property Title: string read FTitle write FTitle;             // optional oben rechts
   end;
 
   { Eine LFO-Periode; roter Punkt = aktuelle Phase }
@@ -270,6 +272,8 @@ begin
     ekFilter: begin IdA := gpFltAttack; IdD := gpFltDecay; IdS := gpFltSustain; IdR := gpFltRelease; end;
     ekOsc:    with OSC_P[FOscIndex] do begin IdA := Attack; IdD := Decay; IdS := Sustain; IdR := Release; end;
     ekOscFm:  with OSC_P[FOscIndex] do begin IdA := FmAttack; IdD := FmDecay; IdS := FmSustain; IdR := FmRelease; end;
+    ekMod:    begin IdA := MENV_IDS[FOscIndex, 0]; IdD := MENV_IDS[FOscIndex, 1]; IdS := MENV_IDS[FOscIndex, 2];
+                IdR := MENV_IDS[FOscIndex, 3]; end;
   else
     IdA := gpAttack; IdD := gpDecay; IdS := gpSustain; IdR := gpRelease;
   end;
@@ -354,6 +358,11 @@ begin
   B.Textout((FXA + FXD) div 2 - 3, Bot - 13, 'D');
   B.Textout((FXD + FXS) div 2 - 3, Bot - 13, 'S');
   B.Textout((FXS + FXR) div 2 - 3, Bot - 13, 'R');
+  if FTitle <> '' then
+  begin
+    B.Font.Color := $0070D0FF;                 // bernstein: Name der Huellkurve oben rechts
+    B.Textout(W - B.TextWidth(FTitle) - 5, Top + 2, FTitle);
+  end;
 end;
 
 procedure TEnvelopeView.DoPaintBuffer;
@@ -396,6 +405,7 @@ begin
     ekFilter: St := FEngine.GetFilterEnvState;
     ekOsc:    St := FEngine.GetOscEnvState(False, FOscIndex);
     ekOscFm:  St := FEngine.GetOscEnvState(True, FOscIndex);
+    ekMod:    St := FEngine.GetModEnvState(FOscIndex);
   else
     St := FEngine.GetEnvelopeState;
   end;
@@ -749,7 +759,7 @@ begin
     msLfo2: Result := $FFB48CFF;                       // Violett
     msSidechain, msScPitch: Result := $FFFFA040;       // Orange wie im Monitor
     msVelocity, msNote, msNoteRandom: Result := $FF78E08C;
-    msFilterEnv, msAmpEnv, msOsc1Env, msOsc2Env, msOsc3Env: Result := $FFFFD25A;   // Gelb
+    msFilterEnv, msAmpEnv, msOsc1Env, msOsc2Env, msOsc3Env, msModEnv1, msModEnv2: Result := $FFFFD25A;   // Gelb
   else
     Result := $FFDCDCDC;                               // Modrad, Aftertouch, Pitchbend
   end;

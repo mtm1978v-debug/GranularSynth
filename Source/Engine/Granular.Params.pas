@@ -126,7 +126,7 @@ type
     gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn, gpOsc3FltType,
     gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn, gpOsc3FmAttack,
     gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease,
-    // Ereignis-Verzoegerung (Reiter Timing / Events): je Ereignisart ms oder Notenwert (Takt <> Aus gewinnt)
+    // Ereignis-Verzoegerung (Reiter Timing / Hüllk.): je Ereignisart ms oder Notenwert (Takt <> Aus gewinnt)
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
     gpDlyScPitch, gpDlyScPitchSync, gpDlyGate, gpDlyGateSync, gpDlyQuiet, gpDlyQuietSync, gpDlyOut, gpDlyOutSync,
     // Aus-Trigger je LFO: Ereignis, das den LFO anhaelt (0 = nie, sonst Ereignis 0..7 + 1)
@@ -165,6 +165,17 @@ type
     gpResTime, gpResSync,           // Laenge eines Resampling-Durchlaufs (frei in ms oder im Takt)
     gpOversample,  // Nov. 2026: 2x-Oversampling bei HQ (Oszillatoren, Saettigung); gehoert zum Rechner, nicht zum Preset
     gpScaleKeys,   // Nov. 2026: Tasten: alle (Einrasten) / weisse Tasten spielen die Tonleiter
+    gpDriveType,   // Nov. 2026: Art der Saettigung (Warm, Roehre, Hart, Faltung)
+    gpCompOn, gpCompAmt, gpCompTime,   // Nov. 2026: 3-Band-Kompressor (auf- und abwaerts) der Summe
+    gpCompRatio, gpCompThresh, gpCompKnee,   // ... Verhaeltnis, Schwelle, Knick
+    gpBassMonoOn, gpBassMonoFreq,            // Nov. 2026: Bass mono (Seitensignal unter der Frequenz weg)
+    gpMEnv1Att, gpMEnv1Dec, gpMEnv1Sus, gpMEnv1Rel,   // Nov. 2026: freie Modulations-Huellkurven je Note
+    gpMEnv2Att, gpMEnv2Dec, gpMEnv2Sus, gpMEnv2Rel,
+    gpOscWtOn, gpOsc2WtOn, gpOsc3WtOn,       // Nov. 2026: Oszillator spielt eine geladene Wavetable
+    gpOscWtPos, gpOsc2WtPos, gpOsc3WtPos,    // ... Position darin (je Note modulierbar)
+    gpSubLevel, gpSubOct, gpSubWave, gpNoiseLevel,   // Nov. 2026: Sub-Oszillator und Rauschen (an Osz 1)
+    gpFxOrder,                               // Nov. 2026: Reihenfolge Gate/Crusher/Chorus/Phaser
+    gpOscFollowPitch,                        // Nov. 2026: Oszillatoren folgen dem Regler Pitch (inkl. Modulation)
     gpPerformance, // Leistungsstufe: begrenzt Stimmen/Grains (gehoert nicht zum Klang, bleibt beim Presetwechsel)
     gpMaster,      // Master-Lautstaerke (gehoert nicht zum Klang: bleibt beim Presetwechsel)
     gpTempo        // Tempo fuer LFO-Sync (im VST spaeter vom Host); muss der LETZTE sein
@@ -174,7 +185,8 @@ type
     msOsc1Env, msOsc2Env, msOsc3Env,   // Huellkurven der Oszillatoren (je Note, unabhaengig von den Grains)
     msLfo5, msLfo6, msLfo7, msLfo8,    // Okt. 2026 (hinten: Presets speichern die Quelle als Klartext)
     msScPitch2,                        // Tonhoehe von Sidechain 2
-    msMacro1, msMacro2, msMacro3, msMacro4);   // freie Makros (Regler durch die Kurve)
+    msMacro1, msMacro2, msMacro3, msMacro4,    // freie Makros (Regler durch die Kurve)
+    msModEnv1, msModEnv2);             // Nov. 2026: freie Modulations-Huellkurven (je Note)
 
   TParamInfo = record
     Name: string;
@@ -189,8 +201,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 16;
-  APP_VERSION = '2.16';
+  APP_VERSION_MINOR = 17;
+  APP_VERSION = '2.17';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -213,6 +225,10 @@ const
   UMAC_CURVE_IDS: array[0..UMAC_COUNT - 1] of TGranularParamId = (gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve);
   UMAC_SRC: array[0..UMAC_COUNT - 1] of TModSource = (msMacro1, msMacro2, msMacro3, msMacro4);
   UMAC_CURVE_NAMES: array[0..3] of string = ('Linear', 'Langsam ansteigend', 'Schnell ansteigend', 'S-Kurve');
+  MENV_COUNT = 2;
+  MENV_IDS: array[0..MENV_COUNT - 1, 0..3] of TGranularParamId = (
+    (gpMEnv1Att, gpMEnv1Dec, gpMEnv1Sus, gpMEnv1Rel), (gpMEnv2Att, gpMEnv2Dec, gpMEnv2Sus, gpMEnv2Rel));
+  MENV_SRC: array[0..MENV_COUNT - 1] of TModSource = (msModEnv1, msModEnv2);
   LFO_RATE_IDS: array[0..LFO_COUNT - 1] of TGranularParamId = (gpLfo1Rate, gpLfo2Rate, gpLfo3Rate, gpLfo4Rate, gpLfo5Rate, gpLfo6Rate, gpLfo7Rate, gpLfo8Rate);
   LFO_SHAPE_IDS: array[0..LFO_COUNT - 1] of TGranularParamId = (gpLfo1Shape, gpLfo2Shape, gpLfo3Shape, gpLfo4Shape, gpLfo5Shape, gpLfo6Shape, gpLfo7Shape, gpLfo8Shape);
   LFO_SYNC_IDS: array[0..LFO_COUNT - 1] of TGranularParamId = (gpLfo1Sync, gpLfo2Sync, gpLfo3Sync, gpLfo4Sync, gpLfo5Sync, gpLfo6Sync, gpLfo7Sync, gpLfo8Sync);
@@ -238,6 +254,37 @@ const
   ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 -> 2)', 'Parallel (1 + 2)');
   AUTOPITCH_NAMES: array[0..2] of string = ('Aus', 'Frei', 'Halbtöne');
   SCALE_KEY_NAMES: array[0..1] of string = ('alle Tasten (Einrasten)', 'weiße Tasten = Tonleiter');
+  DRIVE_TYPE_NAMES: array[0..3] of string = ('Warm', 'Röhre', 'Hart', 'Faltung');
+  SUB_OCT_NAMES: array[0..1] of string = ('-1 Oktave', '-2 Oktaven');
+  SUB_WAVE_NAMES: array[0..1] of string = ('Sinus', 'Rechteck');
+  FX_ORDER_COUNT = 24;
+  FX_NAMES: array[0..3] of string = ('Gate', 'Crusher', 'Chorus', 'Phaser');
+  { alle Reihenfolgen der vier Effekte (Index 0 = bisherige Reihenfolge) }
+  FX_ORDERS: array[0..FX_ORDER_COUNT - 1, 0..3] of Byte = (
+    (0, 1, 2, 3),
+    (0, 1, 3, 2),
+    (0, 2, 1, 3),
+    (0, 2, 3, 1),
+    (0, 3, 1, 2),
+    (0, 3, 2, 1),
+    (1, 0, 2, 3),
+    (1, 0, 3, 2),
+    (1, 2, 0, 3),
+    (1, 2, 3, 0),
+    (1, 3, 0, 2),
+    (1, 3, 2, 0),
+    (2, 0, 1, 3),
+    (2, 0, 3, 1),
+    (2, 1, 0, 3),
+    (2, 1, 3, 0),
+    (2, 3, 0, 1),
+    (2, 3, 1, 0),
+    (3, 0, 1, 2),
+    (3, 0, 2, 1),
+    (3, 1, 0, 2),
+    (3, 1, 2, 0),
+    (3, 2, 0, 1),
+    (3, 2, 1, 0));
   SCALE_NAMES: array[0..8] of string = ('Aus (chromatisch frei)', 'Dur', 'Moll', 'Harmonisch Moll', 'Dorisch',
     'Pentatonik Dur', 'Pentatonik Moll', 'Blues', 'Ganzton');
   { je Tonleiter: Bit k gesetzt = Halbton k ueber dem Grundton gehoert dazu }
@@ -295,6 +342,7 @@ type
     FltOn, FltType, FltCutoff, FltReso, FltContour, FltEnvAmt,
     FmEnvOn, FmAttack, FmDecay, FmSustain, FmRelease: TGranularParamId;
     Draw: TGranularParamId;   // gezeichnete Welle statt 'Welle'
+    WtOn, WtPos: TGranularParamId;   // geladene Wavetable statt 'Welle' / 'Gezeichnet'
   end;
 
 const
@@ -310,26 +358,26 @@ const
      FltOn: gpOscFltOn; FltType: gpOscFltType; FltCutoff: gpOscFltCutoff; FltReso: gpOscFltReso;
      FltContour: gpOscFltContour; FltEnvAmt: gpOscFltEnvAmt;
      FmEnvOn: gpOscFmEnvOn; FmAttack: gpOscFmAttack; FmDecay: gpOscFmDecay; FmSustain: gpOscFmSustain;
-     FmRelease: gpOscFmRelease; Draw: gpOscDraw),
+     FmRelease: gpOscFmRelease; Draw: gpOscDraw; WtOn: gpOscWtOn; WtPos: gpOscWtPos),
     (On_: gpOsc2On; Wave: gpOsc2Wave; Oct: gpOsc2Oct; Fine: gpOsc2Fine; Level: gpOsc2Level; Pan: gpOsc2Pan;
      FmRatio: gpOsc2FmRatio; FmAmt: gpOsc2FmAmt; Sync: gpOsc2Sync;
      Attack: gpOsc2Attack; Decay: gpOsc2Decay; Sustain: gpOsc2Sustain; Release: gpOsc2Release;
      FltOn: gpOsc2FltOn; FltType: gpOsc2FltType; FltCutoff: gpOsc2FltCutoff; FltReso: gpOsc2FltReso;
      FltContour: gpOsc2FltContour; FltEnvAmt: gpOsc2FltEnvAmt;
      FmEnvOn: gpOsc2FmEnvOn; FmAttack: gpOsc2FmAttack; FmDecay: gpOsc2FmDecay; FmSustain: gpOsc2FmSustain;
-     FmRelease: gpOsc2FmRelease; Draw: gpOsc2Draw),
+     FmRelease: gpOsc2FmRelease; Draw: gpOsc2Draw; WtOn: gpOsc2WtOn; WtPos: gpOsc2WtPos),
     (On_: gpOsc3On; Wave: gpOsc3Wave; Oct: gpOsc3Oct; Fine: gpOsc3Fine; Level: gpOsc3Level; Pan: gpOsc3Pan;
      FmRatio: gpOsc3FmRatio; FmAmt: gpOsc3FmAmt; Sync: gpOsc3Sync;
      Attack: gpOsc3Attack; Decay: gpOsc3Decay; Sustain: gpOsc3Sustain; Release: gpOsc3Release;
      FltOn: gpOsc3FltOn; FltType: gpOsc3FltType; FltCutoff: gpOsc3FltCutoff; FltReso: gpOsc3FltReso;
      FltContour: gpOsc3FltContour; FltEnvAmt: gpOsc3FltEnvAmt;
      FmEnvOn: gpOsc3FmEnvOn; FmAttack: gpOsc3FmAttack; FmDecay: gpOsc3FmDecay; FmSustain: gpOsc3FmSustain;
-     FmRelease: gpOsc3FmRelease; Draw: gpOsc3Draw));
+     FmRelease: gpOsc3FmRelease; Draw: gpOsc3Draw; WtOn: gpOsc3WtOn; WtPos: gpOsc3WtPos));
   LFO_SHAPE_FREE = 5;   // frei programmierbarer LFO (Stufen oder gezeichnet, s. TFreeLfo)
   MOD_SOURCE_NAMES: array[TModSource] of string =
     ('Aus', 'LFO 1', 'LFO 2', 'Sidechain', 'Velocity', 'Zufall je Note', 'Notenhöhe', 'Filter-Hüllk.', 'Grain-Hüllk.', 'SC-Tonhöhe', 'Modrad', 'Aftertouch', 'Pitchbend', 'Schwellen-Tor', 'LFO 3', 'LFO 4', 'Sidechain 2',
      'Osz1-Hüllk.', 'Osz2-Hüllk.', 'Osz3-Hüllk.', 'LFO 5', 'LFO 6', 'LFO 7', 'LFO 8', 'SC2-Tonhöhe',
-    'Makro 1', 'Makro 2', 'Makro 3', 'Makro 4');
+    'Makro 1', 'Makro 2', 'Makro 3', 'Makro 4', 'Mod-Hüllk. 1', 'Mod-Hüllk. 2');
 
   LFO_DIV_COUNT = 10;
   LFO_DIV_NAMES: array[0..LFO_DIV_COUNT - 1] of string =
@@ -660,6 +708,35 @@ const
     (Name: 'Resampling Sync'; UnitStr: ''; MinV: 0; MaxV: 4; DefV: 0; Curve: pcStepped; Steps: 5),
     (Name: 'Oversampling'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 1; Curve: pcStepped; Steps: 2),
     (Name: 'Tonleiter-Tasten'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Sättigung Art'; UnitStr: ''; MinV: 0; MaxV: 3; DefV: 0; Curve: pcStepped; Steps: 4),
+    (Name: 'Kompressor an'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Kompressor Menge'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 50; Curve: pcLinear; Steps: 0),
+    (Name: 'Kompressor Tempo'; UnitStr: '%'; MinV: 25; MaxV: 400; DefV: 100; Curve: pcExp; Steps: 0),
+    (Name: 'Kompressor Verhältnis'; UnitStr: ':1'; MinV: 1; MaxV: 20; DefV: 4; Curve: pcExp; Steps: 0),
+    (Name: 'Kompressor Schwelle'; UnitStr: 'dB'; MinV: -40; MaxV: 0; DefV: -20; Curve: pcLinear; Steps: 0),
+    (Name: 'Kompressor Knick'; UnitStr: 'dB'; MinV: 0; MaxV: 24; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Bass mono'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Bass mono bis'; UnitStr: 'Hz'; MinV: 40; MaxV: 300; DefV: 120; Curve: pcExp; Steps: 0),
+    (Name: 'Mod-Hüllk. 1 Attack'; UnitStr: 'ms'; MinV: 1; MaxV: 10000; DefV: 10; Curve: pcExp; Steps: 0),
+    (Name: 'Mod-Hüllk. 1 Decay'; UnitStr: 'ms'; MinV: 1; MaxV: 10000; DefV: 500; Curve: pcExp; Steps: 0),
+    (Name: 'Mod-Hüllk. 1 Sustain'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Mod-Hüllk. 1 Release'; UnitStr: 'ms'; MinV: 1; MaxV: 10000; DefV: 300; Curve: pcExp; Steps: 0),
+    (Name: 'Mod-Hüllk. 2 Attack'; UnitStr: 'ms'; MinV: 1; MaxV: 10000; DefV: 10; Curve: pcExp; Steps: 0),
+    (Name: 'Mod-Hüllk. 2 Decay'; UnitStr: 'ms'; MinV: 1; MaxV: 10000; DefV: 500; Curve: pcExp; Steps: 0),
+    (Name: 'Mod-Hüllk. 2 Sustain'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Mod-Hüllk. 2 Release'; UnitStr: 'ms'; MinV: 1; MaxV: 10000; DefV: 300; Curve: pcExp; Steps: 0),
+    (Name: 'Osz Wavetable an'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Osz2 Wavetable an'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Osz3 Wavetable an'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Osz WT-Position'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Osz2 WT-Position'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Osz3 WT-Position'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Sub Pegel'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Sub Oktave'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Sub Welle'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Rauschen Pegel'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
+    (Name: 'Effekt-Reihenfolge'; UnitStr: ''; MinV: 0; MaxV: 23; DefV: 0; Curve: pcStepped; Steps: 24),
+    (Name: 'Osz folgen Pitch'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
     (Name: 'Leistung'; UnitStr: ''; MinV: 0; MaxV: 2; DefV: 0; Curve: pcStepped; Steps: 3),
     (Name: 'Master';        UnitStr: 'dB'; MinV: -60;  MaxV: 6;     DefV: 0;    Curve: pcDecibel; Steps: 0),
     (Name: 'Tempo';         UnitStr: 'BPM'; MinV: 60;  MaxV: 200;  DefV: 120;  Curve: pcLinear;  Steps: 0)
@@ -702,7 +779,7 @@ const
     gpOsc3FmAmt, gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn,
     gpOsc3FltType, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn,
     gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease, gpMaster, gpTempo);
-  VST_ADDED_COUNT = 125;   // Anzahl der Eintraege in VST_ADDED
+  VST_ADDED_COUNT = 154;   // Anzahl der Eintraege in VST_ADDED
   VST_ADDED: array[0..VST_ADDED_COUNT - 1] of TGranularParamId = (
     // Okt. 2026: Ereignis-Verzoegerung
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
@@ -746,7 +823,19 @@ const
     gpOscModel,
     // Nov. 2026: Feedback-Resampling
     gpResOn, gpResMix, gpResTime, gpResSync,
-    gpScaleKeys);
+    gpScaleKeys,
+    // Nov. 2026: Saettigungs-Art und Kompressor
+    gpDriveType, gpCompOn, gpCompAmt, gpCompTime,
+    gpCompRatio, gpCompThresh, gpCompKnee,
+    // Nov. 2026: Bass mono
+    gpBassMonoOn, gpBassMonoFreq,
+    // Nov. 2026: Modulations-Huellkurven
+    gpMEnv1Att, gpMEnv1Dec, gpMEnv1Sus, gpMEnv1Rel, gpMEnv2Att, gpMEnv2Dec, gpMEnv2Sus, gpMEnv2Rel,
+    // Nov. 2026: Wavetables
+    gpOscWtOn, gpOsc2WtOn, gpOsc3WtOn, gpOscWtPos, gpOsc2WtPos, gpOsc3WtPos,
+    // Nov. 2026: Sub/Rauschen, Effekt-Reihenfolge
+    gpSubLevel, gpSubOct, gpSubWave, gpNoiseLevel, gpFxOrder,
+    gpOscFollowPitch);
 
 
 { VST-Nummer -> interner Index und zurueck (-1 = ungueltig) }
@@ -791,6 +880,7 @@ function LfoShapeValue(Shape: Integer; Phase: Double; SampleHold: Single): Singl
 
 const
   FREE_MAX_STEPS = 64;     // Stufen des freien LFOs
+  FREE_GLIDE_LEN = 0.6;    // Gleiten einer markierten Stufe: Anteil der Stufenlaenge
   FREE_DRAW_N = 256;       // feste Aufloesung der gezeichneten Kurve (unabhaengig vom Bildschirm)
   FREE_SEMIS = 24;         // Halbton-Modus: Wert 1 = 24 Halbtoene (Matrix-Menge 50 % auf Pitch = 1 Stufe 1 Halbton)
   FREE_MODE_NAMES: array[0..2] of string = ('Halbtöne (Stufen)', 'Frei (Stufen)', 'Gezeichnet');
@@ -806,6 +896,7 @@ type
     Step: array[0..FREE_MAX_STEPS - 1] of Single;
     Draw: array[0..FREE_DRAW_N - 1] of Single;
     Smooth: Single;   // Nov. 2026: Glaettung der Stufen 0..1 (0 = harte Stufen, 1 = runde Kurve)
+    Glide: UInt64;    // Nov. 2026: Bit I = Stufe I gleitet vom vorigen Wert herueber (wie Slide beim Sequencer)
   end;
   PFreeLfo = ^TFreeLfo;
 
@@ -1113,6 +1204,15 @@ begin
     gpSc1Input, gpSc2Input: Result := SC_INPUT_NAMES[EnsureRange(Step, 0, 2)];
     gpPerformance: Result := PERF_NAMES[EnsureRange(Step, 0, 2)];
     gpScaleKeys: Result := SCALE_KEY_NAMES[EnsureRange(Step, 0, 1)];
+    gpDriveType: Result := DRIVE_TYPE_NAMES[EnsureRange(Step, 0, 3)];
+    gpSubOct: Result := SUB_OCT_NAMES[EnsureRange(Step, 0, 1)];
+    gpSubWave: Result := SUB_WAVE_NAMES[EnsureRange(Step, 0, 1)];
+    gpFxOrder:
+      begin
+        Step := EnsureRange(Step, 0, FX_ORDER_COUNT - 1);
+        Result := FX_NAMES[FX_ORDERS[Step, 0]] + ' > ' + FX_NAMES[FX_ORDERS[Step, 1]] + ' > ' +
+          FX_NAMES[FX_ORDERS[Step, 2]] + ' > ' + FX_NAMES[FX_ORDERS[Step, 3]];
+      end;
     gpLfo1Partner, gpLfo2Partner, gpLfo3Partner, gpLfo4Partner, gpLfo5Partner, gpLfo6Partner, gpLfo7Partner, gpLfo8Partner: Result := Format('LFO %d', [EnsureRange(Step, 0, LFO_COUNT - 1) + 1]);
     gpQuality: Result := QUALITY_NAMES[EnsureRange(Step, 0, 1)];
     gpUMac1Curve, gpUMac2Curve, gpUMac3Curve, gpUMac4Curve: Result := UMAC_CURVE_NAMES[EnsureRange(Step, 0, 3)];
@@ -1191,6 +1291,7 @@ begin
   F.Mode := 0;
   F.Steps := 8;
   F.Smooth := 0;
+  F.Glide := 0;
   for I := 0 to FREE_MAX_STEPS - 1 do
     F.Step[I] := MELODY[I mod 8] / FREE_SEMIS;
   for I := 0 to FREE_DRAW_N - 1 do
@@ -1215,7 +1316,7 @@ end;
 function FreeLfoValue(const F: TFreeLfo; Phase: Double): Single;
 var
   N, I: Integer;
-  X, T: Double;
+  X, T, SL: Double;
   Prev: Single;
 begin
   Phase := Phase - Floor(Phase);
@@ -1238,15 +1339,19 @@ begin
       Result := FreeQuantize(Result);
     // Glaettung: am Anfang jeder Stufe weich (Kosinus) vom Wert der vorigen Stufe herueber gleiten;
     // der Uebergang dauert Smooth * Stufenlaenge (1 = ganze Stufe -> runde Kurve durch alle Werte)
-    if F.Smooth > 0.001 then
+    // Gleiten je Stufe: mindestens FREE_GLIDE_LEN der Stufe weich vom vorigen Wert herueber
+    SL := F.Smooth;
+    if (F.Glide <> 0) and (F.Glide and (UInt64(1) shl I) <> 0) then
+      SL := Max(SL, FREE_GLIDE_LEN);
+    if SL > 0.001 then
     begin
       T := X - I;
-      if T < F.Smooth then
+      if T < SL then
       begin
         Prev := F.Step[(I + N - 1) mod N];
         if F.Mode = 0 then
           Prev := FreeQuantize(Prev);
-        Result := Prev + (Result - Prev) * (0.5 - 0.5 * Cos(Pi * T / F.Smooth));
+        Result := Prev + (Result - Prev) * (0.5 - 0.5 * Cos(Pi * T / SL));
       end;
     end;
   end;

@@ -16,6 +16,7 @@ unit Granular.FreeLfoView;
                         Luecken zwischen Mauspositionen werden linear gefuellt, die Engine
                         interpoliert zusaetzlich -> keine Bildschirm-Treppen im Ton
   Bedienung: Ziehen setzt Werte (auch ueber mehrere Stufen), Rechtsklick/-ziehen setzt 0,
+  Leiste unten (Stufen-Modi): Klick schaltet Gleiten der Stufe um (Ziehen setzt mehrere gleich),
   Mausrad auf einer Stufe = +/- 1 Halbton (bzw. fein im Modus Frei).
   Halbton-Modus: links eine Klaviatur mit Notennamen (Bezugston = gespielte Taste, waehlbar), damit
   man Melodien direkt nach Noten setzen kann. Bei Glaettung > 0 zeigt eine Kurve den echten Verlauf.
@@ -45,6 +46,8 @@ type
     FMarkKey: Integer;         // zuletzt gezeichnete Markenposition (Stufe bzw. Pixel), -1 = keine
     FWasFree: Boolean;         // Form war beim letzten Aufbau 'Frei' (Hinweistext)
     FRoot: Integer;            // Bezugston der Klaviatur: Stufe 0 = diese Note (0 = C)
+    FLaneDrag: Boolean;        // Ziehen in der Gleit-Leiste
+    FLaneSet: Boolean;         // ... setzt diesen Zustand
     FOnChange: TNotifyEvent;
     function Data: PFreeLfo;
     function ShapeIsFree: Boolean;
@@ -58,6 +61,9 @@ type
     procedure SetRange(const Value: Integer);
     procedure SetRoot(const Value: Integer);
     function KeysW: Integer;
+    function LaneH: Integer;
+    function StepAt(X: Integer): Integer;
+    procedure LaneAt(X: Integer; First: Boolean);
     procedure DrawKeys(W, H: Integer);
   protected
     procedure DoPaintBuffer; override;
@@ -143,6 +149,9 @@ const
   COL_SMOOTH  = $FFFFD070;   // Verlauf mit Glaettung
   TOP_PAD = 6;
   KEYS_W = 36;               // Breite der Klaviatur links (Halbton-Modus)
+  LANE_H = 13;               // Gleit-Leiste unter den Stufen
+  COL_LANE    = $FF15171A;
+  COL_GLIDE   = $FFFFD070;
   NOTE_NAMES: array[0..11] of string = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'H');
   BLACK_KEY: array[0..11] of Boolean = (False, True, False, True, False, False, True, False, True, False, True, False);
 
@@ -230,6 +239,43 @@ begin
   Result := NOTE_NAMES[N];
   if (N = 11) and (LangCode <> 'de') then
     Result := 'B';
+end;
+
+{ Gleit-Leiste nur in den Stufen-Modi }
+function TFreeLfoView.LaneH: Integer;
+begin
+  if (Data.Mode <> 2) and (Height > 60) then
+    Result := LANE_H
+  else
+    Result := 0;
+end;
+
+function TFreeLfoView.StepAt(X: Integer): Integer;
+var
+  N: Integer;
+begin
+  N := EnsureRange(Data.Steps, 1, FREE_MAX_STEPS);
+  Result := EnsureRange((X - KeysW) * N div Max(1, Width - KeysW), 0, N - 1);
+end;
+
+procedure TFreeLfoView.LaneAt(X: Integer; First: Boolean);
+var
+  F: PFreeLfo;
+  I: Integer;
+  B: UInt64;
+begin
+  F := Data;
+  I := StepAt(X);
+  B := UInt64(1) shl I;
+  if First then
+    FLaneSet := F.Glide and B = 0;      // erster Klick schaltet um, Ziehen setzt danach gleich
+  if FLaneSet = (F.Glide and B <> 0) then
+    Exit;
+  if FLaneSet then
+    F.Glide := F.Glide or B
+  else
+    F.Glide := F.Glide and not B;
+  Changed;
 end;
 
 { Klaviatur nur im Halbton-Modus (dort bedeutet die Hoehe eine Note) }
@@ -332,7 +378,7 @@ var
   S: string;
   YPrev: Integer;
   YF, YPrevF: Single;
-  L, WW: Integer;
+  L, WW, FullH: Integer;
 begin
   if FStatic = nil then
   begin
@@ -341,6 +387,8 @@ begin
   end;
   FStatic.SetSize(W, H);
   F := Data;
+  FullH := H;
+  H := H - LaneH;                 // Werte oberhalb der Gleit-Leiste
   FStatic.BeginUpdate;
   try
     FStatic.Clear(COL_BG);
@@ -435,7 +483,7 @@ begin
       end;
     end;
 
-    if (F.Mode <> 2) and (F.Smooth > 0.001) then
+    if (F.Mode <> 2) and ((F.Smooth > 0.001) or (F.Glide <> 0)) then
     begin
       // echter Verlauf mit Glaettung (so hoert man es)
       YPrevF := (H div 2) - EnsureRange(FreeLfoValue(F^, 0) / VisMax, -1, 1) * ((H div 2) - TOP_PAD);
@@ -447,8 +495,37 @@ begin
       end;
     end;
 
+    if FullH > H then
+    begin
+      // Gleit-Leiste: je Stufe ein Feld, gleitende Stufen mit Rampe vom vorigen Wert
+      N := EnsureRange(F.Steps, 1, FREE_MAX_STEPS);
+      FStatic.FillRectS(0, H, W, FullH, COL_LANE);
+      FStatic.HorzLineS(0, H, W - 1, COL_OCT);
+      if L > 0 then
+      begin
+        FStatic.Font.Color := $00909090;
+        FStatic.Textout(2, H + 1, Tr('Gleiten'));
+      end;
+      for I := 0 to N - 1 do
+      begin
+        X0 := L + I * WW div N;
+        X1 := L + (I + 1) * WW div N - 1;
+        if I > 0 then
+          FStatic.VertLineS(X0, H + 1, FullH - 1, COL_SEP);
+        if (F.Glide and (UInt64(1) shl I) <> 0) and (X1 - X0 >= 3) then
+        begin
+          // kleine Rampe: zeigt das Herueberrutschen
+          for Px := X0 + 2 to X1 - 1 do
+          begin
+            Y := FullH - 2 - Round((Px - X0 - 2) / Max(1, X1 - X0 - 3) * (FullH - H - 4));
+            FStatic.VertLineS(Px, Y, FullH - 2, COL_GLIDE);
+          end;
+        end;
+      end;
+    end;
+
     FStatic.Font.Color := $00909090;
-    if F.Mode = 0 then
+    if (F.Mode = 0) and (L = 0) then   // mit Klaviatur zeigt sie die Toene - sonst laege die Zahl ueber den Stufen
     begin
       FStatic.Textout(W - 30, ValueToY(Min(12, FRange) / FREE_SEMIS, H) + 1, '+' + IntToStr(Min(12, FRange)));
       FStatic.Textout(W - 30, ValueToY(-Min(12, FRange) / FREE_SEMIS, H) - 12, '-' + IntToStr(Min(12, FRange)));
@@ -526,7 +603,7 @@ begin
   F := Data;
   X := X - KeysW;
   W := Max(1, Width - KeysW);
-  H := Height;
+  H := Height - LaneH;
   if FErase then
     V := 0
   else
@@ -575,7 +652,13 @@ end;
 procedure TFreeLfoView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if (Button in [mbLeft, mbRight]) and (X >= KeysW) then
+  if (Button = mbLeft) and (X >= KeysW) and (LaneH > 0) and (Y >= Height - LaneH) then
+  begin
+    FLaneDrag := True;
+    MouseCapture := True;
+    LaneAt(X, True);
+  end
+  else if (Button in [mbLeft, mbRight]) and (X >= KeysW) then
   begin
     FDrawing := True;
     FErase := Button = mbRight;
@@ -588,14 +671,17 @@ end;
 procedure TFreeLfoView.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if FDrawing then
-    EditAt(EnsureRange(X, KeysW, Width - 1), EnsureRange(Y, 0, Height - 1), False);
+  if FLaneDrag then
+    LaneAt(EnsureRange(X, KeysW, Width - 1), False)
+  else if FDrawing then
+    EditAt(EnsureRange(X, KeysW, Width - 1), EnsureRange(Y, 0, Height - 1 - LaneH), False);
 end;
 
 procedure TFreeLfoView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
   FDrawing := False;
+  FLaneDrag := False;
   FErase := False;
   MouseCapture := False;
 end;

@@ -98,25 +98,17 @@ begin
   Result := False;
 end;
 
-{ Vergleichsform fuer schon uebersetzte Texte: Zeilenumbrueche (WrapText) zaehlen als Leerzeichen }
+{ Vergleichsform fuer schon uebersetzte Texte: Leerzeichen und Zeilenumbrueche zaehlen nicht -
+  WrapText bricht auch hinter einem Bindestrich um ("->" wird zu "-" + Umbruch + ">") }
 function Norm(const S: string): string;
 var
   I: Integer;
-  Sp: Boolean;
 begin
-  // Zeilenumbrueche und mehrfache Leerzeichen (WrapText) = ein Leerzeichen; Doppelpunkt am Ende egal
+  // Doppelpunkt am Ende egal
   Result := '';
-  Sp := False;
   for I := 1 to Length(S) do
-    if CharInSet(S[I], [' ', #13, #10]) then
-      Sp := True
-    else
-    begin
-      if Sp and (Result <> '') then
-        Result := Result + ' ';
-      Sp := False;
+    if not CharInSet(S[I], [' ', #13, #10]) then
       Result := Result + S[I];
-    end;
   while (Result <> '') and (Result[Length(Result)] = ':') do
     SetLength(Result, Length(Result) - 1);
 end;
