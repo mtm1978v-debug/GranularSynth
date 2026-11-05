@@ -2634,7 +2634,7 @@ begin
   B := TButton.Create(Self);
   B.Parent := PR;
   B.SetBounds(8, 26, 200, 30);
-  B.Caption := Tr('Hauptsample bearbeiten...');
+  B.Caption := Tr('Sample-Editor...');
   B.Icon := eiPencil;
   B.Hint := Tr('Audio bearbeiten: schneiden, löschen, ein-/ausblenden, normalisieren, Stille entfernen, umkehren');
   B.ShowHint := True;
@@ -2755,13 +2755,13 @@ begin
   begin
     Src := FEngine.Sample;
     Name := FEngine.SamplePath;
-    Cap := Tr('Audio bearbeiten - Hauptsample');
+    Cap := Tr('Sample-Editor - Hauptsample');
   end
   else
   begin
     Src := FEngine.ZoneSample(Z);
     Name := FEngine.GetZoneLoaded(Z);
-    Cap := Format(Tr('Audio bearbeiten - Zone %d'), [Z]);
+    Cap := Format(Tr('Sample-Editor - Zone %d'), [Z]);
   end;
   if (Src <> nil) and IsEmptySample(Src) then
     Src := nil;
@@ -3398,8 +3398,8 @@ begin
   FCompCurve.Parent := PC;
   FCompCurve.SetBounds(8, 24 + 6 * ROW_H + 4, 312, 86);
   FCompCurve.Hint := Tr('Kennlinie: waagrecht der Eingangspegel, senkrecht der Ausgang (je Band). Gestrichelt = ' +
-    'unverändert, gelb = Schwelle. Über der Schwelle flacher (Verhältnis), darunter angehoben (Menge); ' +
-    'der Knick rundet den Übergang.');
+    'unverändert, gelb = Schwelle. Unter der Schwelle 1:1, darüber flacher (Verhältnis); erst 24 dB unter ' +
+    'der Schwelle werden leise Anteile angehoben. Der Knick rundet die Ecken ab.');
   FCompCurve.ShowHint := True;
   AddStretch(FCompCurve, 8);
   Top := MakePanel(Area, alTop, Tr('Equalizer (Kurve mit der Maus zeichnen, rechte Taste = 0 dB)'));

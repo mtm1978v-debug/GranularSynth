@@ -86,6 +86,7 @@ type
     procedure ZoomAt(Center: Integer; Factor: Double);
     procedure FormKey(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure LoadClick(Sender: TObject);
+    procedure SaveAsClick(Sender: TObject);
     procedure CropClick(Sender: TObject);
     procedure DeleteClick(Sender: TObject);
     procedure FadeInClick(Sender: TObject);
@@ -184,6 +185,8 @@ begin
   Top.Color := BG_DARK;
   X := 8;
   Btn(Top, Next(126), 7, 126, eiOpen, Tr('Datei laden...'), Tr('Eine Audiodatei zum Bearbeiten laden'), LoadClick);
+  Btn(Top, Next(150), 7, 150, eiSave, Tr('Speichern unter...'), Tr('Das bearbeitete Audio als WAV oder MP3 ' +
+    '(320 kbit/s) speichern - das Format wählst du im Dialog'), SaveAsClick);
   FPlayBtn := Btn(Top, Next(112), 7, 112, eiPlay, Tr('Abspielen'), Tr('Markierung (ohne: ab Cursor) anhören - Leertaste'), PlayClick);
   Btn(Top, Next(136), 7, 136, eiSelAll, Tr('Alles markieren'), Tr('Ganzes Sample markieren (Strg+A)'), SelAllClick);
   Btn(Top, Next(34), 7, 34, eiZoomIn, '', Tr('Hineinzoomen (auch Mausrad)'), ZoomInClick);
@@ -605,6 +608,48 @@ begin
   end;
 end;
 
+procedure TAudioEditForm.SaveAsClick(Sender: TObject);
+var
+  Dlg: TSaveDialog;
+  Fn, Ext: string;
+begin
+  if (FData = nil) or (FData.Frames < 2) then
+    Exit;
+  Dlg := TSaveDialog.Create(nil);
+  try
+  try
+    Dlg.Filter := Tr('WAV (verlustfrei)') + ' (*.wav)|*.wav|' + Tr('MP3 (320 kbit/s)') + ' (*.mp3)|*.mp3';
+    Dlg.FilterIndex := 1;
+    Dlg.DefaultExt := 'wav';
+    if DirectoryExists(FBaseDir + 'Eigene Toene') then
+      Dlg.InitialDir := FBaseDir + 'Eigene Toene';
+    if FData.FileName <> '' then
+      Dlg.FileName := ChangeFileExt(ExtractFileName(FData.FileName), '');
+    Dlg.Options := Dlg.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not Dlg.Execute then
+      Exit;
+    // Endung folgt dem gewaehlten Dateityp (wer sie selbst tippt, bekommt sie so)
+    if Dlg.FilterIndex = 2 then Ext := '.mp3' else Ext := '.wav';
+    Fn := Dlg.FileName;
+    if not (SameText(ExtractFileExt(Fn), '.wav') or SameText(ExtractFileExt(Fn), '.mp3')) then
+      Fn := Fn + Ext
+    else if not SameText(ExtractFileExt(Fn), Ext) then
+      Fn := ChangeFileExt(Fn, Ext);
+    Screen.Cursor := crHourGlass;
+    try
+      SaveAudioFile(FData, Fn);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  except
+    on E: Exception do
+      MessageDlg(Tr('Datei konnte nicht gespeichert werden:') + sLineBreak + E.Message, mtError, [mbOK], 0);
+  end;
+  finally
+    Dlg.Free;
+  end;
+end;
+
 procedure TAudioEditForm.CropClick(Sender: TObject);
 var
   A, B: Integer;
@@ -628,8 +673,16 @@ begin
     Exit;
   A := SnapZero(FData, Min(FSelA, FSelB));
   B := SnapZero(FData, Max(FSelA, FSelB));
-  if B - A >= FData.Frames then
-    Exit;                    // alles loeschen: nicht sinnvoll
+  if (B - A >= FData.Frames) or ((Min(FSelA, FSelB) <= 0) and (Max(FSelA, FSelB) >= FData.Frames)) then
+  begin
+    // alles markiert und geloescht: Fenster leeren (Rueckgaengig holt es zurueck), z. B. fuer eine neue Aufnahme
+    PushUndo;
+    FreeAndNil(FData);
+    FSelA := 0; FSelB := 0;
+    FViewA := 0; FViewB := 0;
+    Changed;
+    Exit;
+  end;
   PushUndo;
   SampleDelete(FData, A, B);
   FSelA := A; FSelB := A;

@@ -1,7 +1,7 @@
 // automatisch erzeugt von Tools/bump_version.py - nicht von Hand aendern
 1 VERSIONINFO
-FILEVERSION 2,17,0,0
-PRODUCTVERSION 2,17,0,0
+FILEVERSION 2,18,0,0
+PRODUCTVERSION 2,18,0,0
 FILEOS 0x40004
 FILETYPE 0x2
 {
@@ -11,9 +11,9 @@ FILETYPE 0x2
     {
       VALUE "CompanyName", "HABI M\0"
       VALUE "FileDescription", "GranularSynth - Granular + FM Synthese\0"
-      VALUE "FileVersion", "2.17\0"
+      VALUE "FileVersion", "2.18\0"
       VALUE "ProductName", "GranularSynth\0"
-      VALUE "ProductVersion", "2.17\0"
+      VALUE "ProductVersion", "2.18\0"
       VALUE "LegalCopyright", "(C) 2026 Matthias Haberecht, GNU GPL v3+\0"
     }
   }

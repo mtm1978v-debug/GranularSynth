@@ -2052,6 +2052,27 @@ begin
   B.Hall(90, 6, 50, 20, 30);
   B.P(gpVolume, 0);
   B.Save('180 FM - Techno - Pump-Pad fuer den Breakdown');
+
+  // 181: Arp-Keys und Keys (vom Nutzer im GUI gebaut, Basis L41): zwei getrennte Klaenge. B = gezupfte
+  // FM-Keys, A = dieselben Keys als Arp (hoch + runter); Morph 44 % mischt beide. Roehre, harter
+  // Kompressor (100 %, schnell, 10:1), Bass mono und doppelte Breite machen es dicht und weit.
+  B.Start('Warmer_Bass_C2.wav');
+  B.P(gpGrainOn, 0);
+  B.P(gpOscOn, 1); B.P(gpOscWave, 4); B.P(gpOscOct, 3); B.P(gpOscFmRatio, 2); B.P(gpOscFmAmt, 40); B.P(gpOscLevel, 60);
+  B.P(gpOscAttack, 1); B.P(gpOscDecay, 450); B.P(gpOscSustain, 15); B.P(gpOscRelease, 500);
+  B.P(gpOscFmEnvOn, 1); B.P(gpOscFmAttack, 1); B.P(gpOscFmDecay, 200); B.P(gpOscFmSustain, 20); B.P(gpOscFmRelease, 300);
+  B.M(msVelocity, gpOscFmAmt, 25);
+  B.P(gpDrive, 35); B.P(gpDriveType, 1);
+  B.Hall(75, 4, 50, 15, 28);
+  B.P(gpCompOn, 1); B.P(gpCompAmt, 100); B.P(gpCompTime, 25); B.P(gpCompRatio, 10.3);
+  B.P(gpBassMonoOn, 1); B.P(gpWidth, 200);
+  B.P(gpVolume, -8);
+  B.StoreMorph;                                        // B = Keys
+  B.P(gpMorphMode, 1);                                 // zwei getrennte Klaenge
+  B.P(gpArpOn, 1); B.P(gpArpMode, 2); B.P(gpOscAttack, 3);   // A = Arp hoch + runter
+  B.P(gpMorph, 43.9);
+  B.P(gpTempo, 62.6);                                  // so gebaut (in der DAW gilt deren Tempo)
+  B.Save('181 FM - Keys - Arp-Keys und Keys (zwei Klaenge)');
 end;
 
 { ------------------------------------------------------------------------------

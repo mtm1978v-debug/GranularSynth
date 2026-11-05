@@ -6032,19 +6032,31 @@ begin
 end;
 
 function CompGainDb(Lv, Thresh, Ratio, Knee: Double): Double;
+const
+  COMP_UP = 0.7;
+  COMP_UP_GAP = 24.0;
+
+  // 0 unter -Knee/2, X darueber, dazwischen quadratisch (weicher Einsatz)
+  function KneeRamp(X, Knee: Double): Double;
+  begin
+    if (Knee > 0) and (Abs(X) * 2 <= Knee) then
+      Result := Sqr(X + Knee / 2) / (2 * Knee)
+    else if X > 0 then
+      Result := X
+    else
+      Result := 0;
+  end;
+
 var
   Ov, Up: Double;
 begin
+  // Kennlinie wie ein klassischer Kompressor: unter der Schwelle 1:1, darueber 1:Ratio. Erst COMP_UP_GAP dB
+  // unter der Schwelle hebt er leise Anteile an (Aufwaerts, OTT-Stil). Der Knick rundet beide Ecken ab.
   Ov := Lv - Thresh;
-  if (Knee > 0) and (Abs(Ov) * 2 <= Knee) then
-    Result := -(1 - 1 / Ratio) * Sqr(Ov + Knee / 2) / (2 * Knee)
-  else if Ov > 0 then
-    Result := (Thresh - Lv) * (1 - 1 / Ratio)
-  else
-  begin
-    Up := Min((Thresh - Knee / 2 - Lv) * 0.7, 18);             // aufwaerts, begrenzt
-    Result := Up * EnsureRange((Lv + 76) / 10, 0, 1);          // Rauschen/Stille nicht hochziehen
-  end;
+  Result := -(1 - 1 / Ratio) * KneeRamp(Ov, Knee);
+  Up := COMP_UP * KneeRamp(Thresh - COMP_UP_GAP - Lv, Knee);
+  if Up > 0 then
+    Result := Result + 18 * Tanh(Up / 18) * EnsureRange((Lv + 76) / 10, 0, 1);   // weich begrenzt, Stille nicht hochziehen
 end;
 
 { Freie Modulations-Huellkurven (ADSR je Note, im Blocktakt wie die Filter-Huellkurve): nur Matrix-Quelle,

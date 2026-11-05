@@ -154,6 +154,46 @@ implementation
 
 {$POINTERMATH ON}
 
+uses
+  Granular.Engine, Granular.State, Granular.Params;
+
+{ Vergleicht zwei Preset-Dateien Parameter fuer Parameter (Name, Anzeige A -> B), fuer die Uebernahme
+  von im GUI gebauten Presets in den Generator. }
+function PresetDiff(const A, B: string): string;
+var
+  EA, EB: TGranularEngine;
+  SP: string;
+  I: Integer;
+  SL: TStringList;
+begin
+  EA := TGranularEngine.Create;
+  EB := TGranularEngine.Create;
+  SL := TStringList.Create;
+  try
+    if not LoadChunkFromFile(EA, A, SP) then SL.Add('A nicht geladen');
+    SL.Add('A-Sample: ' + SP);
+    if not LoadChunkFromFile(EB, B, SP) then SL.Add('B nicht geladen');
+    SL.Add('B-Sample: ' + SP);
+    for I := 0 to PARAM_COUNT - 1 do
+      if Abs(EA.GetParam(I) - EB.GetParam(I)) > 1E-6 then
+        SL.Add(Format('%d %s: %s -> %s', [I, GetParamInfo(I).Name, ParamDisplay(I, EA.GetParam(I)),
+          ParamDisplay(I, EB.GetParam(I))]));
+    if EB.MorphLayer <> nil then
+    begin
+      SL.Add('--- B: Morph-Ziel gegenueber Klang A von B, Sample ' + EB.MorphSampleRef);
+      for I := 0 to PARAM_COUNT - 1 do
+        if Abs(EB.GetParam(I) - EB.MorphLayer.GetParam(I)) > 1E-6 then
+          SL.Add(Format('%d %s: %s -> %s', [I, GetParamInfo(I).Name, ParamDisplay(I, EB.GetParam(I)),
+            ParamDisplay(I, EB.MorphLayer.GetParam(I))]));
+    end;
+    Result := SL.Text;
+  finally
+    SL.Free;
+    EB.Free;
+    EA.Free;
+  end;
+end;
+
 const
   HOST_INI = 'host.ini';
   // 32- und 64-Bit-Host teilen sich host.ini - der Pluginpfad muss je Bitbreite getrennt sein
@@ -430,6 +470,15 @@ begin
   begin
     // GranularHost.exe -decodetest <Audiodatei>: dekodieren, Kennwerte nach decodetest.txt
     TFile.WriteAllText(ExtractFilePath(ParamStr(0)) + 'decodetest.txt', DecodeTest(ParamStr(ParamCount)));
+    Application.ShowMainForm := False;
+    Application.Terminate;
+    Exit;
+  end;
+  if FindCmdLineSwitch('presetdiff') then
+  begin
+    // GranularHost.exe -presetdiff <A.gspreset> <B.gspreset>: abweichende Parameter nach presetdiff.txt
+    TFile.WriteAllText(ExtractFilePath(ParamStr(0)) + 'presetdiff.txt', PresetDiff(ParamStr(ParamCount - 1),
+      ParamStr(ParamCount)), TEncoding.UTF8);
     Application.ShowMainForm := False;
     Application.Terminate;
     Exit;

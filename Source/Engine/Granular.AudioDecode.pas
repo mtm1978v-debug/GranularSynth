@@ -33,6 +33,9 @@ const
 { WAV ueber den eigenen Loader, alles andere ueber Media Foundation }
 function LoadAudioFile(const FileName: string): TSampleData;
 function MediaFoundationAvailable: Boolean;
+{ Speichert nach Endung: .mp3 ueber Media Foundation (320 kbit/s, Stereo; andere Abtastraten als
+  32/44,1/48 kHz werden auf 44,1 kHz umgerechnet), sonst WAV (16 Bit Stereo) }
+procedure SaveAudioFile(Data: TSampleData; const FileName: string);
 
 implementation
 
@@ -126,6 +129,27 @@ type
     function GetPresentationAttribute(dwStreamIndex: DWORD; const guidAttribute: TGUID; pvarAttribute: Pointer): HResult; stdcall;
   end;
 
+  IMFSinkWriter = interface(IUnknown)
+    ['{3137f1cd-fe5e-4805-a5d8-fb477448cb3d}']
+    function AddStream(pTargetMediaType: IMFMediaType; out pdwStreamIndex: DWORD): HResult; stdcall;
+    function SetInputMediaType(dwStreamIndex: DWORD; pInputMediaType: IMFMediaType;
+      pEncodingParameters: IMFAttributes): HResult; stdcall;
+    function BeginWriting: HResult; stdcall;
+    function WriteSample(dwStreamIndex: DWORD; pSample: IMFSample): HResult; stdcall;
+    function SendStreamTick(dwStreamIndex: DWORD; llTimestamp: Int64): HResult; stdcall;
+    function PlaceMarker(dwStreamIndex: DWORD; pvContext: Pointer): HResult; stdcall;
+    function NotifyEndOfSegment(dwStreamIndex: DWORD): HResult; stdcall;
+    function Flush(dwStreamIndex: DWORD): HResult; stdcall;
+    function Finalize: HResult; stdcall;
+    function GetServiceForStream(dwStreamIndex: DWORD; const guidService: TGUID; const riid: TGUID; out ppvObject): HResult; stdcall;
+    function GetStatistics(dwStreamIndex: DWORD; pStats: Pointer): HResult; stdcall;
+  end;
+
+  TMFCreateSinkWriterFromURL = function(pwszOutputURL: PWideChar; pByteStream: IUnknown; pAttributes: IMFAttributes;
+    out ppSinkWriter: IMFSinkWriter): HResult; stdcall;
+  TMFCreateSample = function(out ppIMFSample: IMFSample): HResult; stdcall;
+  TMFCreateMemoryBuffer = function(cbMaxLength: DWORD; out ppBuffer: IMFMediaBuffer): HResult; stdcall;
+
   TMFStartup = function(Version: ULONG; dwFlags: DWORD): HResult; stdcall;
   TMFShutdown = function: HResult; stdcall;
   TMFCreateMediaType = function(out ppMFType: IMFMediaType): HResult; stdcall;
@@ -145,6 +169,11 @@ const
   MF_MT_AUDIO_SAMPLES_PER_SECOND: TGUID = '{5faeeae7-0290-4c31-9e8a-c534f68d9dba}';
   MFMediaType_Audio: TGUID = '{73647561-0000-0010-8000-00AA00389B71}';
   MFAudioFormat_Float: TGUID = '{00000003-0000-0010-8000-00AA00389B71}';
+  MFAudioFormat_PCM: TGUID = '{00000001-0000-0010-8000-00AA00389B71}';
+  MFAudioFormat_MP3: TGUID = '{00000055-0000-0010-8000-00AA00389B71}';
+  MF_MT_AUDIO_BITS_PER_SAMPLE: TGUID = '{f2deb57f-40fa-4764-aa33-ed4f2d1ff669}';
+  MF_MT_AUDIO_BLOCK_ALIGNMENT: TGUID = '{322de230-9eeb-43bd-ab7a-ff412251541d}';
+  MF_MT_AUDIO_AVG_BYTES_PER_SECOND: TGUID = '{1aab75c8-cfef-451c-ab95-ac034b8e1731}';
 
 var
   GPlat, GReadWrite: HMODULE;
@@ -153,6 +182,9 @@ var
   MFShutdown: TMFShutdown;
   MFCreateMediaType: TMFCreateMediaType;
   MFCreateSourceReaderFromURL: TMFCreateSourceReaderFromURL;
+  MFCreateSinkWriterFromURL: TMFCreateSinkWriterFromURL;
+  MFCreateSample: TMFCreateSample;
+  MFCreateMemoryBuffer: TMFCreateMemoryBuffer;
 
 function MediaFoundationAvailable: Boolean;
 begin
@@ -167,6 +199,9 @@ begin
       @MFShutdown := GetProcAddress(GPlat, 'MFShutdown');
       @MFCreateMediaType := GetProcAddress(GPlat, 'MFCreateMediaType');
       @MFCreateSourceReaderFromURL := GetProcAddress(GReadWrite, 'MFCreateSourceReaderFromURL');
+      @MFCreateSinkWriterFromURL := GetProcAddress(GReadWrite, 'MFCreateSinkWriterFromURL');
+      @MFCreateSample := GetProcAddress(GPlat, 'MFCreateSample');
+      @MFCreateMemoryBuffer := GetProcAddress(GPlat, 'MFCreateMemoryBuffer');
     end;
   end;
   Result := Assigned(MFStartup) and Assigned(MFShutdown) and Assigned(MFCreateMediaType) and
@@ -285,6 +320,124 @@ begin
     // exotisches WAV (z.B. ADPCM) -> Media Foundation versuchen
   end;
   Result := DecodeWithMF(FileName);
+end;
+
+{ 16-Bit-Stereo-PCM wie SaveWaveFile (Spitze ueber 0,99 wird heruntergeregelt); andere Rate: linear umrechnen }
+function MakePcm16(Data: TSampleData; OutRate: Integer; out Frames: Integer): TArray<SmallInt>;
+var
+  F, I0: Integer;
+  Peak, G, Pos, Step, T, L, R: Double;
+begin
+  Peak := 0;
+  for F := 0 to Data.Frames - 1 do
+    Peak := Max(Peak, Max(Abs(Data.L[F]), Abs(Data.R[F])));
+  if Peak > 0.99 then G := 0.99 / Peak else G := 1;
+  Step := Data.SampleRate / OutRate;
+  Frames := Max(1, Trunc((Data.Frames - 1) / Step) + 1);
+  SetLength(Result, Frames * 2);
+  for F := 0 to Frames - 1 do
+  begin
+    Pos := F * Step;
+    I0 := Min(Trunc(Pos), Data.Frames - 1);
+    T := Pos - I0;
+    if I0 + 1 < Data.Frames then
+    begin
+      L := Data.L[I0] + (Data.L[I0 + 1] - Data.L[I0]) * T;
+      R := Data.R[I0] + (Data.R[I0 + 1] - Data.R[I0]) * T;
+    end
+    else
+    begin
+      L := Data.L[I0];
+      R := Data.R[I0];
+    end;
+    Result[F * 2] := EnsureRange(Round(L * G * 32767), -32768, 32767);
+    Result[F * 2 + 1] := EnsureRange(Round(R * G * 32767), -32768, 32767);
+  end;
+end;
+
+procedure EncodeMp3WithMF(Data: TSampleData; const FileName: string);
+const
+  CHUNK = 44100;
+var
+  ComInit: HResult;
+  Writer: IMFSinkWriter;
+  OutT, InT: IMFMediaType;
+  Smp: IMFSample;
+  Buf: IMFMediaBuffer;
+  Stream: DWORD;
+  Rate, Frames, F, N: Integer;
+  Pcm: TArray<SmallInt>;
+  P: PByte;
+begin
+  if not (MediaFoundationAvailable and Assigned(MFCreateSinkWriterFromURL) and Assigned(MFCreateSample) and
+    Assigned(MFCreateMemoryBuffer)) then
+    raise ESampleLoadError.Create('Windows Media Foundation ist auf diesem System nicht verfügbar - ' +
+      'bitte als WAV speichern.');
+  Rate := Round(Data.SampleRate);
+  if (Rate <> 32000) and (Rate <> 44100) and (Rate <> 48000) then
+    Rate := 44100;
+  Pcm := MakePcm16(Data, Rate, Frames);
+  ComInit := CoInitializeEx(nil, COINIT_APARTMENTTHREADED);
+  try
+    if Failed(MFStartup(MF_VERSION_WIN7, 0)) then
+      Check(MFStartup(MF_VERSION_VISTA, 0), 'MFStartup');
+    try
+      if FileExists(FileName) then
+        System.SysUtils.DeleteFile(FileName);
+      Check(MFCreateSinkWriterFromURL(PWideChar(FileName), nil, nil, Writer), 'Datei anlegen');
+      Check(MFCreateMediaType(OutT), 'MediaType');
+      OutT.SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+      OutT.SetGUID(MF_MT_SUBTYPE, MFAudioFormat_MP3);
+      OutT.SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+      OutT.SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, Rate);
+      OutT.SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, 320000 div 8);   // 320 kbit/s, feste hohe Qualitaet
+      OutT.SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, 1);
+      Check(Writer.AddStream(OutT, Stream), 'MP3-Format einstellen');
+      Check(MFCreateMediaType(InT), 'MediaType');
+      InT.SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio);
+      InT.SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM);
+      InT.SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, 2);
+      InT.SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, Rate);
+      InT.SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16);
+      InT.SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, 4);
+      InT.SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, Rate * 4);
+      Check(Writer.SetInputMediaType(Stream, InT, nil), 'PCM-Eingang einstellen');
+      Check(Writer.BeginWriting, 'Schreiben starten');
+      F := 0;
+      while F < Frames do
+      begin
+        N := Min(CHUNK, Frames - F);
+        Check(MFCreateMemoryBuffer(N * 4, Buf), 'Puffer');
+        Check(Buf.Lock(P, nil, nil), 'Puffer sperren');
+        Move(Pcm[F * 2], P^, N * 4);
+        Buf.Unlock;
+        Buf.SetCurrentLength(N * 4);
+        Check(MFCreateSample(Smp), 'Sample');
+        Smp.AddBuffer(Buf);
+        Smp.SetSampleTime(Round(F * 1E7 / Rate));
+        Smp.SetSampleDuration(Round(N * 1E7 / Rate));
+        Check(Writer.WriteSample(Stream, Smp), 'Schreiben');
+        Smp := nil;
+        Buf := nil;
+        Inc(F, N);
+      end;
+      Check(Writer.Finalize, 'Abschliessen');
+      Writer := nil;
+    finally
+      MFShutdown;
+    end;
+  finally
+    if Succeeded(ComInit) then
+      CoUninitialize;
+  end;
+end;
+
+procedure SaveAudioFile(Data: TSampleData; const FileName: string);
+begin
+  if SameText(ExtractFileExt(FileName), '.mp3') then
+    EncodeMp3WithMF(Data, FileName)
+  else
+    SaveWaveFile(Data, FileName);
 end;
 
 initialization

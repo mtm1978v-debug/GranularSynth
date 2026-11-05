@@ -413,7 +413,10 @@ begin
   Kl := Abs(CompGainDb(-8, -20, 4, 0) + 9) < 1E-9;
   Kl := Kl and (Abs(CompGainDb(-14, -20, 4, 12) - CompGainDb(-14 + 1E-7, -20, 4, 0)) < 1E-5);
   Kl := Kl and (Abs(CompGainDb(-26, -20, 4, 12) - CompGainDb(-26 - 1E-7, -20, 4, 12)) < 1E-5);
-  Kl := Kl and (CompGainDb(-20, -20, 4, 12) < 0) and (CompGainDb(-20, -20, 1, 12) = 0);
+  Kl := Kl and (CompGainDb(-20, -20, 4, 12) < 0) and (CompGainDb(-20, -20, 4, 12) > -3);
+  // Knick rundet beide Seiten: unten an der Kniegrenze stetig zur Aufwaerts-Geraden, ohne Knick 0 dB an der Schwelle
+  Kl := Kl and (Abs(CompGainDb(-26, -20, 4, 12) - CompGainDb(-26 - 1E-7, -20, 4, 0)) < 1E-5)
+    and (Abs(CompGainDb(-20, -20, 4, 0)) < 1E-12);
   Result := Format('Kompressor: Menge 0 Abweichung %.1e, Ausklang/Ton aus %.3f -> voll %.3f, Spitze aus %.2f -> voll %.2f, Kennlinie %s',
     [Dev, TailOff, TailFull, PkOff, PkFull, BoolToStr(Kl, True)]);
   if Kl and (Dev < 1E-4) and not Bad and (RmsFull > 0) and (TailFull > TailOff * 1.25) and (PkFull < PkOff * 2) then
@@ -3699,6 +3702,64 @@ begin
   Result := Jmp;
 end;
 
+{ Speichern unter (Sample-Editor): WAV und MP3 (Media Foundation, 320 kbit/s) schreiben, wieder laden,
+  Laenge und Pegel vergleichen; 96 kHz wird fuer MP3 auf 44,1 kHz umgerechnet. }
+function CheckSaveAudio: string;
+var
+  Src, Back: TSampleData;
+  Fn: string;
+  RmsA, RmsB: Double;
+  OkW, OkM, OkR: Boolean;
+  Info: string;
+
+  function Rms(D: TSampleData): Double;
+  var
+    F: Integer;
+  begin
+    Result := 0;
+    for F := 0 to D.Frames - 1 do
+      Result := Result + Sqr(D.L[F]) + Sqr(D.R[F]);
+    Result := Sqrt(Result / Max(1, 2 * D.Frames));
+  end;
+
+begin
+  Src := CreateDemoSample(44100);
+  try
+    RmsA := Rms(Src);
+    Fn := TPath.Combine(TPath.GetTempPath, 'granular_save_test.wav');
+    SaveAudioFile(Src, Fn);
+    Back := LoadAudioFile(Fn);
+    OkW := (Back.Frames = Src.Frames) and (Abs(Rms(Back) / RmsA - 1) < 0.02);
+    Back.Free;
+    System.SysUtils.DeleteFile(Fn);
+    OkM := False; OkR := False; Info := '';
+    if MediaFoundationAvailable then
+    begin
+      Fn := TPath.Combine(TPath.GetTempPath, 'granular_save_test.mp3');
+      SaveAudioFile(Src, Fn);
+      Back := LoadAudioFile(Fn);
+      RmsB := Rms(Back);
+      OkM := (Abs(Back.Frames - Src.Frames) < 4000) and (Abs(RmsB / RmsA - 1) < 0.1) and
+        (Round(Back.SampleRate) = 44100);
+      Info := Format('MP3 %d KB, %d statt %d Frames, Pegel %.3f', [TFile.GetSize(Fn) div 1024, Back.Frames,
+        Src.Frames, RmsB / RmsA]);
+      Back.Free;
+      Src.SampleRate := 96000;                 // gleiche Daten als 96 kHz: MP3 wird 44,1 kHz, halb so viele Frames
+      SaveAudioFile(Src, Fn);
+      Back := LoadAudioFile(Fn);
+      OkR := (Round(Back.SampleRate) = 44100) and (Abs(Back.Frames - Int64(Src.Frames) * 44100 div 96000) < 4000);
+      Info := Info + Format('; 96k: %d Frames bei %.0f Hz', [Back.Frames, Back.SampleRate]);
+      Back.Free;
+      System.SysUtils.DeleteFile(Fn);
+    end;
+  finally
+    Src.Free;
+  end;
+  Result := Format('Speichern unter: WAV %s, MP3 %s, 96 kHz -> 44,1 kHz %s (%s) -> %s',
+    [BoolToStr(OkW, True), BoolToStr(OkM, True), BoolToStr(OkR, True), Info,
+     IfThen(OkW and OkM and OkR, 'OK', 'FEHLER')]);
+end;
+
 function CheckWtFile: string;
 var
   SawC, SawW, SqC, SqW, BassC, BassW, JmpC, JmpW: Double;
@@ -4473,6 +4534,7 @@ begin
     Lap('CheckBassMono', CheckBassMono) + sLineBreak +
     Lap('CheckModEnv', CheckModEnv) + sLineBreak +
     Lap('CheckWtFile', CheckWtFile) + sLineBreak +
+    Lap('CheckSaveAudio', CheckSaveAudio) + sLineBreak +
     Lap('CheckSubFx', CheckSubFx) + sLineBreak +
     Lap('CheckComb', CheckComb) + sLineBreak +
     Lap('CheckPhaser', CheckPhaser) + sLineBreak +

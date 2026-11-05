@@ -6,6 +6,25 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.18 – 05.11.2026
+
+### Neu
+- **Preset 181 FM - Keys - Arp-Keys und Keys (zwei Klänge):** gezupfte FM-Keys und dieselben Keys als Arp (hoch + runter), per Morph gemischt, mit Röhren-Sättigung, kräftigem Kompressor, Bass mono und doppelter Breite.
+
+- **Sample-Editor: Speichern unter…** – das bearbeitete Audio lässt sich direkt als **WAV** (verlustfrei) oder **MP3** (320 kbit/s, feste hohe Qualität) speichern; das Format wählst du im Speicherdialog. So lässt sich z. B. der eigene Ausgang aufnehmen („Was der PC abspielt“), zuschneiden und als Hörprobe verschicken, ohne das Sample im Preset zu ersetzen. MP3 schreibt Windows (Media Foundation); andere Abtastraten als 32/44,1/48 kHz werden dafür auf 44,1 kHz umgerechnet.
+
+### Geändert
+- **„Hauptsample bearbeiten…“ heißt jetzt „Sample-Editor…“**, ebenso der Fenstertitel.
+- **Kompressor-Kennlinie wie bei einem klassischen Kompressor:** Unter der Schwelle bleibt der Pegel 1:1, an der Schwelle knickt die Kurve sichtbar auf das eingestellte Verhältnis ab. Der **Knick** rundet diese Ecke jetzt gleichmäßig nach beiden Seiten ab, statt sie zu verschieben. Leise Anteile hebt der Kompressor erst 24 dB unter der Schwelle an (OTT-Stil, weich begrenzt).
+
+### Behoben
+- **Sample-Editor:** Alles markieren (Strg+A) und *Löschen*/Entf tat nichts. Jetzt wird das Fenster geleert (z. B. für eine neue Aufnahme); *Rückgängig* holt das Audio zurück.
+
+### Hinweis
+- Presets mit eingeschaltetem Kompressor (L41) klingen dadurch etwas anders: Spitzen werden stärker gebremst, ganz leise Anteile weniger angehoben.
+
+---
+
 ## Version 2.17 – 05.11.2026
 
 ### Neu
