@@ -66,7 +66,8 @@ Mehr dazu steht in [LIESMICH.txt](LIESMICH.txt), die Änderungen je Version steh
 ## Selbst bauen
 
 Voraussetzungen:
-- Embarcadero Delphi 12 (RAD Studio 23.0)
+- Embarcadero Delphi 12 (RAD Studio 23.0). Die kostenlose **[Delphi Community Edition](https://www.embarcadero.com/products/delphi/starter)** reicht aus: GranularSynth braucht nur VCL und die Win32/Win64-Compiler, keine Zusatzpakete. Die Community Edition ist für Hobbyisten und kleine Projekte gedacht (Lizenz von Embarcadero, u. a. Umsatzgrenze, jährlich zu erneuern). Sie bringt keine Kommandozeilen-Compiler mit; dann `GranularSynth.dproj` und `GranularHost.dproj` in der IDE öffnen und dort bauen (Release, Win32 und Win64) statt `build.bat`.
+- optional [FastMM5](https://github.com/pleriche/FastMM5): Ordner in `FASTMM_DIR` (wie `GR32_DIR`). Ohne bleibt der Speichermanager von Delphi; gemessen bringt FastMM5 hier keinen Vorteil.
 - [Graphics32](https://github.com/graphics32/graphics32). Den Ordner trägst du in der Umgebungsvariablen `GR32_DIR` ein, am einfachsten in einer Datei `build.local.bat` neben `build.bat`:
   ```bat
   @set GR32_DIR=C:\Komponenten\Graphics32

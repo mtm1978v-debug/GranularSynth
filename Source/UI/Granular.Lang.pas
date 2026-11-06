@@ -267,6 +267,38 @@ begin
   Result := MulDiv(Size, GUiScalePct, 100);
 end;
 
+{ Vorschlag beim ersten Start (ohne Fenstergroesse.txt): Windows-Skalierung des Bildschirms, so wie sie das
+  Plugin sieht. Ist die DAW nicht DPI-faehig, meldet Windows 96 dpi und vergroessert selbst -> 100 % (keine
+  doppelte Vergroesserung). Gewaehlt wird hoechstens die Stufe, bei der das Fenster (1260 x 712 bei 100 %)
+  noch auf den Arbeitsbereich des Hauptbildschirms passt. }
+function UiScaleSuggest: Integer;
+const
+  BASE_W = 1260;
+  BASE_H = 712 + 60;                // + Rahmen/Titel der DAW
+var
+  Dc: HDC;
+  Dpi: Integer;
+  R: TRect;
+begin
+  Result := 100;
+  try
+    Dc := GetDC(0);
+    try
+      Dpi := GetDeviceCaps(Dc, LOGPIXELSY);
+    finally
+      ReleaseDC(0, Dc);
+    end;
+    if not SystemParametersInfo(SPI_GETWORKAREA, 0, @R, 0) then
+      Exit;
+    for var P in UI_SCALES do
+      if (P <= MulDiv(Dpi, 100, 96)) and (MulDiv(BASE_W, P, 100) <= R.Width) and
+        (MulDiv(BASE_H, P, 100) <= R.Height) then
+        Result := P;
+  except
+    Result := 100;
+  end;
+end;
+
 function UiScaleLoad(const BaseDir: string): Integer;
 var
   I: Integer;
@@ -277,7 +309,8 @@ begin
   if Dir = '' then
     Dir := GBase;
   try
-    if FileExists(Dir + SCALE_FILE) then
+    if not FileExists(Dir + SCALE_FILE) then
+      Exit(UiScaleSuggest);       // noch nie gewaehlt: Vorschlag aus der Windows-Skalierung
     begin
       I := StrToIntDef(Trim(TFile.ReadAllText(Dir + SCALE_FILE)), 100);
       for var P in UI_SCALES do

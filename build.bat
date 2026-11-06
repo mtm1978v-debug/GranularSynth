@@ -14,6 +14,8 @@ if "%GR32_DIR%"=="" (
   echo z.B. in build.local.bat:  set GR32_DIR=C:\Komponenten\Graphics32
   exit /b 1
 )
+rem optional FastMM5 (github.com/pleriche/FastMM5): FASTMM_DIR = Ordner mit FastMM5.pas
+if "%FASTMM_DIR%"=="" echo Hinweis: FASTMM_DIR nicht gesetzt - Speichermanager = Delphi-Standard
 call "C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\rsvars.bat"
 rem Versionsinfo (Explorer: Eigenschaften > Details) fuer DLL und Host aus Version.rc (Tools\bump_version.py)
 brcc32 -fo"%~dp0Version.res" "%~dp0Version.rc" >nul || exit /b 1

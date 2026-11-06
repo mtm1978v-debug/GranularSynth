@@ -165,6 +165,7 @@ type
     FFreeSmoothLbl: array[0..FREE_LFO_COUNT - 1] of TLabel;
     // Fenster "Welle zeichnen" je Oszillator
     FWaveForm: array[0..OSC_COUNT - 1] of TForm;
+    FAudioForm: array[0..ZONE_COUNT] of TForm;   // Sample-Editor je Hauptsample (0) / Zone, nicht modal
     FWaveView: array[0..OSC_COUNT - 1] of TOscWaveView;
     FWaveSmooth: array[0..OSC_COUNT - 1] of TTrackBar;
     FWaveSmoothLbl: array[0..OSC_COUNT - 1] of TLabel;
@@ -322,6 +323,7 @@ type
     procedure ZoneLoadClick(Sender: TObject);
     procedure EditSampleClick(Sender: TObject);
     procedure EditSample(Z: Integer);
+    procedure EditSampleDone(Z: Integer; Res: TSampleData);
     procedure AudioEditorTimer(Sender: TObject);
     procedure ZoneClearClick(Sender: TObject);
     procedure ZoneNoteChange(Sender: TObject);
@@ -393,6 +395,8 @@ type
     procedure CheckClick(Sender: TObject);
     procedure MicClick(Sender: TObject);
     procedure ParamChangedByUser(Index: Integer; FromBinding: Integer = -1);
+    procedure EnvViewEdit(Id: TGranularParamId; Norm: Single);
+    procedure SetupEnvView(V: TEnvelopeView);
     procedure SetControlValue(BindingIdx: Integer; Norm: Single);
     procedure UpdateValueLabel(BindingIdx: Integer);
     function DisplayFor(Index: Integer; Norm: Single): string;
@@ -1168,6 +1172,7 @@ begin
   AddParam(FCols[1], Ord(gpAutoTune), 270, 24 + 8 * ROW_H, 0, 0, 0, Tr('Auto-Stimmung'));
 
   FEnvView := TEnvelopeView.Create(Self, FEngine);
+  SetupEnvView(FEnvView);
   FEnvView.Parent := FCols[2];
   FEnvView.SetBounds(8, 24, 100, 84);
   AddStretch(FEnvView, 8);
@@ -1448,6 +1453,7 @@ begin
   L.Font.Color := COL_VAL;
   L.Transparent := True;
   FFltEnvView := TEnvelopeView.Create(Self, FEngine);
+  SetupEnvView(FFltEnvView);
   FFltEnvView.FilterEnv := True;
   FFltEnvView.Parent := PF;
   FFltEnvView.SetBounds(8, 24 + 7 * ROW_H, 100, 76);
@@ -1648,7 +1654,7 @@ begin
   // oben verankert direkt unter der Harmonie-Erklaerung (nicht unten: sonst wandert der Block mit der Fensterhoehe)
   PK := MakePanel(PH, alNone, Tr('Halten'));
   PK.SetBounds(0, 24 + 3 * ROW_H + 6 + 90 + 64, PH.Width, 110);
-  PK.Anchors := [akLeft, akTop, akRight];
+  AddStretch(PK, 0);      // eigene Breitenanpassung statt Anchors (beim Skalieren zuverlaessig)
 
   for I := 0 to High(ARP) do
     AddParam(PA, Ord(ARP[I]), 8, 24 + I * ROW_H, 90, 52, 140, ARP_CAP[I]);
@@ -2342,6 +2348,7 @@ begin
   for I := 0 to MENV_COUNT - 1 do
   begin
     FMEnvView[I] := TEnvelopeView.Create(Self, FEngine);
+    SetupEnvView(FMEnvView[I]);
     FMEnvView[I].Kind := ekMod;
     FMEnvView[I].OscIndex := I;
     FMEnvView[I].Title := Tr(MOD_SOURCE_NAMES[MENV_SRC[I]]);
@@ -2435,6 +2442,7 @@ begin
   P1 := MakePanel(Area, alClient, Format(Tr('Lautstärke-Hüllkurve (Oszillator %d)'), [O + 1]));
   // Anzeige der Oszillator-Huellkurve (roter Punkt = juengste Stimme)
   FOscEnvView[O] := TEnvelopeView.Create(Self, FEngine);
+  SetupEnvView(FOscEnvView[O]);
   FOscEnvView[O].Kind := ekOsc;
   FOscEnvView[O].OscIndex := O;
   FOscEnvView[O].Parent := P1;
@@ -2661,7 +2669,7 @@ begin
   // Feedback-Resampling: der eigene Klang wird Durchlauf fuer Durchlauf zur neuen Grain-Quelle
   PF := MakePanel(PR, alNone, Tr('Feedback-Resampling'));
   PF.SetBounds(0, 150, 440, 300);
-  PF.Anchors := [akLeft, akTop, akRight];
+  AddStretch(PF, 0);      // eigene Breitenanpassung (Anchors rechnete beim Skalieren auf 125 % ff. falsch)
   AddParam(PF, Ord(gpResOn), 8, 24, 0, 0, 0, Tr('Resampling an'));
   AddParam(PF, Ord(gpResMix), 8, 24 + ROW_H, 90, 66, 0, Tr('Anteil neu'));
   AddParam(PF, Ord(gpResTime), 8, 24 + 2 * ROW_H, 90, 66, 0, Tr('Durchlauf'));
@@ -2747,9 +2755,8 @@ end;
 
 procedure TGranularEditor.EditSample(Z: Integer);
 var
-  N: Integer;
-  Src, Res: TSampleData;
-  Name, Dir, Fn, Cap: string;
+  Src: TSampleData;
+  Name, Cap: string;
 begin
   if Z = 0 then
   begin
@@ -2765,8 +2772,33 @@ begin
   end;
   if (Src <> nil) and IsEmptySample(Src) then
     Src := nil;
-  if not EditAudio(Src, Cap, FBaseDir, Res) then
+  if FAudioForm[Z] <> nil then
+  begin
+    FAudioForm[Z].Show;
+    FAudioForm[Z].BringToFront;
     Exit;
+  end;
+  FAudioForm[Z] := ShowAudioEditor(Self, Src, Cap, FBaseDir,
+    procedure(R: TSampleData)
+    begin
+      EditSampleDone(Z, R);
+    end,
+    procedure
+    begin
+      FAudioForm[Z] := nil;
+    end);
+end;
+
+{ Uebernehmen im Sample-Editor: speichern in "Eigene Toene" und laden }
+procedure TGranularEditor.EditSampleDone(Z: Integer; Res: TSampleData);
+var
+  N: Integer;
+  Name, Dir, Fn: string;
+begin
+  if Z = 0 then
+    Name := FEngine.SamplePath
+  else
+    Name := FEngine.GetZoneLoaded(Z);
   // Name: Original + "_bearbeitet_NN"; ohne Datei (Demo-Klang, Aufnahme ohne Ordner) "Sample"
   Name := ChangeFileExt(ExtractFileName(Name), '');
   N := Pos('_bearbeitet_', Name);
@@ -5418,6 +5450,23 @@ begin
   FCommitted := TakeSnapshot;
 end;
 
+{ Huellkurven-Grafik: Punkte mit der Maus ziehen wie die Regler daneben }
+procedure TGranularEditor.SetupEnvView(V: TEnvelopeView);
+begin
+  V.OnEdit := EnvViewEdit;
+  V.Hint := Tr('Punkte ziehen: Spitze = Attack, Knick = Decay (waagrecht) und Sustain (senkrecht), ' +
+    'rechter Punkt = Release. Doppelklick = Standardwert.');
+  V.ShowHint := True;
+end;
+
+procedure TGranularEditor.EnvViewEdit(Id: TGranularParamId; Norm: Single);
+begin
+  if Abs(FEngine.GetParam(Ord(Id)) - Norm) < 1E-7 then
+    Exit;
+  FEngine.SetParam(Ord(Id), Norm);
+  ParamChangedByUser(Ord(Id), -1);
+end;
+
 procedure TGranularEditor.ParamChangedByUser(Index: Integer; FromBinding: Integer);
 var
   I: Integer;
@@ -5774,6 +5823,26 @@ begin
   end;
 end;
 
+
+{ rechter Rand des tatsaechlich sichtbaren Bereichs von C (in C-Koordinaten): Client-Bereich des
+  Hauptfensters (Host/DAW), in das das Plugin eingebettet ist }
+function VisibleRight(C: TWinControl): Integer;
+var
+  Root: HWND;
+  R: TRect;
+  P: TPoint;
+begin
+  Result := C.ClientWidth;
+  if not C.HandleAllocated then
+    Exit;
+  Root := GetAncestor(C.Handle, GA_ROOT);
+  if (Root = 0) or (Root = C.Handle) or not GetClientRect(Root, R) then
+    Exit;
+  P := Point(R.Right, 0);
+  Winapi.Windows.ClientToScreen(Root, P);
+  Result := Min(Result, C.ScreenToClient(P).X);
+end;
+
 procedure TGranularEditor.BannerTimerTick(Sender: TObject);
 var
   Now64, Freq: Int64;
@@ -5810,10 +5879,12 @@ begin
   if (FQuickPV <> nil) and (FVaryStyle <> nil) and (FBannerTick mod 16 = 1) and
      FQuickPV.Showing and FBanner.HandleAllocated then
     FDancerGap := FBanner.ClientWidth - FBanner.ScreenToClient(FQuickPV.ClientToScreen(
-      Point(FQuickPV.ClientWidth - 12, 0))).X;
+      Point(FQuickPV.ClientWidth - UiPt(12), 0))).X;
   if FDancerGap <= 0 then
-    FDancerGap := 24;   // bis zur ersten Messung: Rand von Reiter + Einstellungs-Rechteck
-  FBanner.DancerX := FBanner.ClientWidth - FDancerGap;
+    FDancerGap := UiPt(24);   // bis zur ersten Messung: Rand von Reiter + Einstellungs-Rechteck
+  // Ist das Fenster des Hosts schmaler als das Plugin (z. B. 125 % auf einem kleinen Bildschirm), wird rechts
+  // abgeschnitten: Granuli dann am sichtbaren rechten Rand ausrichten, damit sie nicht halb verschwindet
+  FBanner.DancerX := Min(FBanner.ClientWidth, VisibleRight(FBanner)) - FDancerGap;
   FBanner.Tick(Dt);
   if FPages.ActivePage = FTabQuick then
     FSpectrum.Tick;

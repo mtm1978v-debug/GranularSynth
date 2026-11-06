@@ -230,13 +230,11 @@ begin
 end;
 
 procedure TLoadList.Paint;
-const
-  ROW = 22;
-  X_NAME = 8; X_A = 250; X_B = 410; BAR_W = 120;
 var
   C: TCanvas;
   I, Y: Integer;
   T: Double;
+  ROW, X_NAME, X_A, X_B, BAR_W: Integer;   // wachsen mit der Fenstergroesse (Schrift waechst mit)
 
   procedure Bar(X, Y: Integer; Frac: Double; On_: Boolean; Col: TColor);
   begin
@@ -257,6 +255,7 @@ var
   end;
 
 begin
+  ROW := UiPt(22); X_NAME := UiPt(8); X_A := UiPt(250); X_B := UiPt(410); BAR_W := UiPt(120);
   if (FBuf.Width <> Width) or (FBuf.Height <> Height) then
     FBuf.SetSize(Width, Height);
   C := FBuf.Canvas;
@@ -276,7 +275,7 @@ begin
   C.Brush.Style := bsSolid;
   for I := 0 to High(FItems) do
   begin
-    Y := 28 + I * ROW;
+    Y := UiPt(28) + I * ROW;
     C.Brush.Style := bsClear;
     C.Font.Color := COL_TEXT;
     C.TextOut(X_NAME, Y + 2, FItems[I].Name);
@@ -285,7 +284,7 @@ begin
     Bar(X_A, Y, FItems[I].Weight / 30, FItems[I].OnA, COL_A);
     Bar(X_B, Y, FItems[I].Weight / 30, FItems[I].OnB, COL_B);
   end;
-  Y := 28 + Length(FItems) * ROW + 8;
+  Y := UiPt(28) + Length(FItems) * ROW + UiPt(8);
   T := TheoryPercent;
   C.Brush.Style := bsClear;
   C.Font.Color := COL_AMBER;

@@ -47,6 +47,11 @@
         <DCC_K>false</DCC_K>
         <UsePackages>false</UsePackages>
     </PropertyGroup>
+    <!-- FastMM5 (github.com/pleriche/FastMM5, GPL v3), optional: Ordner in der Umgebungsvariablen FASTMM_DIR -->
+    <PropertyGroup Condition="'$(Base)'!='' and '$(FASTMM_DIR)'!=''">
+        <DCC_UnitSearchPath>$(FASTMM_DIR);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_Define>USE_FASTMM5;$(DCC_Define)</DCC_Define>
+    </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>

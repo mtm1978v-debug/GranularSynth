@@ -35,6 +35,8 @@ type
     OnPaintWave: TNotifyEvent;
   end;
 
+  TAudioEditDone = reference to procedure(Res: TSampleData);
+
   TAudioEditForm = class(TForm)
   private
     FData: TSampleData;                    // Arbeitskopie
@@ -100,13 +102,21 @@ type
     procedure ZoomOutClick(Sender: TObject);
     procedure ZoomAllClick(Sender: TObject);
     procedure SetData(D: TSampleData);
+    procedure ApplyClick(Sender: TObject);
+    procedure CancelClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   public
-    constructor CreateEditor(Src: TSampleData; const ACaption, BaseDir: string);
+    OnDone: TAudioEditDone;                // Uebernehmen: neues Sample (gehoert dem Empfaenger)
+    OnGone: TProc;                         // Fenster wird freigegeben
+    constructor CreateEditor(AOwner: TComponent; Src: TSampleData; const ACaption, BaseDir: string);
     destructor Destroy; override;
   end;
 
-{ Editor zeigen; True = Uebernehmen, Res = neues Sample (gehoert dem Aufrufer, LR gebaut, FileName leer) }
-function EditAudio(Src: TSampleData; const Caption, BaseDir: string; out Res: TSampleData): Boolean;
+{ Editor NICHT modal zeigen (der Synth bleibt bedienbar, z. B. waehrend der Aufnahme). Uebernehmen ruft OnDone
+  mit dem neuen Sample (gehoert dem Empfaenger, LR gebaut, FileName leer) und schliesst; das Fenster gehoert
+  AOwner und wird mit ihm freigegeben. }
+function ShowAudioEditor(AOwner: TComponent; Src: TSampleData; const Caption, BaseDir: string;
+  const OnDone: TAudioEditDone; const OnGone: TProc): TAudioEditForm;
 
 implementation
 
@@ -126,27 +136,46 @@ begin
     OnPaintWave(Self);
 end;
 
-function EditAudio(Src: TSampleData; const Caption, BaseDir: string; out Res: TSampleData): Boolean;
-var
-  F: TAudioEditForm;
+function ShowAudioEditor(AOwner: TComponent; Src: TSampleData; const Caption, BaseDir: string;
+  const OnDone: TAudioEditDone; const OnGone: TProc): TAudioEditForm;
 begin
-  Res := nil;
-  F := TAudioEditForm.CreateEditor(Src, Caption, BaseDir);
-  try
-    UiScaleForm(F);
-    Result := (F.ShowModal = mrOk) and (F.FData <> nil) and (F.FData.Frames > 1);
-    if Result then
-    begin
-      Res := F.FData;
-      F.FData := nil;
-      SampleFinish(Res);
-    end;
-  finally
-    F.Free;
-  end;
+  Result := TAudioEditForm.CreateEditor(AOwner, Src, Caption, BaseDir);
+  Result.OnDone := OnDone;
+  Result.OnGone := OnGone;
+  UiScaleForm(Result);
+  Result.Show;
 end;
 
-constructor TAudioEditForm.CreateEditor(Src: TSampleData; const ACaption, BaseDir: string);
+procedure TAudioEditForm.ApplyClick(Sender: TObject);
+var
+  Res: TSampleData;
+begin
+  StopRec(True);                          // laufende Aufnahme beim Uebernehmen behalten
+  StopPlay;
+  if (FData <> nil) and (FData.Frames > 1) then
+  begin
+    Res := FData;
+    FData := nil;
+    SampleFinish(Res);
+    if Assigned(OnDone) then
+      OnDone(Res)
+    else
+      Res.Free;
+  end;
+  Close;
+end;
+
+procedure TAudioEditForm.CancelClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TAudioEditForm.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+constructor TAudioEditForm.CreateEditor(AOwner: TComponent; Src: TSampleData; const ACaption, BaseDir: string);
 var
   Top, Bottom: TPanel;
   B: TIconButton;
@@ -159,8 +188,9 @@ var
   end;
 
 begin
-  inherited CreateNew(nil);
+  inherited CreateNew(AOwner);
   FBaseDir := BaseDir;
+  OnClose := FormClose;
   FUndo := TObjectList<TSampleData>.Create(True);
   FButtons := TList<TIconButton>.Create;
   Caption := ACaption;
@@ -262,12 +292,10 @@ begin
   Btn(Bottom, Next(140), 8, 140, eiTrim, Tr('Stille entfernen'), Tr('Stille am Anfang und Ende abschneiden'), TrimClick);
   Btn(Bottom, Next(104), 8, 104, eiReverse, Tr('Umkehren'), Tr('Markierung (ohne: ganzes Sample) rückwärts'), ReverseClick);
   Btn(Bottom, Next(118), 8, 118, eiUndo, Tr('Rückgängig'), Tr('Letzten Schritt zurücknehmen (Strg+Z)'), UndoClick);
-  B := Btn(Bottom, 0, 44, 120, eiOk, Tr('Übernehmen'), Tr('Bearbeitetes Sample laden und in "Eigene Toene" speichern'), nil);
-  B.ModalResult := mrOk;
+  B := Btn(Bottom, 0, 44, 120, eiOk, Tr('Übernehmen'), Tr('Bearbeitetes Sample laden und in "Eigene Toene" speichern'), ApplyClick);
   B.Anchors := [akRight, akTop];
   B.Left := Bottom.Width - 2 * 126 - 8;
-  B := Btn(Bottom, 0, 44, 120, eiCancel, Tr('Abbrechen'), Tr('Fenster schließen, nichts ändern'), nil);
-  B.ModalResult := mrCancel;
+  B := Btn(Bottom, 0, 44, 120, eiCancel, Tr('Abbrechen'), Tr('Fenster schließen, nichts ändern'), CancelClick);
   B.Anchors := [akRight, akTop];
   B.Left := Bottom.Width - 126 - 8;
   with TLabel.Create(Self) do
@@ -303,6 +331,8 @@ end;
 
 destructor TAudioEditForm.Destroy;
 begin
+  if Assigned(OnGone) then
+    OnGone();
   StopPlay;
   StopRec(False);
   FData.Free;
@@ -953,8 +983,8 @@ end;
 
 procedure TAudioEditForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  // laufende Aufnahme beim Uebernehmen behalten, beim Abbrechen verwerfen
-  StopRec(ModalResult = mrOk);
+  // Schliessen ohne Uebernehmen: laufende Aufnahme verwerfen (Uebernehmen hat sie schon gestoppt)
+  StopRec(False);
   StopPlay;
 end;
 

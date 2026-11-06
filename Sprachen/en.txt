@@ -1905,3 +1905,4 @@ MP3 (320 kbit/s)	MP3 (320 kbit/s)
 Datei konnte nicht gespeichert werden:	Could not save the file:
 Das bearbeitete Audio als WAV oder MP3 (320 kbit/s) speichern - das Format wählst du im Dialog	Save the edited audio as WAV or MP3 (320 kbit/s) - choose the format in the dialog
 Datei konnte nicht gespeichert werden	Could not save the file
+Punkte ziehen: Spitze = Attack, Knick = Decay (waagrecht) und Sustain (senkrecht), rechter Punkt = Release. Doppelklick = Standardwert.	Drag the points: peak = attack, knee = decay (horizontal) and sustain (vertical), right point = release. Double-click = default value.

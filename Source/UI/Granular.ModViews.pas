@@ -17,7 +17,7 @@ interface
 
 uses
   Granular.Lang,
-  Winapi.Windows, System.Classes, System.SysUtils, System.Math, Vcl.Controls, Vcl.Graphics,
+  Winapi.Windows, System.Classes, System.SysUtils, System.Math, Vcl.Controls, Vcl.Graphics, Vcl.Forms,
   GR32, GR32_Image,
   Granular.Params, Granular.Engine, Granular.Keyboard, Granular.GfxAsm, Granular.Prof;
 
@@ -46,7 +46,9 @@ type
     constructor Create(AOwner: TComponent; AEngine: TGranularEngine); reintroduce;
   end;
 
-  TEnvKind = (ekAmp, ekFilter, ekOsc, ekOscFm, ekMod);   // ekMod: Modulations-Huellkurve OscIndex 0/1
+  TEnvKind = (ekAmp, ekFilter, ekOsc, ekOscFm, ekMod);
+  { Wert aus der Grafik gezogen: der Editor setzt ihn wie einen Regler (DAW-Meldung, Regler mitziehen) }
+  TEnvEditEvent = procedure(Id: TGranularParamId; Norm: Single) of object;   // ekMod: Modulations-Huellkurve OscIndex 0/1
 
   { ADSR-Kurve; roter Strich + Punkt = aktueller Stand der juengsten Stimme }
   TEnvelopeView = class(TEngineView)
@@ -62,17 +64,29 @@ type
     procedure GetIds(out IdA, IdD, IdS, IdR: TGranularParamId);
     function GetFilterEnv: Boolean;
     procedure SetFilterEnv(Value: Boolean);
+  private
+    // Ziehen mit der Maus: 0 = nichts, 1 = Attack, 2 = Decay/Sustain, 3 = Release
+    FDragPt: Integer;
+    FDragX0: Integer;
+    FDragT0: Double;               // Zeit des gezogenen Punkts beim Anfassen (ms)
+    FOnEdit: TEnvEditEvent;
+    function HandleAt(X: Integer): Integer;
+    procedure SetPlain(Id: TGranularParamId; Plain: Double);
   public
     destructor Destroy; override;
-  private
   protected
     procedure DoPaintBuffer; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DblClick; override;
   public
     { True = Filter-Huellkurve (F-Attack...), sonst Amplituden-Huellkurve }
     property FilterEnv: Boolean read GetFilterEnv write SetFilterEnv;
     property Kind: TEnvKind read FKind write FKind;
     property OscIndex: Integer read FOscIndex write FOscIndex;   // ekOsc/ekOscFm: Oszillator 0..2, ekMod: Huellkurve 0..1
     property Title: string read FTitle write FTitle;             // optional oben rechts
+    property OnEdit: TEnvEditEvent read FOnEdit write FOnEdit;   // gesetzt = Punkte mit der Maus ziehbar
   end;
 
   { Eine LFO-Periode; roter Punkt = aktuelle Phase }
@@ -351,6 +365,14 @@ begin
     YPrev := Y;
     YFPrev := YF;
   end;
+  if Assigned(FOnEdit) then
+  begin
+    // Anfasser: Spitze (Attack), Knick (Decay waagrecht, Sustain senkrecht), Beginn des Release
+    Y := LvlToY(FSus);
+    B.FrameRectS(FXA - 3, Top - 3, FXA + 4, Top + 4, COL_CURVE);
+    B.FrameRectS(FXD - 3, Y - 3, FXD + 4, Y + 4, COL_CURVE);
+    B.FrameRectS(FXS - 3, Y - 3, FXS + 4, Y + 4, COL_CURVE);
+  end;
   B.Font.Name := 'Tahoma';
   B.Font.Size := UiPt(7);
   B.Font.Color := COL_TEXT;
@@ -428,6 +450,110 @@ begin
     Buffer.EndUpdate;
   end;
   inherited;
+end;
+
+{ --- Ziehen mit der Maus: waagrecht = Zeit (logarithmisch, wie die Achse), senkrecht am Knick = Sustain.
+  Doppelklick auf einen Punkt = Standardwert. Die Achse wird je Bild neu verteilt, deshalb wirkt das Ziehen
+  relativ zum Anfassen (Faktor je Pixel) statt auf eine absolute Position. }
+
+function TEnvelopeView.HandleAt(X: Integer): Integer;
+var
+  DA, DD, DS: Integer;
+begin
+  DA := Abs(X - FXA);
+  DD := Abs(X - FXD);
+  DS := Abs(X - FXS);
+  if (DA <= DD) and (DA <= DS) then
+    Result := 1
+  else if DD <= DS then
+    Result := 2
+  else
+    Result := 3;
+end;
+
+procedure TEnvelopeView.SetPlain(Id: TGranularParamId; Plain: Double);
+var
+  Info: TParamInfo;
+begin
+  Info := GetParamInfo(Ord(Id));
+  Plain := EnsureRange(Plain, Info.MinV, Info.MaxV);
+  if Assigned(FOnEdit) then
+    FOnEdit(Id, PlainToParam(Id, Plain));
+  Invalidate;
+end;
+
+procedure TEnvelopeView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  IdA, IdD, IdS, IdR: TGranularParamId;
+begin
+  inherited;
+  if not Assigned(FOnEdit) or (Button <> mbLeft) or (FCurve = nil) then
+    Exit;
+  GetIds(IdA, IdD, IdS, IdR);
+  FDragPt := HandleAt(X);
+  FDragX0 := X;
+  case FDragPt of
+    1: FDragT0 := ParamToPlain(IdA, FEngine.GetParam(Ord(IdA)));
+    2: FDragT0 := ParamToPlain(IdD, FEngine.GetParam(Ord(IdD)));
+  else
+    FDragT0 := ParamToPlain(IdR, FEngine.GetParam(Ord(IdR)));
+  end;
+  MouseMove(Shift + [ssLeft], X, Y);
+end;
+
+procedure TEnvelopeView.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  IdA, IdD, IdS, IdR: TGranularParamId;
+  T: Double;
+begin
+  inherited;
+  if not Assigned(FOnEdit) then
+    Exit;
+  if FDragPt = 0 then
+  begin
+    if FCurve <> nil then
+      if HandleAt(X) = 2 then Cursor := crSizeAll else Cursor := crSizeWE;
+    Exit;
+  end;
+  GetIds(IdA, IdD, IdS, IdR);
+  // 100 Pixel nach rechts = Zeit mal ~7,4 (logarithmisch wie die Achse); kleine Zeiten wachsen aus 1 ms heraus
+  T := (Max(FDragT0, 0.5) + 1) * Exp((X - FDragX0) * 0.02) - 1;
+  case FDragPt of
+    1: SetPlain(IdA, T);
+    2: begin
+         SetPlain(IdD, T);
+         if FBot > FTop then
+           SetPlain(IdS, (FBot - Y) / (FBot - FTop) * 100);
+       end;
+    3: SetPlain(IdR, T);
+  end;
+end;
+
+procedure TEnvelopeView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  FDragPt := 0;
+end;
+
+procedure TEnvelopeView.DblClick;
+var
+  IdA, IdD, IdS, IdR: TGranularParamId;
+  P: TPoint;
+begin
+  inherited;
+  if not Assigned(FOnEdit) or (FCurve = nil) then
+    Exit;
+  FDragPt := 0;
+  GetIds(IdA, IdD, IdS, IdR);
+  P := ScreenToClient(Mouse.CursorPos);
+  case HandleAt(P.X) of
+    1: SetPlain(IdA, GetParamInfo(Ord(IdA)).DefV);
+    2: begin
+         SetPlain(IdD, GetParamInfo(Ord(IdD)).DefV);
+         SetPlain(IdS, GetParamInfo(Ord(IdS)).DefV);
+       end;
+    3: SetPlain(IdR, GetParamInfo(Ord(IdR)).DefV);
+  end;
 end;
 
 { TLfoView }

@@ -26,7 +26,7 @@ uses
   System.Threading, System.Diagnostics,
   GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Pitch, Granular.Vst3, Granular.VstHost,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
-  Granular.Editor, Granular.InfoView, Granular.ArpMidi, Granular.SampleEdit;
+  Granular.Editor, Granular.InfoView, Granular.ArpMidi, Granular.SampleEdit{$IFDEF USE_FASTMM5}, FastMM5{$ENDIF};
 
 const
   SR = 44100;
@@ -3702,6 +3702,56 @@ begin
   Result := Jmp;
 end;
 
+{ Speichermanager: welcher ist aktiv (FastMM5 optional ueber FASTMM_DIR) und wie schnell sind viele kleine
+  Anforderungen wie in der Oberflaeche (Strings, Listen, Objekte). Nur GUI/Host - der Audio-Thread fordert nichts an. }
+function CheckMemManager: string;
+const
+  N = 400000;
+var
+  MM: TMemoryManagerEx;
+  Watch: TStopwatch;
+  I, K: Integer;
+  P: array[0..63] of Pointer;
+  S: string;
+  L: TStringList;
+  Name: string;
+  Ok: Boolean;
+begin
+  GetMemoryManager(MM);
+  {$IFDEF USE_FASTMM5}
+  Ok := @MM.GetMem = @FastMM_GetMem;
+  Name := 'FastMM5';
+  {$ELSE}
+  Ok := True;
+  Name := 'Delphi-Standard (FASTMM_DIR nicht gesetzt)';
+  {$ENDIF}
+  FillChar(P, SizeOf(P), 0);
+  Watch := TStopwatch.StartNew;
+  for I := 0 to N - 1 do
+  begin
+    K := I and 63;
+    FreeMem(P[K]);
+    GetMem(P[K], 16 + (I * 37) and 1023);
+  end;
+  for K := 0 to 63 do
+    FreeMem(P[K]);
+  L := TStringList.Create;
+  try
+    for I := 0 to N div 4 - 1 do
+    begin
+      S := 'Regler ' + IntToStr(I) + ' = ' + FloatToStr(I * 0.5);
+      L.Add(S);
+      if L.Count > 500 then
+        L.Clear;
+    end;
+  finally
+    L.Free;
+  end;
+  Watch.Stop;
+  Result := Format('Speichermanager: %s, %d kleine Bloecke + %d Strings in %.1f ms -> %s',
+    [Name, N, N div 4, Watch.Elapsed.TotalMilliseconds, IfThen(Ok, 'OK', 'FEHLER')]);
+end;
+
 { Speichern unter (Sample-Editor): WAV und MP3 (Media Foundation, 320 kbit/s) schreiben, wieder laden,
   Laenge und Pegel vergleichen; 96 kHz wird fuer MP3 auf 44,1 kHz umgerechnet. }
 function CheckSaveAudio: string;
@@ -4535,6 +4585,7 @@ begin
     Lap('CheckModEnv', CheckModEnv) + sLineBreak +
     Lap('CheckWtFile', CheckWtFile) + sLineBreak +
     Lap('CheckSaveAudio', CheckSaveAudio) + sLineBreak +
+    Lap('CheckMemManager', CheckMemManager) + sLineBreak +
     Lap('CheckSubFx', CheckSubFx) + sLineBreak +
     Lap('CheckComb', CheckComb) + sLineBreak +
     Lap('CheckPhaser', CheckPhaser) + sLineBreak +

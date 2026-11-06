@@ -14,6 +14,7 @@ library GranularSynth;
   VST3: GetPluginFactory, InitDll, ExitDll (dieselbe Datei als GranularSynth.vst3 ausgeliefert). }
 
 uses
+  {$IFDEF USE_FASTMM5} FastMM5, {$ENDIF}   // schneller Speichermanager (optional, FASTMM_DIR) - muss zuerst stehen
   Granular.Params in 'Source\Engine\Granular.Params.pas',
   Granular.Sample in 'Source\Engine\Granular.Sample.pas',
   Granular.Eq in 'Source\Engine\Granular.Eq.pas',

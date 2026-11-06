@@ -13,6 +13,7 @@ program GranularHost;
   Die Engine-Units sind nur fuer den Benchmark (-bench) eingebunden. }
 
 uses
+  {$IFDEF USE_FASTMM5} FastMM5, {$ENDIF}   // schneller Speichermanager (optional, FASTMM_DIR) - muss zuerst stehen
   Vcl.Forms,
   Granular.Params in 'Source\Engine\Granular.Params.pas',
   Granular.Sample in 'Source\Engine\Granular.Sample.pas',

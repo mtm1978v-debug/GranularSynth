@@ -6,6 +6,25 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.19 – 06.11.2026
+
+### Neu
+- **Hüllkurven mit der Maus ziehen:** In allen Hüllkurven-Grafiken (Grain, Filter, Oszillatoren, Modulations-Hüllkurven) sitzen drei Anfasser. Spitze waagrecht = *Attack*, Knick waagrecht = *Decay* und senkrecht = *Sustain*, rechter Punkt = *Release*. Die Schieberegler laufen mit, die DAW bekommt die Automation gemeldet; Doppelklick auf einen Punkt setzt den Standardwert.
+- **Fenstergröße beim ersten Start:** Solange noch keine Fenstergröße gewählt wurde, schlägt GranularSynth die Windows-Skalierung des Bildschirms vor (z. B. 125 %), aber nur so groß, dass das Fenster auf den Bildschirm passt. Vergrößert die DAW selbst (nicht DPI-fähig), bleibt es bei 100 %. Eine eigene Wahl unter *Extras* gilt wie bisher.
+
+- **Granuli wird seekrank:** Die Tänzerin im Banner heißt jetzt Granuli. Wer das Fenster heftig hin und her schüttelt, sieht sie grün werden – bei zu viel Schütteln übergibt sie sich. Hört das Schütteln auf, erholt sie sich nach ein paar Sekunden. Normales Verschieben stört sie nicht.
+
+### Geändert
+- **Sample-Editor nicht mehr modal:** Das Fenster blockiert den Synthesizer nicht mehr. Während einer Aufnahme (z. B. „Was der PC abspielt“) lassen sich Presets wechseln, Regler drehen und Tasten spielen. *Übernehmen* lädt das Sample wie bisher, *Abbrechen* oder das Schließen-Kreuz verwirft. Ein zweiter Klick auf *Sample-Editor…* holt das offene Fenster nach vorn; je Zone gibt es ein eigenes Fenster.
+
+- **README:** Hinweis, dass sich GranularSynth auch mit der kostenlosen Delphi Community Edition bauen lässt (in der IDE).
+
+### Behoben
+- **Fenstergröße 125 % und mehr:** Im Reiter *Samples* war das Feld *Feedback-Resampling* zu schmal (Regler *Anteil neu* und *Durchlauf* winzig, Text abgeschnitten); im Reiter *Extras* konnte das Feld *Halten* ebenso verrutschen. Beide passen sich jetzt wie alle anderen Felder an die Breite an.
+- **Fenstergröße 125 % und mehr:** Im Reiter *Leistung* lief die Beschriftung „Grundlast …“ in den Balken; die Liste wächst jetzt mit. Ist das Fenster des Hosts schmaler als das Plugin (kleiner Bildschirm), steht Granuli am sichtbaren rechten Rand statt halb abgeschnitten.
+
+---
+
 ## Version 2.18 – 05.11.2026
 
 ### Neu

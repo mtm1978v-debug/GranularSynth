@@ -80,6 +80,16 @@ type
     FAnchorV, FAnchorA: Double;  // Stimmung "vorher" (langsam) -> Staerke eines Wechsels
     FTenderOn, FTenderSeen: Boolean;
     FHeartCool: Double;          // Sperrzeit bis zu den naechsten Herzchen
+    // Granuli (die Taenzerin) wird seekrank, wenn man das Fenster hin und her schuettelt: sie wird gruen,
+    // bei zu viel Schuetteln uebergibt sie sich; hoert das Schuetteln auf, erholt sie sich wieder
+    FShake: Single;          // Schuettel-Pegel (Richtungswechsel), klingt langsam ab
+    FSick: Single;           // 0..1 sichtbare Gruenfaerbung (folgt FShake weich)
+    FLastDx, FLastDy: Integer;   // letzte Bewegungsrichtung (-1/0/1)
+    FPukeT: Single;          // > 0: uebergibt sich gerade (Restzeit in s)
+    FPuke: array[0..47] of record
+      Active: Boolean;
+      X, Y, VX, VY, Age, Life: Single;
+    end;
     FHearts: array[0..2] of record
       Active: Boolean;
       Age, Life, Delay, Size, OX, OY, Sway: Double;
@@ -159,6 +169,8 @@ type
     function TintColor(Base: TColor32; Amount: Single): TColor32;
     procedure DrawHat(Bits: PColor32Array; W, H: Integer);
     procedure DrawHearts(Bits: PColor32Array; W, H: Integer);
+    procedure UpdateSick(Seconds: Double);
+    procedure DrawSick(Bits: PColor32Array; W, H: Integer);
     procedure SpawnHearts;
     procedure BuildCaches;
     procedure ApplyWindowMove;
@@ -430,6 +442,14 @@ begin
     Dy := EnsureRange(P.Y - FScreenPos.Y, -60, 60);
     if (Dx <> 0) or (Dy <> 0) then
     begin
+      // Richtungswechsel = Schuetteln; ein einfaches Verschieben macht nichts
+      if (Sign(Dx) <> 0) and (FLastDx <> 0) and (Sign(Dx) <> FLastDx) then
+        FShake := FShake + 0.11;
+      if (Sign(Dy) <> 0) and (FLastDy <> 0) and (Sign(Dy) <> FLastDy) then
+        FShake := FShake + 0.11;
+      if Sign(Dx) <> 0 then FLastDx := Sign(Round(Dx));
+      if Sign(Dy) <> 0 then FLastDy := Sign(Round(Dy));
+      FShake := Min(FShake, 1.6);
       for K := 0 to 1 do
         for I := 1 to 5 do
         begin
@@ -472,6 +492,7 @@ begin
     FScLevel := FScLevel + (P - FScLevel) * 0.25;   // ruhig zurueck
   ApplyWindowMove;
   UpdateDancer(Seconds);
+  UpdateSick(Seconds);
   UpdateTint(Seconds);
   UpdateBands;
   // sofort zeichnen und dabei die echten Kosten messen (Berechnung + Uebertragung auf den Schirm)
@@ -2035,6 +2056,90 @@ begin
   Result := Color32(Round(R + (TR - R) * T), Round(G + (TG - G) * T), Round(B + (TB - B) * T));
 end;
 
+{ --- Granuli wird seekrank ------------------------------------------------------------------------- }
+
+function Lerp32(A, B: TColor32; T: Single): TColor32;
+var
+  R, G, Bl: Integer;
+begin
+  T := EnsureRange(T, 0, 1);
+  R := Round(((A shr 16) and $FF) + (Integer((B shr 16) and $FF) - Integer((A shr 16) and $FF)) * T);
+  G := Round(((A shr 8) and $FF) + (Integer((B shr 8) and $FF) - Integer((A shr 8) and $FF)) * T);
+  Bl := Round((A and $FF) + (Integer(B and $FF) - Integer(A and $FF)) * T);
+  Result := Color32(R, G, Bl);
+end;
+
+procedure TBannerView.UpdateSick(Seconds: Double);
+var
+  I, N: Integer;
+  S, MX, MY: Single;
+begin
+  // Erholung: in ein paar Sekunden ohne Schuetteln ist alles wieder gut
+  FShake := Max(0, FShake - Seconds * 0.22);
+  FSick := FSick + (Min(1.0, FShake / 1.0) - FSick) * Min(1.0, Seconds / 0.4);
+  // zu viel: sie uebergibt sich (einmal, danach ist ihr etwas besser)
+  if (FPukeT <= 0) and (FShake >= 1.2) and (FGhostValid > 0) then
+  begin
+    FPukeT := 1.6;
+    FShake := 0.75;
+  end;
+  if FPukeT > 0 then
+  begin
+    FPukeT := FPukeT - Seconds;
+    if FGhostValid > 0 then
+    begin
+      S := Height * 0.56 / 44.5;
+      // Mund: vorn unten am Kopf (Taenzerin steht rechts, schaut nach links ins Bild)
+      MX := FGhost[0].X[0] - 2.5 * S;
+      MY := FGhost[0].Y[0] + 2.2 * S;
+      N := 0;
+      for I := 0 to High(FPuke) do
+        if not FPuke[I].Active and (N < 3) then
+          with FPuke[I] do
+          begin
+            Active := True;
+            X := MX; Y := MY;
+            VX := -(14 + Random * 22) * S;
+            VY := (-4 + Random * 8) * S;
+            Age := 0;
+            Life := 0.7 + Random * 0.5;
+            Inc(N);
+          end;
+    end;
+  end;
+  S := Height * 0.56 / 44.5;
+  for I := 0 to High(FPuke) do
+    with FPuke[I] do
+      if Active then
+      begin
+        Age := Age + Seconds;
+        X := X + VX * Seconds;
+        Y := Y + VY * Seconds;
+        VY := VY + 60 * S * Seconds;           // Schwerkraft
+        if (Age >= Life) or (Y > Height) then
+          Active := False;
+      end;
+end;
+
+procedure TBannerView.DrawSick(Bits: PColor32Array; W, H: Integer);
+var
+  I, A, PX, PY: Integer;
+  C: TColor32;
+begin
+  for I := 0 to High(FPuke) do
+    with FPuke[I] do
+      if Active then
+      begin
+        A := Round(220 * (1 - Age / Life));
+        if Odd(I) then C := Color32(150, 230, 80) else C := Color32(110, 200, 60);
+        PX := Round(X); PY := Round(Y);
+        AddPixel(Bits, W, H, PX, PY, C, A);
+        AddPixel(Bits, W, H, PX + 1, PY, C, A * 3 div 4);
+        AddPixel(Bits, W, H, PX, PY + 1, C, A * 3 div 4);
+        AddPixel(Bits, W, H, PX + 1, PY + 1, C, A div 2);
+      end;
+end;
+
 procedure TBannerView.DrawDancer(Bits: PColor32Array; W, H: Integer);
 const
   // Strecken: Hals-Huefte, Arme (Hals->Ellbogen->Hand), Beine (Huefte->Knie->Fuss)
@@ -2056,12 +2161,16 @@ begin
     begin
       A := 165;                         // gedaempft: ordnet sich ins Bild ein, Koerner ziehen darueber
       C := TintColor(Color32(205, 228, 248), 0.95);   // faerbt sich mit der Musik (Bass rot, Hoehen blau)
+      if FSick > 0.01 then
+        C := Lerp32(C, Color32(120, 235, 95), FSick * 0.85);   // seekrank: gruen
     end
     else
     begin
       A := Round(38 * Power(0.55, G - 1) * (0.25 + 0.75 * Max(FDance, FWiggle)));   // dezent: Kontrast bleibt
       if A < 6 then Continue;
       C := TintColor(Color32(110, 190, 255), 0.8);   // Spur kuehler, mitgetoent
+      if FSick > 0.01 then
+        C := Lerp32(C, Color32(90, 200, 80), FSick * 0.7);
     end;
     with FGhost[G] do
     begin
@@ -2160,6 +2269,7 @@ begin
   DrawDancer(B.Bits, W, H);
   DrawHat(B.Bits, W, H);
   DrawHearts(B.Bits, W, H);
+  DrawSick(B.Bits, W, H);
 
   // Koernerwolke als zwei verwobene, wandernde Wellen; Pegel macht sie hoeher, heller, unruhiger
   Mid := H * 0.52;
