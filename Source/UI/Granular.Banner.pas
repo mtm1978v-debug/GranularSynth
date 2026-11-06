@@ -86,9 +86,11 @@ type
     FSick: Single;           // 0..1 sichtbare Gruenfaerbung (folgt FShake weich)
     FLastDx, FLastDy: Integer;   // letzte Bewegungsrichtung (-1/0/1)
     FPukeT: Single;          // > 0: uebergibt sich gerade (Restzeit in s)
-    FPuke: array[0..47] of record
+    FPukeAge: Single;        // seit wann sie sich uebergibt (s): erst maessig, danach je nach Wildheit
+    FWild: Single;           // Wildheit: Richtungswechsel der letzten ~0,6 s (klingt schnell ab)
+    FPuke: array[0..199] of record
       Active: Boolean;
-      X, Y, VX, VY, Age, Life: Single;
+      X, Y, VX, VY, Age, Life, Size: Single;
     end;
     FHearts: array[0..2] of record
       Active: Boolean;
@@ -444,12 +446,12 @@ begin
     begin
       // Richtungswechsel = Schuetteln; ein einfaches Verschieben macht nichts
       if (Sign(Dx) <> 0) and (FLastDx <> 0) and (Sign(Dx) <> FLastDx) then
-        FShake := FShake + 0.11;
+        begin FShake := FShake + 0.11; FWild := FWild + 1; end;
       if (Sign(Dy) <> 0) and (FLastDy <> 0) and (Sign(Dy) <> FLastDy) then
-        FShake := FShake + 0.11;
+        begin FShake := FShake + 0.11; FWild := FWild + 1; end;
       if Sign(Dx) <> 0 then FLastDx := Sign(Round(Dx));
       if Sign(Dy) <> 0 then FLastDy := Sign(Round(Dy));
-      FShake := Min(FShake, 1.6);
+      FShake := Min(FShake, 3.0);      // weiter schuetteln = es wird immer schlimmer
       for K := 0 to 1 do
         for I := 1 to 5 do
         begin
@@ -2071,38 +2073,51 @@ end;
 
 procedure TBannerView.UpdateSick(Seconds: Double);
 var
-  I, N: Integer;
-  S, MX, MY: Single;
+  I, N, Want: Integer;
+  S, MX, MY, Strength: Single;
 begin
   // Erholung: in ein paar Sekunden ohne Schuetteln ist alles wieder gut
-  FShake := Max(0, FShake - Seconds * 0.22);
+  FShake := Max(0, FShake - Seconds * 0.30);
   FSick := FSick + (Min(1.0, FShake / 1.0) - FSick) * Min(1.0, Seconds / 0.4);
-  // zu viel: sie uebergibt sich (einmal, danach ist ihr etwas besser)
-  if (FPukeT <= 0) and (FShake >= 1.2) and (FGhostValid > 0) then
+  // zu viel: sie uebergibt sich - solange weiter geschuettelt wird, immer heftiger; hoert das Schuetteln auf,
+  // klingt es noch kurz nach (FPukeT) und sie erholt sich
+  FWild := FWild * Exp(-Seconds / 0.6);
+  if (FShake >= 1.2) and (FGhostValid > 0) then
   begin
-    FPukeT := 1.6;
-    FShake := 0.75;
+    if FPukeT <= 0 then
+      FPukeAge := 0;
+    FPukeT := Max(FPukeT, 0.8);
   end;
   if FPukeT > 0 then
   begin
     FPukeT := FPukeT - Seconds;
+    FPukeAge := FPukeAge + Seconds;
     if FGhostValid > 0 then
     begin
       S := Height * 0.56 / 44.5;
       // Mund: vorn unten am Kopf (Taenzerin steht rechts, schaut nach links ins Bild)
       MX := FGhost[0].X[0] - 2.5 * S;
       MY := FGhost[0].Y[0] + 2.2 * S;
+      // Menge und Wucht wachsen mit dem Schuetteln: anfangs ein paar Tropfen, am Ende ein Schwall
+      // die ersten 1,5 s maessig; wer dann weiter schuettelt, bestimmt mit der Wildheit (Richtungswechsel
+      // je Sekunde) die Heftigkeit - gemaechliches Schuetteln bleibt maessig, wildes wird ein Schwall
+      if FPukeAge < 1.5 then
+        Strength := 0.12
+      else
+        Strength := EnsureRange(0.12 + (FWild - 1.5) / 4.0, 0.12, 1);
+      Want := 2 + Round(Strength * 16);
       N := 0;
       for I := 0 to High(FPuke) do
-        if not FPuke[I].Active and (N < 3) then
+        if not FPuke[I].Active and (N < Want) then
           with FPuke[I] do
           begin
             Active := True;
             X := MX; Y := MY;
-            VX := -(14 + Random * 22) * S;
-            VY := (-4 + Random * 8) * S;
+            VX := -(14 + Random * 22) * S * (1 + 1.2 * Strength);
+            VY := (-4 + Random * 8 - 6 * Strength * Random) * S;
             Age := 0;
-            Life := 0.7 + Random * 0.5;
+            Life := 0.7 + Random * 0.5 + 0.4 * Strength;
+            Size := 1 + Round(Random * (1 + 2 * Strength));
             Inc(N);
           end;
     end;
@@ -2123,7 +2138,7 @@ end;
 
 procedure TBannerView.DrawSick(Bits: PColor32Array; W, H: Integer);
 var
-  I, A, PX, PY: Integer;
+  I, A, PX, PY, DX, DY: Integer;
   C: TColor32;
 begin
   for I := 0 to High(FPuke) do
@@ -2133,10 +2148,9 @@ begin
         A := Round(220 * (1 - Age / Life));
         if Odd(I) then C := Color32(150, 230, 80) else C := Color32(110, 200, 60);
         PX := Round(X); PY := Round(Y);
-        AddPixel(Bits, W, H, PX, PY, C, A);
-        AddPixel(Bits, W, H, PX + 1, PY, C, A * 3 div 4);
-        AddPixel(Bits, W, H, PX, PY + 1, C, A * 3 div 4);
-        AddPixel(Bits, W, H, PX + 1, PY + 1, C, A div 2);
+        for DY := 0 to Round(Size) do
+          for DX := 0 to Round(Size) do
+            AddPixel(Bits, W, H, PX + DX, PY + DY, C, A * (4 - Min(3, DX + DY)) div 4);
       end;
 end;
 

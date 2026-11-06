@@ -40,6 +40,25 @@ type
     property Engine: TGranularEngine read FEngine write FEngine;
   end;
 
+  { Frequenzgang der Filter (Reiter Filter): Kurven von Filter 1 (tuerkis), Filter 2 (orange) und dem
+    Gesamtergebnis (hell) - in Reihe als Produkt, parallel als Mittelwert, genau wie im Klang (dieselben
+    SVF-, Ladder-, Kamm- und Formant-Formeln). Der Cutoff wandert mit der Filter-Huellkurve der juengsten
+    Note mit. Darunter das Spektrum vor den Filtern (blass) und danach; was die Filter wegschneiden, ist rot. }
+  TFilterView = class(TCustomPaintBox32)
+  private
+    FEngine: TGranularEngine;
+    FIn, FOut: TSpectrumView;      // Analysen vor/nach den Filtern (nie sichtbar)
+    FH1, FH2, FHt: array of Single; // Frequenzgang je Spalte (dB)
+    function XToF(X: Integer): Double;
+    function DbToY(Db: Double): Single;
+  protected
+    procedure DoPaintBuffer; override;
+  public
+    constructor Create(AOwner: TComponent; AEngine: TGranularEngine); reintroduce;
+    destructor Destroy; override;
+    procedure Tick;
+  end;
+
   TEqView = class(TCustomPaintBox32)
   private
     FEngine: TGranularEngine;
@@ -75,6 +94,333 @@ type
   end;
 
 implementation
+
+{ Displayglas: dezenter senkrechter Verlauf (oben etwas heller als Base), einmal je Rasterbild }
+procedure GlassBg(B: TBitmap32; Base: TColor32; Lift: Integer);
+var
+  Y, R, G, Bl, K: Integer;
+begin
+  for Y := 0 to B.Height - 1 do
+  begin
+    K := Round(Lift * Sqr(1 - Y / Max(1, B.Height - 1)));
+    R := Min(255, ((Base shr 16) and $FF) + K);
+    G := Min(255, ((Base shr 8) and $FF) + K);
+    Bl := Min(255, (Base and $FF) + K + K div 2);
+    B.HorzLineS(0, Y, B.Width - 1, $FF000000 or TColor32(R shl 16) or TColor32(G shl 8) or TColor32(Bl));
+  end;
+end;
+
+{ ---------------- TFilterView ---------------- }
+
+type
+  TCx = record
+    Re, Im: Double;
+  end;
+
+function Cx(Re, Im: Double): TCx; inline;
+begin
+  Result.Re := Re; Result.Im := Im;
+end;
+
+function CxMul(const A, B: TCx): TCx;
+begin
+  Result.Re := A.Re * B.Re - A.Im * B.Im;
+  Result.Im := A.Re * B.Im + A.Im * B.Re;
+end;
+
+function CxDiv(const A, B: TCx): TCx;
+var
+  D: Double;
+begin
+  D := Sqr(B.Re) + Sqr(B.Im);
+  if D < 1E-30 then D := 1E-30;
+  Result.Re := (A.Re * B.Re + A.Im * B.Im) / D;
+  Result.Im := (A.Im * B.Re - A.Re * B.Im) / D;
+end;
+
+function CxAdd(const A, B: TCx): TCx;
+begin
+  Result.Re := A.Re + B.Re; Result.Im := A.Im + B.Im;
+end;
+
+function CxScale(const A: TCx; K: Double): TCx;
+begin
+  Result.Re := A.Re * K; Result.Im := A.Im * K;
+end;
+
+{ Zustandsvariablen-Filter (TPT, wie RunSvf): LP, normierter BP (k*bp) und HP bei Frequenz F }
+procedure SvfResp(Fc, Reso, Sr, F: Double; out LP, BPn, HP: TCx);
+var
+  G, W, K: Double;
+  Den, S: TCx;
+begin
+  Fc := EnsureRange(Fc, 20, Sr * 0.45);
+  G := Tan(Pi * Fc / Sr);
+  W := Tan(Pi * Min(F, Sr * 0.499) / Sr) / G;
+  K := 2 - 1.96 * Reso / 100;
+  Den := Cx(1 - W * W, K * W);
+  S := Cx(0, W);
+  LP := CxDiv(Cx(1, 0), Den);
+  BPn := CxScale(CxDiv(S, Den), K);
+  HP := CxDiv(Cx(-W * W, 0), Den);
+end;
+
+{ ein Filter wie RunFilter (ohne die Saettigung des Ladder) }
+function FilterResp(FType: Integer; Fc, Reso, Contour, Sr, F: Double): TCx;
+const
+  FORM: array[0..4, 0..2] of Double = ((730, 1090, 2440), (530, 1840, 2480), (270, 2290, 3010),
+    (570, 840, 2410), (300, 870, 2240));
+  FORM_G: array[0..2] of Double = (1.0, 0.5, 0.3);
+var
+  M, D, Fb, P, Fr, Wn: Double;
+  LP, BP, HP, LP2, BP2, HP2, Y: TCx;
+  B, Vi: Integer;
+begin
+  M := Contour / 100;
+  Fc := EnsureRange(Fc, 20, Sr * 0.45);
+  case FType of
+    FLT_LADDER:
+      begin
+        SvfResp(Fc, Reso, Sr, F, LP, BP, HP);
+        SvfResp(Fc, Reso * 0.35, Sr, F, LP2, BP2, HP2);
+        Result := CxAdd(Cx(1 - M, 0), CxScale(CxMul(LP, LP2), M));
+      end;
+    FLT_COMB:
+      begin
+        D := EnsureRange(Sr / Fc, 2, 4093);
+        Fb := Reso / 100 * 0.97;
+        Wn := 2 * Pi * F / Sr * D;
+        Y := CxDiv(Cx(1, 0), Cx(1 - Fb * Cos(Wn), Fb * Sin(Wn)));
+        Result := CxAdd(Cx(1 - M, 0), CxScale(Y, M * (1 - 0.6 * Fb)));
+      end;
+    FLT_FORMANT:
+      begin
+        P := EnsureRange(Ln(Fc / 20) / Ln(1000) * 4, 0, 4);
+        Vi := Min(Trunc(P), 3);
+        Fr := P - Vi;
+        Result := Cx(1 - M, 0);
+        for B := 0 to 2 do
+        begin
+          D := FORM[Vi, B] + (FORM[Vi + 1, B] - FORM[Vi, B]) * Fr;
+          SvfResp(D, 60 + Reso * 0.38, Sr, F, LP, BP, HP);
+          Result := CxAdd(Result, CxScale(BP, FORM_G[B] * M * 1.4));
+        end;
+      end;
+    1: begin SvfResp(Fc, Reso, Sr, F, LP, BP, HP); Result := CxAdd(Cx(1 - M, 0), CxScale(BP, M)); end;
+    2: begin SvfResp(Fc, Reso, Sr, F, LP, BP, HP); Result := CxAdd(Cx(1 - M, 0), CxScale(HP, M)); end;
+  else
+    begin SvfResp(Fc, Reso, Sr, F, LP, BP, HP); Result := CxAdd(Cx(1 - M, 0), CxScale(LP, M)); end;
+  end;
+end;
+
+function CxDb(const A: TCx): Single;
+begin
+  Result := 10 * Log10(Max(1E-12, Sqr(A.Re) + Sqr(A.Im)));
+end;
+
+const
+  FV_DB_MIN = -48.0;
+  FV_DB_MAX = 24.0;
+  FV_PAD_B = 14;
+  FV_BG = $FF16181C;
+  FV_GRID = $FF262A31;
+  FV_ZERO = $FF4A525C;
+  FV_C1 = $FF30B0D0;          // Filter 1: tuerkis
+  FV_C2 = $FFF09030;          // Filter 2: orange
+  FV_CT = $FFE8F4FF;          // Gesamt: hell
+  FV_IN = $FF222A36;          // Spektrum vor den Filtern (blass)
+  FV_OUT = $FF244E72;         // Spektrum nach den Filtern
+  FV_CUT = $70E04040;         // weggeschnitten: rot
+
+constructor TFilterView.Create(AOwner: TComponent; AEngine: TGranularEngine);
+begin
+  inherited Create(AOwner);
+  FEngine := AEngine;
+  BufferOversize := 0;
+  FIn := TSpectrumView.Create(nil, AEngine);
+  FIn.Source := 1;
+  FOut := TSpectrumView.Create(nil, AEngine);
+  FOut.Source := 2;
+end;
+
+destructor TFilterView.Destroy;
+begin
+  FIn.Free;
+  FOut.Free;
+  inherited;
+end;
+
+function TFilterView.XToF(X: Integer): Double;
+begin
+  Result := 20 * Power(1000, EnsureRange(X / Max(1, Width - 1), 0, 1));
+end;
+
+function TFilterView.DbToY(Db: Double): Single;
+var
+  H: Integer;
+begin
+  H := Height - FV_PAD_B;
+  Result := 4 + (FV_DB_MAX - EnsureRange(Db, FV_DB_MIN, FV_DB_MAX)) / (FV_DB_MAX - FV_DB_MIN) * (H - 8);
+end;
+
+procedure TFilterView.Tick;
+var
+  W, X: Integer;
+  Sr, Env, F: Double;
+  On1, On2, Par: Boolean;
+  T1, T2: Integer;
+  C1, R1, K1, E1, C2, R2, K2, E2: Double;
+  H1, H2, Ht: TCx;
+  St: TEnvelopeState;
+
+  function P(Id: TGranularParamId): Double;
+  begin
+    Result := ParamToPlain(Id, FEngine.EffParam[Ord(Id)]);
+  end;
+
+begin
+  W := Width;
+  if W < 40 then
+    Exit;
+  FIn.Analyze(W);
+  FOut.Analyze(W);
+  Sr := Max(22050.0, FEngine.SampleRate);
+  St := FEngine.GetFilterEnvState;
+  if St.Active then Env := St.Level else Env := 0;
+  On1 := (P(gpFltOn) >= 0.5) and (P(gpFltContour) > 0.05);
+  On2 := (P(gpFlt2On) >= 0.5) and (P(gpFlt2Contour) > 0.05);
+  Par := P(gpFltRouting) >= 0.5;
+  T1 := Round(P(gpFltType)); T2 := Round(P(gpFlt2Type));
+  C1 := P(gpFltCutoff); R1 := P(gpFltReso); K1 := P(gpFltContour); E1 := P(gpFltEnvAmt);
+  C2 := P(gpFlt2Cutoff); R2 := P(gpFlt2Reso); K2 := P(gpFlt2Contour); E2 := P(gpFlt2EnvAmt);
+  C1 := C1 * Power(2, E1 / 100 * 6 * Env);
+  C2 := C2 * Power(2, E2 / 100 * 6 * Env);
+  SetLength(FH1, W); SetLength(FH2, W); SetLength(FHt, W);
+  for X := 0 to W - 1 do
+  begin
+    F := XToF(X);
+    if On1 then H1 := FilterResp(T1, C1, R1, K1, Sr, F) else H1 := Cx(1, 0);
+    if On2 then H2 := FilterResp(T2, C2, R2, K2, Sr, F) else H2 := Cx(1, 0);
+    if On1 and On2 then
+    begin
+      if Par then Ht := CxScale(CxAdd(H1, H2), 0.5) else Ht := CxMul(H1, H2);
+    end
+    else if On1 then Ht := H1
+    else Ht := H2;
+    if On1 then FH1[X] := CxDb(H1) else FH1[X] := 999;
+    if On2 then FH2[X] := CxDb(H2) else FH2[X] := 999;
+    if On1 or On2 then FHt[X] := CxDb(Ht) else FHt[X] := 999;
+  end;
+  Invalidate;
+end;
+
+procedure TFilterView.DoPaintBuffer;
+const
+  FREQS: array[0..9] of Double = (20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000);
+  LABELS: array[0..9] of string = ('20', '50', '100', '200', '500', '1k', '2k', '5k', '10k', '20k');
+var
+  B: TBitmap32;
+  W, H, X, I, Y, Yi, Yo, Base: Integer;
+  LIn, LOut: TArray<Single>;
+  Prev, Cur: Single;
+  D: Integer;
+
+  procedure Curve(const A: array of Single; C: TColor32; Thick: Boolean);
+  var
+    X: Integer;
+    P, Q: Single;
+  begin
+    if (Length(A) <> W) or (A[0] > 900) then
+      Exit;
+    P := DbToY(A[0]);
+    for X := 0 to W - 1 do
+    begin
+      Q := DbToY(A[X]);
+      AASpan(B, X, P, Q, C);
+      if Thick then
+        AASpan(B, X, P + 1, Q + 1, C);
+      P := Q;
+    end;
+  end;
+
+begin
+  B := Buffer;
+  B.BeginUpdate;
+  try
+    W := B.Width;
+    H := B.Height;
+    GlassBg(B, FV_BG, 14);
+    if (W < 40) or (H < 40) or (FEngine = nil) then
+      Exit;
+    Base := H - FV_PAD_B;
+    // Spektrum: vor den Filtern blass, danach kraeftiger; dazwischen rot = weggeschnitten
+    LIn := FIn.Levels;
+    LOut := FOut.Levels;
+    if (Length(LIn) = W) and (Length(LOut) = W) then
+      for X := 0 to W - 1 do
+      begin
+        Yi := Base - Round(EnsureRange(LIn[X], 0, 1) * (Base - 6) * 0.6);   // Spektrum dezent im unteren Teil
+        Yo := Base - Round(EnsureRange(LOut[X], 0, 1) * (Base - 6) * 0.6);
+        if Yi < Base then B.VertLineS(X, Yi, Base - 1, FV_IN);
+        if Yo < Base then B.VertLineS(X, Yo, Base - 1, FV_OUT);
+        if Yo > Yi + 1 then B.VertLineTS(X, Yi, Yo - 1, FV_CUT);
+      end;
+    // Raster
+    D := -36;
+    while D <= 12 do
+    begin
+      Y := Round(DbToY(D));
+      if D = 0 then B.HorzLineS(0, Y, W - 1, FV_ZERO) else B.HorzLineTS(0, Y, W - 1, FV_GRID);
+      Inc(D, 12);
+    end;
+    B.Font.Name := 'Tahoma';
+    B.Font.Size := UiPt(7);
+    B.Font.Color := $808080;
+    for I := 0 to High(FREQS) do
+    begin
+      X := Round(Ln(FREQS[I] / 20) / Ln(1000) * (W - 1));
+      B.VertLineTS(X, 0, Base - 1, FV_GRID);
+      if (I > 0) and (I < High(FREQS)) then
+        B.Textout(X - B.TextWidth(LABELS[I]) div 2, Base + 1, LABELS[I]);
+    end;
+    B.Textout(3, Round(DbToY(0)) - 13, '0 dB');
+    // Ergebnis: Flaeche unter der Kurve leuchtet zur Kurve hin auf (Verlauf), dazu ein weicher Lichtsaum
+    if (Length(FHt) = W) and (FHt[0] < 900) then
+      for X := 0 to W - 1 do
+      begin
+        Y := Round(DbToY(FHt[X]));
+        I := Y;
+        while I < Base do
+        begin
+          B.HorzLineTS(X, I, X, Color32(170, 215, 255, Max(0, 46 - (I - Y) * 46 div Max(1, Base - Y))));
+          Inc(I, 2);
+        end;
+        B.SetPixelTS(X, Y - 2, $18E8F4FF);
+        B.SetPixelTS(X, Y - 1, $30E8F4FF);
+        B.SetPixelTS(X, Y + 2, $30E8F4FF);
+      end;
+    // Kurven: einzeln duenn, Gesamtergebnis kraeftig
+    Curve(FH1, FV_C1, False);
+    Curve(FH2, FV_C2, False);
+    Curve(FHt, FV_CT, True);
+    B.Font.Color := $00D0B030;
+    B.Textout(W - 230, 4, Tr('Filter 1'));
+    B.Font.Color := $003090F0;
+    B.Textout(W - 180, 4, Tr('Filter 2'));
+    B.Font.Color := $00FFF4E8;
+    B.Textout(W - 130, 4, Tr('Ergebnis'));
+    B.Font.Color := $004848E0;
+    B.Textout(W - 75, 4, Tr('weg'));
+    if (Length(FHt) = W) and (FHt[0] > 900) then
+    begin
+      B.Font.Color := $0060B0FF;
+      B.Textout(8, 4, Tr('Beide Filter sind aus'));
+    end;
+  finally
+    B.EndUpdate;
+  end;
+  inherited;
+end;
 
 constructor TCompCurveView.Create(AOwner: TComponent);
 begin
@@ -290,7 +636,7 @@ begin
   FGrid.SetSize(W, H);
   FGrid.BeginUpdate;
   try
-    FGrid.Clear(COL_BG);
+    GlassBg(FGrid, COL_BG, 12);
     FGrid.Font.Name := 'TahomaTr(';
     FGrid.Font.Size := UiPt(7);
     FGrid.Font.Color := $808080;

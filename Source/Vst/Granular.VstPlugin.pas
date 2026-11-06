@@ -299,8 +299,6 @@ begin
   if GetEnvironmentVariable('GRANULAR_MATPAGE') <> '' then
     FEditor.ShowMatrixPage(StrToIntDef(GetEnvironmentVariable('GRANULAR_MATPAGE'), 0));
   // Testhilfe: GRANULAR_PRESET=<Datei> laedt beim Oeffnen ein Preset
-  if FileExists(GetEnvironmentVariable('GRANULAR_PRESET')) then
-    FEditor.LoadPreset(GetEnvironmentVariable('GRANULAR_PRESET'));
   if GetEnvironmentVariable('GRANULAR_INFO') = '1' then
     FEditor.ShowInfo;
   // Testhilfe: GRANULAR_FREEEDIT=1|2 oeffnet das Fenster 'freie Form' des LFOs
@@ -360,6 +358,10 @@ begin
   // gewaehlte Fenstergroesse: alle Positionen und Schriften mitwachsen lassen
   if FRect.Right <> EDITOR_W then
     FEditor.ApplyScale(FRect.Right, EDITOR_W);
+  // Testhilfe: GRANULAR_PRESET=<Datei> und/oder GRANULAR_PARAMS='Name=Wert;...' nach dem Oeffnen anwenden
+  // (verzoegert, damit Host und Autoplay sie nicht ueberschreiben; auch nach einem Sprachwechsel)
+  if (GetEnvironmentVariable('GRANULAR_PRESET') <> '') or (GetEnvironmentVariable('GRANULAR_PARAMS') <> '') then
+    FEditor.LoadPresetLater(GetEnvironmentVariable('GRANULAR_PRESET'), 4000);
 end;
 
 procedure TGranularPlugin.EditorLanguageChange(Sender: TObject);

@@ -50,6 +50,7 @@ type
     FBinSr: Double;
     FBinPos: array of Single;        // Frequenz der Spaltenmitte als Bin-Position (Interpolation)
     FPreEq: Boolean;
+    FSource: Integer;                // 0 = Ausgang/PreEq, 1 = vor den Filtern, 2 = nach den Filtern
     FAnyVisible: Boolean;            // noch etwas ueber der Grundlinie (Kurve oder Spitze)
     procedure Prepare;
     procedure FFT;
@@ -68,6 +69,8 @@ type
     property Levels: TArray<Single> read FCol;
     { True: analysiert die Summe vor dem Equalizer statt des Ausgangs }
     property PreEq: Boolean read FPreEq write FPreEq;
+    { 1 = Summe vor den Filtern je Note, 2 = danach (Reiter Filter); 0 = wie bisher }
+    property Source: Integer read FSource write FSource;
   end;
 
 implementation
@@ -159,6 +162,21 @@ begin
   Result := Round(Ln(F / F_MIN) / Ln(F_MAX / F_MIN) * (W - 1));
 end;
 
+{ Displayglas: dezenter senkrechter Verlauf (oben etwas heller als Base), einmal je Rasterbild }
+procedure GlassBg(B: TBitmap32; Base: TColor32; Lift: Integer);
+var
+  Y, R, G, Bl, K: Integer;
+begin
+  for Y := 0 to B.Height - 1 do
+  begin
+    K := Round(Lift * Sqr(1 - Y / Max(1, B.Height - 1)));
+    R := Min(255, ((Base shr 16) and $FF) + K);
+    G := Min(255, ((Base shr 8) and $FF) + K);
+    Bl := Min(255, (Base and $FF) + K + K div 2);
+    B.HorzLineS(0, Y, B.Width - 1, $FF000000 or TColor32(R shl 16) or TColor32(G shl 8) or TColor32(Bl));
+  end;
+end;
+
 procedure TSpectrumView.BuildGrid(W, H: Integer);
 const
   LINES: array[0..8] of Double = (50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000);
@@ -174,7 +192,7 @@ begin
   FGrid.SetSize(W, H);
   FGrid.BeginUpdate;
   try
-    FGrid.Clear(COL_BG);
+    GlassBg(FGrid, COL_BG, 12);
     // Pegelraster alle 18 dB
     D := 0;
     while D >= Round(DB_MIN) do
@@ -231,7 +249,9 @@ begin
   else
     FIdleFrames := 0;
 
-  if FPreEq then
+  if FSource > 0 then
+    FEngine.GetScopeFilter(FSource - 1, FIn, FFT_SIZE)
+  else if FPreEq then
     FEngine.GetScopePreEq(FIn, FFT_SIZE)
   else
     FEngine.GetScope(FIn, FDummy, FFT_SIZE);

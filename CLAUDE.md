@@ -137,7 +137,7 @@ Die Oberfläche ist mehrsprachig. Der **deutsche Text ist zugleich der Schlüsse
   - Eigene Fenster ohne Owner-Draw-Knöpfe (z. B. „Audio bearbeiten“) nehmen `TIconButton` aus derselben Unit.
   - **Kein GDI+** in der Plugin-DLL: Es startet beim Laden der DLL (Loader-Lock) und kann die DAW hängen lassen. Geglättet wird mit Graphics32 (`GR32_Polygons`).
   - Farben: Grundfarbe hellgrau, Akzente sparsam – grün = abspielen/übernehmen, rot = Aufnahme/Löschen/Notaus, bernstein = gewählt/aktiv.
-- **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE`, `GRANULAR_MATPAGE` und `GRANULAR_AUDIOEDIT=1` (öffnet „Audio bearbeiten“ für das Hauptsample, für Bildschirmfotos).
+- **Testumgebung:** Umgebungsvariablen `GRANULAR_TAB` (Reiter beim Start), `GRANULAR_LFOPAGE`, `GRANULAR_MATPAGE` und `GRANULAR_AUDIOEDIT=1` (öffnet den Sample-Editor für das Hauptsample, für Bildschirmfotos), `GRANULAR_PRESET=<Datei>` und `GRANULAR_PARAMS='Name=Wert;…'` (nach dem Öffnen ein Preset laden bzw. einzelne Regler per Name aus `PARAM_INFO` setzen, Stufen als Index – z. B. `EQ an=1;Cutoff=1800`; für Bildschirmfotos mit aussagekräftigen Anzeigen: ein kräftiges Key-Preset nehmen und die nötigen Bausteine zuschalten).
 
 ## Bekannte Eigenheiten
 

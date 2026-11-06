@@ -176,6 +176,8 @@ type
     FSynthArea: TPanel;
     FCols: array[0..2] of TPanel;
     FEnvView, FFltEnvView: TEnvelopeView;
+    FFltView: TFilterView;           // Frequenzgang der Filter (Reiter Filter)
+    FPendingPreset: string;          // Testhilfe GRANULAR_PRESET (verzoegert)
     FOscEnvView: array[0..OSC_COUNT - 1] of TEnvelopeView;
     FOscEnvKey: array[0..OSC_COUNT - 1] of Double;
     FMorphLfoView: TLfoView;
@@ -247,6 +249,8 @@ type
     procedure AddStretch(Ctrl: TControl; RightGap: Integer; AlignRight: Boolean = False);
     procedure PanelResize(Sender: TObject);
     procedure RelayoutAll(Sender: TObject);
+    procedure PagesChanging(Sender: TObject; var AllowChange: Boolean);
+    procedure PagesChange(Sender: TObject);
     procedure SynthAreaResize(Sender: TObject);
     function AddParam(AParent: TWinControl; Index, X, Y, NameW, ValueW: Integer;
       ComboW: Integer = 150; const ACaption: string = ''; TrackW: Integer = 0): Integer;
@@ -325,6 +329,7 @@ type
     procedure EditSample(Z: Integer);
     procedure EditSampleDone(Z: Integer; Res: TSampleData);
     procedure AudioEditorTimer(Sender: TObject);
+    procedure PresetLaterTimer(Sender: TObject);
     procedure ZoneClearClick(Sender: TObject);
     procedure ZoneNoteChange(Sender: TObject);
     procedure LoadZoneFile(Z: Integer; const FileName: string);
@@ -431,6 +436,7 @@ type
     procedure ShowHelp(Changelog: Boolean);
     { Fenster 'Audio bearbeiten' fuer das Hauptsample (Testhilfe, nach dem Oeffnen des Editors) }
     procedure OpenAudioEditor;
+    procedure LoadPresetLater(const FileName: string; DelayMs: Integer);
     { 'VST2', 'VST3', 'VST2 FX', 'VST3 FX': steht im Banner hinter der Version }
     property FormatName: string write SetFormatName;
     { eigenes Rechtsklick-Menue fuer einen Regler zeigen (aus dem DAW-Menue heraus) }
@@ -560,12 +566,256 @@ end;
 
 { --- Aufbau --- }
 
+{ ---------------- Mischpult-Optik: Konsolen-Gehaeuse und Kanalzuege ----------------
+  Rein statisch gezeichnet (nur bei Groessenaenderung/Neuzeichnen), die Fader und Pegel laufen wie bisher.
+  Farben aus der Palette des Plugins: Grundton wie BG_MAIN/BG_DARK, Kappen im Blau des Spektrums, im
+  Bernstein der Werte und in einem warmen Rot fuer den Ausgang. }
+type
+  { gemeinsame Basis: der Hintergrund wird einmal in ein Bild gezeichnet (DrawBack) und danach nur noch
+    kopiert - neu erzeugt nur bei Groessenaenderung }
+  TCachedPanel = class(TCustomPanel)
+  private
+    FCache: Vcl.Graphics.TBitmap;
+  protected
+    procedure DrawBack(Cv: TCanvas; const R0: TRect); virtual; abstract;
+    procedure Paint; override;
+    procedure Resize; override;
+  public
+    destructor Destroy; override;
+  end;
+
+  TMixDeck = class(TCachedPanel)
+  public
+    Display: TControl;            // eingelassenes Display (Spektrum)
+  protected
+    procedure DrawBack(Cv: TCanvas; const R0: TRect); override;
+  end;
+
+  TMixStrip = class(TCachedPanel)
+  public
+    Cap: TColor;                  // Gruppenfarbe der Kappe
+    CapH: Integer;                // Hoehe der Kappe (hinter dem Kanalnamen)
+  protected
+    procedure DrawBack(Cv: TCanvas; const R0: TRect); override;
+  end;
+
+const
+  DECK_BG    = $00221E1C;         // Gehaeuse: dunkler als BG_DARK
+  STRIP_BG   = $00403A36;         // Kanalzug: etwas heller als BG_MAIN
+  STRIP_HI   = $00655D57;         // Lichtkante oben/links
+  STRIP_LO   = $00171412;         // Schattenkante unten/rechts
+  CAP_SRC    = $00A06A2C;         // Quellen: Blau wie das Spektrum (gedaempft)
+  CAP_FX     = $002E7AA8;         // Effekte: Bernstein (gedaempft)
+  CAP_OUT    = $003A3C9C;         // Ausgang: warmes Rot (gedaempft)
+
+function MixShade(C: TColor; F: Double): TColor;
+var
+  R, G, B: Integer;
+begin
+  C := ColorToRGB(C);
+  R := EnsureRange(Round((C and $FF) * F), 0, 255);
+  G := EnsureRange(Round(((C shr 8) and $FF) * F), 0, 255);
+  B := EnsureRange(Round(((C shr 16) and $FF) * F), 0, 255);
+  Result := TColor(R or (G shl 8) or (B shl 16));
+end;
+
+procedure MixBevel(Cv: TCanvas; R: TRect; Hi, Lo: TColor);
+begin
+  Cv.Pen.Color := Hi;
+  Cv.MoveTo(R.Left, R.Bottom - 1); Cv.LineTo(R.Left, R.Top); Cv.LineTo(R.Right - 1, R.Top);
+  Cv.Pen.Color := Lo;
+  Cv.LineTo(R.Right - 1, R.Bottom - 1); Cv.LineTo(R.Left - 1, R.Bottom - 1);
+end;
+
+destructor TCachedPanel.Destroy;
+begin
+  FCache.Free;
+  inherited;
+end;
+
+procedure TCachedPanel.Resize;
+begin
+  FreeAndNil(FCache);                 // neue Groesse: Bild beim naechsten Zeichnen neu erzeugen
+  inherited;
+end;
+
+procedure TCachedPanel.Paint;
+begin
+  if (FCache = nil) or (FCache.Width <> ClientWidth) or (FCache.Height <> ClientHeight) then
+  begin
+    FreeAndNil(FCache);
+    FCache := Vcl.Graphics.TBitmap.Create;
+    FCache.PixelFormat := pf24bit;
+    FCache.SetSize(Max(1, ClientWidth), Max(1, ClientHeight));
+    DrawBack(FCache.Canvas, Rect(0, 0, ClientWidth, ClientHeight));
+  end;
+  Canvas.Draw(0, 0, FCache);
+end;
+
+procedure TMixDeck.DrawBack(Cv: TCanvas; const R0: TRect);
+var
+  R: TRect;
+  I, Cx, Cy, Sr: Integer;
+begin
+  R := R0;
+  Cv.Brush.Color := DECK_BG;
+  Cv.FillRect(R);
+  // Gehaeuse: doppelte Fase (aussen hell/dunkel, innen umgekehrt = eingefasster Rahmen)
+  MixBevel(Cv, R, $00534B45, $000C0A09);
+  InflateRect(R, -1, -1);
+  MixBevel(Cv, R, $00403934, $00100E0D);
+  InflateRect(R, -4, -4);
+  MixBevel(Cv, R, $00100E0D, $00453E39);
+  // Schrauben in den Ecken
+  Sr := Max(2, ScaleValue(3));
+  for I := 0 to 3 do
+  begin
+    if I mod 2 = 0 then Cx := ScaleValue(4) + Sr else Cx := R0.Right - ScaleValue(4) - Sr - 1;
+    if I < 2 then Cy := ScaleValue(4) + Sr else Cy := R0.Bottom - ScaleValue(4) - Sr - 1;
+    Cv.Pen.Color := $00151210;
+    Cv.Brush.Color := $005A524C;
+    Cv.Ellipse(Cx - Sr, Cy - Sr, Cx + Sr + 1, Cy + Sr + 1);
+    Cv.Pen.Color := $00201C1A;
+    Cv.MoveTo(Cx - Sr + 1, Cy + Sr - 1); Cv.LineTo(Cx + Sr, Cy - Sr);
+  end;
+  // eingelassenes Display (Spektrum) wie an einem modernen Digitalgeraet: breite schwarze Einfassung,
+  // darum eine Fase ins Gehaeuse, oben eine feine Glas-Lichtkante
+  if Display <> nil then
+  begin
+    R := Display.BoundsRect;
+    InflateRect(R, ScaleValue(6), ScaleValue(6));
+    MixBevel(Cv, R, $00100E0D, $00564E48);
+    InflateRect(R, -1, -1);
+    Cv.Brush.Color := $000B0A0A;
+    Cv.FillRect(R);
+    Cv.Pen.Color := $00343030;
+    Cv.MoveTo(R.Left + 2, R.Top + 1); Cv.LineTo(R.Right - 2, R.Top + 1);
+    R := Display.BoundsRect;
+    InflateRect(R, 1, 1);
+    MixBevel(Cv, R, $00050505, $00242222);
+  end;
+end;
+
+procedure TMixStrip.DrawBack(Cv: TCanvas; const R0: TRect);
+var
+  R, C: TRect;
+  Y: Integer;
+begin
+  R := R0;
+  // Grundflaeche mit sachtem Verlauf (oben etwas heller, wie gebuerstetes Metall im Licht)
+  for Y := R.Top to R.Bottom - 1 do
+  begin
+    Cv.Pen.Color := MixShade(STRIP_BG, 1.08 - 0.10 * Y / Max(1, R.Bottom));
+    Cv.MoveTo(R.Left, Y); Cv.LineTo(R.Right, Y);
+  end;
+  // Kappe in Gruppenfarbe mit heller Oberkante
+  C := Rect(R.Left + 2, R.Top + 2, R.Right - 2, R.Top + 2 + CapH);
+  Cv.Brush.Color := Cap;
+  Cv.FillRect(C);
+  Cv.Pen.Color := MixShade(Cap, 1.6);
+  Cv.MoveTo(C.Left, C.Top); Cv.LineTo(C.Right, C.Top);
+  Cv.Pen.Color := MixShade(Cap, 0.55);
+  Cv.MoveTo(C.Left, C.Bottom); Cv.LineTo(C.Right, C.Bottom);
+  // Fase des Moduls
+  MixBevel(Cv, R, STRIP_HI, STRIP_LO);
+end;
+
+{ Funktionsbereich (LFO, Filter, Huellkurve ...): erhabenes Panel auf dunklerem Grund - Fase hell oben/links,
+  dunkel unten/rechts, Kopfleiste hinter dem Titel etwas heller mit feiner bernsteinfarbener Unterkante.
+  Rein statisch gezeichnet. }
+type
+  TGroupPanel = class(TPanel)
+  private
+    FCache: Vcl.Graphics.TBitmap;
+  protected
+    procedure Paint; override;
+    procedure Resize; override;
+  public
+    destructor Destroy; override;
+  end;
+
+const
+  AREA_BG = $002A2624;            // Grund zwischen den Bereichen (wie BG_DARK)
+  GRP_HEAD = 22;                  // Hoehe der Kopfleiste (bei 100 %)
+
+destructor TGroupPanel.Destroy;
+begin
+  FCache.Free;
+  inherited;
+end;
+
+procedure TGroupPanel.Resize;
+begin
+  FreeAndNil(FCache);
+  inherited;
+end;
+
+procedure TGroupPanel.Paint;
+var
+  R: TRect;
+  Hh, Y: Integer;
+  Cv: TCanvas;
+begin
+  if (FCache = nil) or (FCache.Width <> ClientWidth) or (FCache.Height <> ClientHeight) then
+  begin
+    FreeAndNil(FCache);
+    FCache := Vcl.Graphics.TBitmap.Create;
+    FCache.PixelFormat := pf24bit;
+    FCache.SetSize(Max(1, ClientWidth), Max(1, ClientHeight));
+    Cv := FCache.Canvas;
+    R := Rect(0, 0, ClientWidth, ClientHeight);
+    Cv.Brush.Color := Color;
+    Cv.FillRect(R);
+    Hh := ScaleValue(GRP_HEAD);
+    for Y := 1 to Hh - 1 do
+    begin
+      Cv.Pen.Color := MixShade(Color, 1.16 - 0.12 * Y / Hh);
+      Cv.MoveTo(1, Y); Cv.LineTo(R.Right - 1, Y);
+    end;
+    Cv.Pen.Color := MixShade($005AD2FF, 0.42);
+    Cv.MoveTo(1, Hh); Cv.LineTo(R.Right - 1, Hh);
+    MixBevel(Cv, R, $005C5550, $00141110);
+  end;
+  Canvas.Draw(0, 0, FCache);
+end;
+
+
 function TGranularEditor.MakePanel(AParent: TWinControl; AAlign: TAlign; const ATitle: string): TPanel;
+const
+  AREA_TAG = 7731;
 var
   L: TLabel;
+  Grund: TPanel;
+  I: Integer;
 begin
-  Result := TPanel.Create(Self);
+  // direkt auf einem Reiter: erst einen dunklen Grund anlegen (einmal je Reiter), damit zwischen den
+  // erhabenen Bereichen nicht die helle Reiterflaeche durchscheint
+  if (AParent is TTabSheet) and (AAlign <> alNone) then
+  begin
+    Grund := nil;
+    for I := 0 to AParent.ControlCount - 1 do
+      if (AParent.Controls[I] is TPanel) and (AParent.Controls[I].Tag = AREA_TAG) then
+        Grund := TPanel(AParent.Controls[I]);
+    if Grund = nil then
+    begin
+      Grund := TPanel.Create(Self);
+      Grund.Parent := AParent;
+      Grund.Tag := AREA_TAG;
+      Grund.Align := alClient;
+      Grund.BevelOuter := bvNone;
+      Grund.ParentBackground := False;
+      Grund.Color := AREA_BG;
+    end;
+    AParent := Grund;
+  end;
+  Result := TGroupPanel.Create(Self);
   Result.Parent := AParent;
+  if AAlign <> alNone then
+  begin
+    // Luft rundherum, damit jeder Bereich als eigenes, erhabenes Feld auf dem dunkleren Grund steht
+    Result.AlignWithMargins := True;
+    Result.Margins.SetBounds(3, 3, 3, 3);
+  end;
   Result.Align := AAlign;
   Result.BevelOuter := bvNone;
   Result.ParentBackground := False;
@@ -623,6 +873,32 @@ begin
         FStretch[I].Ctrl.Left := W - FStretch[I].RightGap - FStretch[I].Ctrl.Width
       else
         FStretch[I].Ctrl.Width := Max(30, W - FStretch[I].Left - FStretch[I].RightGap);
+end;
+
+{ Reiterwechsel ohne sichtbaren Aufbau: vor dem Wechsel das Zeichnen sperren, danach Layout anpassen,
+  freigeben und alles in einem Rutsch neu zeichnen (sonst sieht man, wie die Steuerelemente nacheinander
+  erscheinen) }
+procedure TGranularEditor.PagesChanging(Sender: TObject; var AllowChange: Boolean);
+begin
+  if FPages.HandleAllocated then
+    SendMessage(FPages.Handle, WM_SETREDRAW, 0, 0);
+end;
+
+procedure TGranularEditor.PagesChange(Sender: TObject);
+begin
+  try
+    RelayoutAll(Sender);
+    // Werte und Live-Anzeigen des neuen Reiters sofort nachziehen (sonst zeigen die Regler kurz ihre
+    // Grundstellung, bis der Timer das naechste Mal laeuft) - noch bei gesperrtem Zeichnen
+    TimerTick(nil);
+    SyncControlsFromEngine;
+  finally
+    if FPages.HandleAllocated then
+    begin
+      SendMessage(FPages.Handle, WM_SETREDRAW, 1, 0);
+      RedrawWindow(FPages.Handle, nil, 0, RDW_ERASE or RDW_FRAME or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_UPDATENOW);
+    end;
+  end;
 end;
 
 procedure TGranularEditor.RelayoutAll(Sender: TObject);
@@ -1021,7 +1297,8 @@ begin
   FPages.Align := alClient;
   FLangFlagHost.Anchors := [akTop, akRight];   // Lage setzt RelayoutAll (nach dem Ausrichten)
   FPages.TabStop := False;
-  FPages.OnChange := RelayoutAll;
+  FPages.OnChanging := PagesChanging;
+  FPages.OnChange := PagesChange;
   // Reihenfolge = Weg des Signals: Klang erzeugen -> je Note formen -> Bewegung -> Gesamtklang -> Spielhilfen
   FTabQuick := TTabSheet.Create(Self);
   FTabQuick.PageControl := FPages;
@@ -1144,7 +1421,7 @@ begin
   FSynthArea.Height := 24 + 9 * ROW_H + 8;
   FSynthArea.BevelOuter := bvNone;
   FSynthArea.ParentBackground := False;
-  FSynthArea.Color := BG_MAIN;
+  FSynthArea.Color := AREA_BG;
   FSynthArea.OnResize := SynthAreaResize;
 
   FWave := TWaveView.Create(Self);
@@ -1197,7 +1474,7 @@ procedure TGranularEditor.BuildModTab;
 const
   MX = 18;      // Platz fuer die Zeilennummer vor jeder Matrix-Zeile
 var
-  Left, Right, P: TPanel;
+  Left, Right, P, PMac: TPanel;
   K, S, Y: Integer;
   L: TLabel;
   NumL: TLabel;
@@ -1210,11 +1487,11 @@ begin
   Left.Width := 356;      // breit genug fuer die Listen Neustart/Stopp (auch englisch)
   Left.BevelOuter := bvNone;
   Left.ParentBackground := False;
-  Left.Color := BG_MAIN;
+  Left.Color := AREA_BG;
 
   // LFO 1/2 und an denselben Plaetzen LFO 5/6 (Umschalter im Reiter LFO)
   for K in [0, 1, 4, 5] do
-    BuildLfoPanel(Left, K, (K mod 4) * 172, Left.Width);
+    BuildLfoPanel(Left, K, (K mod 4) * 184, Left.Width);
 
   // Sidechain-Trigger: wann die LFO-Neustart-Option "Sidechain-Trigger" ausloest
   // (Verstaerkung/Attack/Release des Huellkurvenfolgers bleiben im Preset, ohne eigene Regler)
@@ -1266,6 +1543,9 @@ begin
   // Tempo kommt vom Host (VST-Zeitinfo) - kein eigener Regler mehr
 
   // Matrix
+  // rechts die freien Makros als eigenes Feld (bleibt bei jeder Matrix-Seite stehen), links die Matrix
+  PMac := MakePanel(FTabMod, alRight, Tr('Freie Makros'));
+  PMac.Width := 440;
   Right := MakePanel(FTabMod, alClient, Tr('Modulationsmatrix'));
   for S := 0 to 4 do
   begin
@@ -1287,40 +1567,38 @@ begin
   begin
     FMatPageBtn[S] := TButton.Create(Self);
     FMatPageBtn[S].Parent := Right;
-    FMatPageBtn[S].SetBounds(728 + S * 104, 20, 100, 22);
+    // in der Kopfleiste der Matrix, rechtsbuendig
+    FMatPageBtn[S].SetBounds(0, 1, 84, 20);
+    AddStretch(FMatPageBtn[S], 8 + (High(FMatPageBtn) - S) * 88, True);
     FMatPageBtn[S].Tag := S;
     FMatPageBtn[S].TabStop := False;
     FMatPageBtn[S].OnClick := MatPageClick;
     FMatPageBtn[S].Hint := Tr('Matrix-Zeilen dieser Seite zeigen (in Klammern: benutzte Zeilen)');
     FMatPageBtn[S].ShowHint := True;
   end;
-  // freie Makros: ein Regler bewegt beliebig viele Ziele (Matrix-Zeilen mit Quelle 'Makro n')
-  L := TLabel.Create(Self);
-  L.Parent := Right;
-  L.SetBounds(728, 58, 520, 16);
-  L.Caption := Tr('Freie Makros');
-  L.Font.Color := COL_NAME;
-  L.Font.Style := [fsBold];
-  L.Transparent := True;
+  // freie Makros: ein Regler bewegt beliebig viele Ziele (Matrix-Zeilen mit Quelle 'Makro n') - eigenes,
+  // erhabenes Feld rechts neben der Matrix (bleibt bei jeder Matrix-Seite stehen)
   for K := 0 to UMAC_COUNT - 1 do
   begin
-    Y := 80 + K * 50;
-    AddParam(Right, Ord(UMAC_IDS[K]), 728, Y, 62, 46, 0, '', 170);
-    AddParam(Right, Ord(UMAC_CURVE_IDS[K]), 1012, Y, 0, 0, 138);
+    Y := 30 + K * 50;
+    AddParam(PMac, Ord(UMAC_IDS[K]), 8, Y, 62, 46, 0, '', 170);
+    AddParam(PMac, Ord(UMAC_CURVE_IDS[K]), 292, Y, 0, 0, 138);
     FMacroTargets[K] := TLabel.Create(Self);
-    FMacroTargets[K].Parent := Right;
+    FMacroTargets[K].Parent := PMac;
     FMacroTargets[K].AutoSize := False;
-    FMacroTargets[K].SetBounds(790, Y + 25, 460, 16);
+    FMacroTargets[K].SetBounds(70, Y + 25, 360, 16);
     FMacroTargets[K].Font.Color := $00909090;
     FMacroTargets[K].Transparent := True;
+    AddStretch(FMacroTargets[K], 8);
   end;
   L := TLabel.Create(Self);
-  L.Parent := Right;
-  L.SetBounds(728, 80 + UMAC_COUNT * 50, 520, 48);
+  L.Parent := PMac;
+  L.SetBounds(8, 30 + UMAC_COUNT * 50, 420, 50);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
+  AddStretch(L, 8);
   L.Caption := Tr('Ziele zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro 1-4, ' +
     'oder eine Matrix-Zeile mit Quelle "Makro n". Menge, Faktor und Offset je Ziel; ' +
     'die Kurve gilt für alle Ziele des Makros. Die Makros sind in der DAW automatisierbar.');
@@ -1426,7 +1704,7 @@ const
     (gpFlt2On, gpFltRouting, gpFlt2Type, gpFlt2Cutoff, gpFlt2Reso, gpFlt2Contour, gpFlt2EnvAmt);
   FLT2_CAP: array[0..6] of string = ('Filter 2 an', 'Parallel (aus = Reihe)', 'Typ', 'Cutoff', 'Resonanz', 'Kontur', 'Hüllkurve');
 var
-  Area, PF, F2, PInfo: TPanel;
+  Area, PF, F2, PInfo, RightA, TopA, PResp: TPanel;
   I: Integer;
   L: TLabel;
 begin
@@ -1435,14 +1713,36 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   // Filter 1 | Filter 2 | Erklaerung
   PF := MakePanel(Area, alLeft, Tr('Filter 1'));
   PF.Width := 360;
-  F2 := MakePanel(Area, alLeft, Tr('Filter 2'));
+  // rechts: oben Filter 2 und Erklaerung, darunter der Frequenzgang ueber die ganze Breite
+  RightA := TPanel.Create(Self);
+  RightA.Parent := Area;
+  RightA.Align := alClient;
+  RightA.BevelOuter := bvNone;
+  RightA.ParentBackground := False;
+  RightA.Color := AREA_BG;
+  TopA := TPanel.Create(Self);
+  TopA.Parent := RightA;
+  TopA.Align := alTop;
+  TopA.Height := 24 + 7 * ROW_H + 16;
+  TopA.BevelOuter := bvNone;
+  TopA.ParentBackground := False;
+  TopA.Color := AREA_BG;
+  F2 := MakePanel(TopA, alLeft, Tr('Filter 2'));
   F2.Width := 360;
-  F2.Left := PF.Left + PF.Width + 1;
-  PInfo := MakePanel(Area, alClient, Tr('So wirken die Filter'));
+  PInfo := MakePanel(TopA, alClient, Tr('So wirken die Filter'));
+  PResp := MakePanel(RightA, alClient, Tr('Frequenzgang der Filter (rot = was die Filter wegschneiden)'));
+  FFltView := TFilterView.Create(Self, FEngine);
+  FFltView.Parent := PResp;
+  FFltView.AlignWithMargins := True;
+  FFltView.Margins.SetBounds(8, 26, 8, 8);
+  FFltView.Align := alClient;
+  FFltView.Hint := Tr('Türkis = Filter 1, orange = Filter 2, hell = Ergebnis (Reihe: nacheinander, parallel: gemischt). ' +
+    'Der Cutoff wandert mit der Filter-Hüllkurve. Unten das Spektrum vor (blass) und nach den Filtern, rot = weggeschnitten.');
+  FFltView.ShowHint := True;
 
   for I := 0 to High(FLT) do
     AddParam(PF, Ord(FLT[I]), 8, 24 + I * ROW_H, 100, 70, 130);
@@ -1469,7 +1769,7 @@ begin
 
   L := TLabel.Create(Self);
   L.Parent := PInfo;
-  L.SetBounds(8, 24, 290, 330);
+  L.SetBounds(8, 26, 290, 24 + 7 * ROW_H - 14);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -1502,7 +1802,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
 
   // Gesamtklang: Echo | Hall (Signalweg) | Erklaerung - gleiche Spaltenbreite wie auf den anderen Reitern
   PE := MakePanel(Area, alLeft, Tr('Echo (Ping-Pong)'));
@@ -1642,7 +1942,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
 
   // Spalten: Arpeggiator | Harmonie + Klangfarbe | Morph
   PA := MakePanel(Area, alLeft, Tr('Arpeggiator'));
@@ -2179,15 +2479,17 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   for K in [2, 3, 6, 7] do
-    BuildLfoPanel(Area, K, ((K mod 4) - 2) * 172, 356);
+    BuildLfoPanel(Area, K, ((K mod 4) - 2) * 184, 356);
+  P := MakePanel(Area, alNone, Tr('So arbeiten die LFOs'));
+  P.SetBounds(366, 184, 330, 180);
   // Umschalter LFO 1-4 / 5-8 (unter der Erklaerung in der dritten Spalte)
   for K := 0 to 1 do
   begin
     FLfoPageBtn[K] := TButton.Create(Self);
-    FLfoPageBtn[K].Parent := Area;
-    FLfoPageBtn[K].SetBounds(374 + K * 160, 380, 154, 26);
+    FLfoPageBtn[K].Parent := P;
+    FLfoPageBtn[K].SetBounds(8 + K * 160, 144, 154, 26);
     FLfoPageBtn[K].Tag := K;
     FLfoPageBtn[K].TabStop := False;
     FLfoPageBtn[K].OnClick := LfoPageClick;
@@ -2195,11 +2497,12 @@ begin
     FLfoPageBtn[K].ShowHint := True;
   end;
   L := TLabel.Create(Self);
-  L.Parent := Area;
-  // dritte Spalte: Trigger-Schwellen, darunter diese Erklaerung
+  L.Parent := P;
+  // dritte Spalte: Trigger-Schwellen (so hoch wie die obere LFO-Reihe), darunter die Erklaerung mit dem
+  // Umschalter (so hoch wie die untere Reihe) - beide Spalten enden auf einer Linie
   FTrigPanel.Parent := Area;
-  FTrigPanel.SetBounds(366, 0, 330, 204);
-  L.SetBounds(374, 212, 320, 164);
+  FTrigPanel.SetBounds(366, 0, 330, 180);
+  L.SetBounds(8, 26, 314, 116);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -2217,7 +2520,7 @@ var
   P: TPanel;
 begin
   P := MakePanel(AParent, alNone, Format(Tr('LFO %d'), [K + 1]));
-  P.SetBounds(0, Y, W, 168);
+  P.SetBounds(0, Y, W, 180);
   P.Visible := K < 4;
   FLfoPanels[K] := P;
   FLfoViews[K] := TLfoView.Create(Self, FEngine);
@@ -2309,7 +2612,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   P := MakePanel(Area, alLeft, Tr('Ereignis-Verzögerung (LFO-Neustart)'));
   P.Width := X_SYNC + 130;
   Head(X_MS, Tr('Ereignis'));
@@ -2392,7 +2695,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   P0 := MakePanel(Area, alLeft, Format(Tr('Oszillator %d (zusätzlich zu den Grains, je Note)'), [O + 1]));
   P0.Width := 480;
   P2 := MakePanel(Area, alRight, Format(Tr('Eigener Filter (nur Oszillator %d)'), [O + 1]));
@@ -2493,15 +2796,15 @@ begin
     AddParam(P1, Ord(Col1[I]), 8, ENV_Y + I * ROW_H, 70, 62);
   // Unison: mehrere verstimmte Stimmen je Note, ueber das Stereobild verteilt
   AddParam(P1, Ord(UNI[O, 0]), 8, ENV_Y + 4 * ROW_H + 6, 70, 0, 120, Tr('Unison'));
-  AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 78, 62, 0, Tr('Verstimmung'));
+  AddParam(P1, Ord(UNI[O, 1]), 8, ENV_Y + 5 * ROW_H + 6, 70, 62, 0, Tr('Schwebung'));   // = Verstimmung der Unison-Stimmen (Tooltip)
   AddParam(P1, Ord(UNI[O, 2]), 8, ENV_Y + 6 * ROW_H + 6, 70, 62, 0, Tr('Breite'));
   if O = 0 then
   begin
     // Sub-Oszillator und Rauschanteil (Nov. 2026): folgen Tonhoehe, Huellkurve und Filter von Osz 1
-    AddParam(P1, Ord(gpSubLevel), 8, ENV_Y + 7 * ROW_H + 12, 78, 62, 0, Tr('Sub'));
-    AddParam(P1, Ord(gpSubOct), 8, ENV_Y + 8 * ROW_H + 12, 78, 0, 0, Tr('2 Oktaven tiefer'));
-    AddParam(P1, Ord(gpSubWave), 230, ENV_Y + 8 * ROW_H + 12, 0, 0, 0, Tr('Rechteck statt Sinus'));
-    AddParam(P1, Ord(gpNoiseLevel), 8, ENV_Y + 9 * ROW_H + 12, 78, 62, 0, Tr('Rauschen'));
+    AddParam(P1, Ord(gpSubLevel), 8, ENV_Y + 7 * ROW_H + 12, 70, 62, 0, Tr('Sub'));
+    AddParam(P1, Ord(gpSubOct), 8, ENV_Y + 8 * ROW_H + 12, 0, 0, 0, Tr('2 Oktaven tiefer'));
+    AddParam(P1, Ord(gpSubWave), 170, ENV_Y + 8 * ROW_H + 12, 0, 0, 0, Tr('Rechteck statt Sinus'));
+    AddParam(P1, Ord(gpNoiseLevel), 8, ENV_Y + 9 * ROW_H + 12, 70, 62, 0, Tr('Rauschen'));
   end
   else
   begin
@@ -2543,7 +2846,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   PZ := MakePanel(Area, alLeft, Tr('Zonen: weitere Samples je Tastenbereich'));
   PZ.Width := 640;
   PR := MakePanel(Area, alClient, Tr('Sample bearbeiten und Aufnahme vom Eingang'));
@@ -2745,6 +3048,56 @@ begin
   T := TTimer.Create(Self);
   T.Interval := 500;
   T.OnTimer := AudioEditorTimer;
+end;
+
+var
+  GTestSetupDone: Boolean;   // Testhilfe GRANULAR_PRESET/GRANULAR_PARAMS schon ausgefuehrt
+
+{ Testhilfe: Preset erst laden, wenn Host und Autoplay ihren Zustand gesetzt haben (sonst ueberschreiben sie es) }
+procedure TGranularEditor.LoadPresetLater(const FileName: string; DelayMs: Integer);
+var
+  T: TTimer;
+begin
+  FPendingPreset := FileName;
+  T := TTimer.Create(Self);
+  T.Interval := DelayMs;
+  T.OnTimer := PresetLaterTimer;
+end;
+
+procedure TGranularEditor.PresetLaterTimer(Sender: TObject);
+var
+  Items: TArray<string>;
+  Item, Name: string;
+  P, I: Integer;
+  V: Double;
+begin
+  (Sender as TTimer).Enabled := False;
+  if GTestSetupDone then
+    Exit;
+  GTestSetupDone := True;
+  if FileExists(FPendingPreset) then
+    LoadPreset(FPendingPreset);
+  // Testhilfe GRANULAR_PARAMS: 'Name=Wert;Name=Wert' (Klartext wie in der Reglertabelle, Stufen als Index),
+  // z. B. 'EQ an=1;Cutoff=650;Filtertyp=0' - fuer Bildschirmfotos mit aussagekraeftigen Anzeigen
+  Items := GetEnvironmentVariable('GRANULAR_PARAMS').Split([';']);
+  for Item in Items do
+  begin
+    P := Pos('=', Item);
+    if P < 2 then
+      Continue;
+    Name := Trim(Copy(Item, 1, P - 1));
+    V := StrToFloatDef(Trim(Copy(Item, P + 1, MaxInt)), 0, TFormatSettings.Invariant);
+    for I := 0 to PARAM_COUNT - 1 do
+      if SameText(GetParamInfo(I).Name, Name) then
+      begin
+        if GetParamInfo(I).Curve = pcStepped then
+          FEngine.SetParam(I, StepToParam(I, Round(V)))
+        else
+          FEngine.SetParam(I, PlainToParam(I, V));
+        Break;
+      end;
+  end;
+  UpdateFromEngine;
 end;
 
 procedure TGranularEditor.AudioEditorTimer(Sender: TObject);
@@ -3095,7 +3448,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   // Reihenfolge der vier Effekte (Nov. 2026): unten, ueber die ganze Breite
   P4 := MakePanel(Area, alBottom, Tr('Reihenfolge der Effekte im Signalweg (der erste bearbeitet zuerst)'));
   P4.Height := 24 + ROW_H + 8;
@@ -3156,12 +3509,16 @@ type
     Cap, SwCap: string;
   end;
 const
-  CH_W = 80;           // Kanalbreite (Quellen, Echo/Hall, Summe)
-  FX_W = 62;           // schmalere Kanaele der Summen-Effekte
-  GAP = 14;            // Abstand zwischen den Gruppen
-  FADER_H = 200;
+  CH_W = 62;           // Kanalbreite, fuer alle Kanaele gleich (ruhiges Bild)
+  GAP = 32;            // Abstand zwischen den Gruppen
+  FADER_H = 180;
+  STRIP_GAP = 3;       // Fuge zwischen zwei Kanalzuegen
+  DECK_PAD = 10;       // Rand des Gehaeuses
+  STRIP_H = FADER_H + 78;
 var
   Area, P: TPanel;
+  Deck: TMixDeck;
+  Strip: TMixStrip;
   Chs: array[0..13] of TCh;
   MeterOf: array[0..13] of Integer;
   W: Integer;
@@ -3188,7 +3545,7 @@ begin
   SetCh(7, gpCrushMix, Tr('Crusher'), True, gpCrushOn, 'an');
   SetCh(8, gpChoMix, Tr('Chorus'), True, gpChoOn, 'an');
   SetCh(9, gpPhaMix, Tr('Phaser'), True, gpPhaOn, 'an');
-  SetCh(10, gpMorph, Tr('Morph A/B'), False, gpMorph, '');
+  SetCh(10, gpMorph, Tr('Morph'), False, gpMorph, '');
   SetCh(11, gpPan, Tr('Panorama'), False, gpPan, '');
   SetCh(12, gpVolume, Tr('Summe'), False, gpVolume, '');
   SetCh(13, gpMaster, Tr('Master'), False, gpMaster, '');
@@ -3204,29 +3561,39 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
-  // rechts: Frequenzband wie im Reiter Schnell
-  P := MakePanel(Area, alRight, Tr('Frequenzband'));
-  P.Width := 150;
-  FMixSpectrum := TSpectrumView.Create(Self, FEngine);
-  FMixSpectrum.Parent := P;
-  // Abstand zum Rand wie in den anderen Reitern: unter dem Titel, 8 px ringsum
-  FMixSpectrum.AlignWithMargins := True;
-  FMixSpectrum.Margins.SetBounds(8, 24, 8, 8);
-  FMixSpectrum.Align := alClient;
+  Area.Color := AREA_BG;
   P := MakePanel(Area, alClient, Tr('Mischpult  (dieselben Regler wie in den Reitern - ändern sich hier und dort gemeinsam)'));
-  X := 12;
+  // Konsole: Gehaeuse ueber die volle Breite, darin die Kanalzuege und rechts das Spektrum als Display
+  Deck := TMixDeck.Create(Self);
+  Deck.Parent := P;
+  Deck.BevelOuter := bvNone;
+  Deck.ParentBackground := False;
+  Deck.Color := DECK_BG;
+  Deck.SetBounds(8, 24, 900, STRIP_H + 2 * DECK_PAD);
+  Deck.OnResize := PanelResize;
+  AddStretch(Deck, 8);
+  X := DECK_PAD;
   for I := 0 to High(Chs) do
   begin
-    if I in [4, 6, 10, 12] then
-      Inc(X, GAP);                         // Gruppen: Klangquellen | Echo/Hall | FX | Morph/Panorama | Summe
-    if I in [6..9] then W := FX_W else W := CH_W;
-    AddFader(P, Ord(Chs[I].Fader), X, 26, FADER_H, Chs[I].Cap, W);
+    if I in [4, 10] then
+      Inc(X, GAP - STRIP_GAP);             // Gruppen: Klangquellen | Effekte (Echo, Hall, Gate ...) | Ausgang
+    W := CH_W - STRIP_GAP;
+    Strip := TMixStrip.Create(Self);
+    Strip.Parent := Deck;
+    Strip.BevelOuter := bvNone;
+    Strip.ParentBackground := False;
+    Strip.Color := STRIP_BG;
+    Strip.CapH := 18;
+    if I < 4 then Strip.Cap := CAP_SRC else if I < 10 then Strip.Cap := CAP_FX else Strip.Cap := CAP_OUT;
+    Strip.SetBounds(X, DECK_PAD, W, STRIP_H);
+    K := AddFader(Strip, Ord(Chs[I].Fader), 2, 4, FADER_H, Chs[I].Cap, W);
+    if Strip.Cap = CAP_FX then
+      FBindings[K].NameLabel.Font.Color := $00262626;   // dunkle Schrift auf der hellen Bernstein-Kappe
     if MeterOf[I] >= 0 then
     begin
       FMixMeters[MeterOf[I]] := TMixMeter.Create(Self);
-      FMixMeters[MeterOf[I]].Parent := P;
-      FMixMeters[MeterOf[I]].SetBounds(X + (W - 4) div 2 + 18, 26 + 24, 7, FADER_H - 8);
+      FMixMeters[MeterOf[I]].Parent := Strip;
+      FMixMeters[MeterOf[I]].SetBounds(2 + (W - 4) div 2 + 18, 4 + 24, 7, FADER_H - 8);
       if I in [6..9] then
         FMixMeters[MeterOf[I]].Hint := Tr('Wie stark der Effekt den Klang verändert (grün, ab -6 dB gelb, ab 0 dB rot)')
       else
@@ -3236,18 +3603,25 @@ begin
     if Chs[I].HasSwitch then
     begin
       // unter der Fadermitte; Beschriftung zeigt den Zustand
-      K := AddParam(P, Ord(Chs[I].Switch_), X + (W - 4) div 2 - 22, 26 + FADER_H + 46, 0, 0, 0, 'an');
+      K := AddParam(Strip, Ord(Chs[I].Switch_), 2 + (W - 4) div 2 - 22, 4 + FADER_H + 46, 0, 0, 0, 'an');
       FBindings[K].OnOffCaption := True;
       FBindings[K].NameLabel.Width := 40;
       FBindings[K].Check.Hint := Chs[I].Cap + Tr(' ein/aus');
       FBindings[K].Check.ShowHint := True;
       SetControlValue(K, FEngine.GetParam(Ord(Chs[I].Switch_)));
     end;
-    Inc(X, W);
+    Inc(X, CH_W);
   end;
+  // rechts neben den Kanaelen: Frequenzband als eingelassenes Display, so hoch wie die Kanalzuege;
+  // die Texte darunter laufen ueber die volle Breite
+  FMixSpectrum := TSpectrumView.Create(Self, FEngine);
+  FMixSpectrum.Parent := Deck;
+  FMixSpectrum.SetBounds(X + GAP - STRIP_GAP + 6, DECK_PAD + 6, 300, STRIP_H - 12);
+  AddStretch(FMixSpectrum, DECK_PAD + 8);
+  Deck.Display := FMixSpectrum;
   L := TLabel.Create(Self);
   L.Parent := P;
-  L.SetBounds(12, 26 + FADER_H + 78, 900, 40);
+  L.SetBounds(12, 24 + STRIP_H + 2 * DECK_PAD + 8, 900, 40);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
@@ -3260,7 +3634,7 @@ begin
 
   // Eingaenge der DAW: welches Eingangspaar ist Sidechain 1 / 2, dazu die Live-Pegel aller vier
   // Eingaenge (zeigt sofort, ob und wo die DAW Audio schickt)
-  Y := 26 + FADER_H + 78 + 46;
+  Y := 24 + STRIP_H + 2 * DECK_PAD + 8 + 46;
   L := TLabel.Create(Self);
   L.Parent := P;
   L.SetBounds(12, Y + 5, 110, 16);
@@ -3309,7 +3683,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   PL := MakePanel(Area, alLeft, Tr('Aktive Rechenblöcke'));
   PL.Width := 600;
   FLoadList := TLoadList.Create(Self, FEngine);
@@ -3400,7 +3774,7 @@ begin
   Area.Align := alClient;
   Area.BevelOuter := bvNone;
   Area.ParentBackground := False;
-  Area.Color := BG_MAIN;
+  Area.Color := AREA_BG;
   // Summe = Ende der Kette (alle Noten zusammen): Saettigung, EQ, Stereo, Limiter, Master
   PS := MakePanel(Area, alRight, Tr('Sättigung, Stereo, Ausgang'));   // rechts; die EQ-Kurve sitzt links
   PS.Width := 330;
@@ -6010,6 +6384,9 @@ begin
   if FLearnBinding >= 0 then
     PollMidiLearn;
   FEngine.MetersOn := FPages.ActivePage = FTabMix;
+  FEngine.FilterScopeOn := (FFltView <> nil) and (FPages.ActivePage = FTabFlt);
+  if FEngine.FilterScopeOn then
+    FFltView.Tick;
   UpdateWtNames;
   if (FCompCurve <> nil) and (FPages.ActivePage = FTabEq) then
   begin

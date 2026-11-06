@@ -207,6 +207,10 @@ type
     FScopePos: Integer;
     FScopePre: array[0..SCOPE_SIZE - 1] of Single;   // Summe vor dem Equalizer (Filteransicht)
     FScopePrePos: Integer;
+    // Abgriff vor und nach den Filtern (Reiter Filter, nur solange die Ansicht sichtbar ist)
+    FScopeFltIn, FScopeFltOut: array[0..SCOPE_SIZE - 1] of Single;
+    FScopeFltPos: Integer;
+    FFltScopeOn: Boolean;
 
     // Effekte
     FSvfOsc: TSvfArgs;
@@ -683,6 +687,9 @@ type
     procedure GetScope(var OutBuf, InBuf: array of Single; Count: Integer);
     { Summe vor dem Equalizer (fuer die Filteransicht) }
     procedure GetScopePreEq(var Buf: array of Single; Count: Integer);
+    { Summe vor (Which = 0) bzw. nach (1) den Filtern je Note; nur gefuellt, solange FilterScopeOn }
+    procedure GetScopeFilter(Which: Integer; var Buf: array of Single; Count: Integer);
+    property FilterScopeOn: Boolean read FFltScopeOn write FFltScopeOn;
 
     property Sample: TSampleData read GetSampleOrig;   // Original (auch waehrend Resampling)
     property SampleRate: Double read FSampleRate;
@@ -3932,6 +3939,19 @@ begin
   end;
 end;
 
+procedure TGranularEngine.GetScopeFilter(Which: Integer; var Buf: array of Single; Count: Integer);
+var
+  I, P: Integer;
+begin
+  Count := Min(Count, Min(Length(Buf), SCOPE_SIZE));
+  P := (FScopeFltPos - Count) and (SCOPE_SIZE - 1);
+  for I := 0 to Count - 1 do
+  begin
+    if Which = 0 then Buf[I] := FScopeFltIn[P] else Buf[I] := FScopeFltOut[P];
+    P := (P + 1) and (SCOPE_SIZE - 1);
+  end;
+end;
+
 procedure TGranularEngine.GetScopePreEq(var Buf: array of Single; Count: Integer);
 var
   I, P: Integer;
@@ -4904,7 +4924,7 @@ end;
   danach in die Summe. Echo, Hall, EQ und Limiter wirken danach global auf die Summe. }
 procedure TGranularEngine.ProcessVoiceFilters(N: Integer);
 var
-  V, I, T1, T2: Integer;
+  V, I, T1, T2, P: Integer;
   On1, On2, Par: Boolean;
   Sus, AttK, DecK, RelK: Double;
   C1, R1, E1, C2, R2, E2, Co1, Co2: Double;
@@ -4920,6 +4940,15 @@ begin
   GAttK := N / Max(1.0, Eff(gpFltAttack) * FSampleRate / 1000);
   GDecK := Power(0.001, N / Max(1.0, Eff(gpFltDecay) * FSampleRate / 1000));
   GRelK := Power(0.0001, N / Max(1.0, Eff(gpFltRelease) * FSampleRate / 1000));
+  if FFltScopeOn then
+  begin
+    P := FScopeFltPos;
+    for I := 0 to N - 1 do
+    begin
+      FScopeFltIn[P] := 0;
+      P := (P + 1) and (SCOPE_SIZE - 1);
+    end;
+  end;
   for V := 0 to MAX_VOICES - 1 do
   begin
     // Filter-Huellkurve dieser Note (laeuft auch ohne Signal weiter, damit sie stimmt)
@@ -4971,6 +5000,15 @@ begin
       C2 := Eff(gpFlt2Cutoff); R2 := Eff(gpFlt2Reso); E2 := Eff(gpFlt2EnvAmt);
     end;
     Buf := @FVBuf[V, 0];
+    if FFltScopeOn then
+    begin
+      P := FScopeFltPos;
+      for I := 0 to N - 1 do
+      begin
+        FScopeFltIn[P] := FScopeFltIn[P] + (FVBuf[V, I * 2] + FVBuf[V, I * 2 + 1]) * 0.5;
+        P := (P + 1) and (SCOPE_SIZE - 1);
+      end;
+    end;
     if On1 and On2 and Par then
     begin
       Move(FVBuf[V], FVTmp, N * 2 * SizeOf(Single));
@@ -4986,6 +5024,16 @@ begin
       RunFilter(FVSvf2[V], Buf, N, T2, C2, R2, Co2, E2, FVFltEnv[V]);
     for I := 0 to N * 2 - 1 do
       FMix[I] := FMix[I] + FVBuf[V, I];
+  end;
+  if FFltScopeOn then
+  begin
+    P := FScopeFltPos;
+    for I := 0 to N - 1 do
+    begin
+      FScopeFltOut[P] := (FMix[I * 2] + FMix[I * 2 + 1]) * 0.5;
+      P := (P + 1) and (SCOPE_SIZE - 1);
+    end;
+    FScopeFltPos := P;
   end;
 end;
 

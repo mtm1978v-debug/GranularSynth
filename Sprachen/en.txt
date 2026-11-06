@@ -1906,3 +1906,10 @@ Datei konnte nicht gespeichert werden:	Could not save the file:
 Das bearbeitete Audio als WAV oder MP3 (320 kbit/s) speichern - das Format wählst du im Dialog	Save the edited audio as WAV or MP3 (320 kbit/s) - choose the format in the dialog
 Datei konnte nicht gespeichert werden	Could not save the file
 Punkte ziehen: Spitze = Attack, Knick = Decay (waagrecht) und Sustain (senkrecht), rechter Punkt = Release. Doppelklick = Standardwert.	Drag the points: peak = attack, knee = decay (horizontal) and sustain (vertical), right point = release. Double-click = default value.
+So arbeiten die LFOs	How the LFOs work
+Schwebung	Detune
+Beide Filter sind aus	Both filters are off
+Ergebnis	Result
+Frequenzgang der Filter (rot = was die Filter wegschneiden)	Filter response (red = what the filters cut away)
+Türkis = Filter 1, orange = Filter 2, hell = Ergebnis (Reihe: nacheinander, parallel: gemischt). Der Cutoff wandert mit der Filter-Hüllkurve. Unten das Spektrum vor (blass) und nach den Filtern, rot = weggeschnitten.	Turquoise = filter 1, orange = filter 2, bright = result (series: one after the other, parallel: mixed). The cutoff follows the filter envelope. Below: the spectrum before (faint) and after the filters, red = cut away.
+weg	cut

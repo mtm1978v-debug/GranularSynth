@@ -6,6 +6,21 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.20 – 06.11.2026
+
+### Neu
+- **Frequenzgang der Filter** (Reiter *Filter*): Kurven von Filter 1 (türkis), Filter 2 (orange) und dem Ergebnis (hell) – in Reihe nacheinander, parallel gemischt, mit denselben Formeln wie im Klang (Tiefpass, Bandpass, Hochpass, Ladder, Kamm, Formant). Der Cutoff wandert mit der Filter-Hüllkurve. Darunter das Spektrum vor den Filtern (blass) und danach; was die Filter wegschneiden, ist rot markiert. Gemessen wird nur, solange der Reiter offen ist.
+
+### Geändert
+- **Mischpult aufgeräumt:** alle Kanäle gleich breit und eng beieinander, Abstände nur zwischen drei Gruppen (Quellen | Effekte mit Echo und Hall | Morph, Panorama, Summe, Master). Das Frequenzband steht rechts daneben, ist breiter und so hoch wie die Kanäle; die Erklärung darunter läuft über die volle Breite.
+- **Mischpult im Konsolen-Look:** dunkles Gehäuse mit Fasen und Schrauben, jeder Kanal als erhabener Kanalzug mit farbiger Kappe (Quellen blau, Effekte bernstein, Ausgang rot – aus der Palette des Plugins), das Frequenzband als eingelassenes Display. Nur Optik, kostet keine Rechenzeit.
+- **Funktionsbereiche erhaben:** Jeder Bereich (LFO, Filter, Hüllkurve, Kompressor …) steht als eigenes Feld mit Fase und leicht hellerer Kopfleiste auf dunklerem Grund – zusammengehörige Regler sind so auf einen Blick zu erkennen. Im Reiter *LFO 1-8 / Trigger* enden alle Spalten auf einer Linie; die Erklärung mit dem Umschalter LFO 1-4 / 5-8 hat ein eigenes Feld. Im Reiter *Modulation* stehen die freien Makros als eigenes Feld neben der Matrix, die Seitenknöpfe der Matrix sitzen in deren Kopfleiste. Frequenzgänge und Spektren haben einen dezenten Glas-Verlauf, das Filter-Ergebnis leuchtet leicht.
+- **Reiterwechsel ohne sichtbaren Aufbau:** Beim Wechsel wird das Zeichnen kurz angehalten und der neue Reiter in einem Rutsch dargestellt – man sieht nicht mehr, wie die Steuerelemente nacheinander erscheinen. Die Werte des neuen Reiters stehen sofort richtig da, und die Hintergründe von Mischpult und Bereichen werden nur noch aus einem fertigen Bild kopiert statt jedes Mal neu gezeichnet.
+- **Oszillatoren:** *Verstimmung* (Unison) heißt jetzt *Schwebung*; die Regler von Schwebung, Sub und Rauschen stehen bündig mit den anderen.
+- **Granuli:** Wer nicht aufhört zu schütteln, bekommt nach den ersten anderthalb Sekunden ein Übergeben, das mit der Wildheit des Schüttelns heftiger wird – gemächlich bleibt es mäßig, wild wird es ein Schwall.
+
+---
+
 ## Version 2.19 – 06.11.2026
 
 ### Neu
