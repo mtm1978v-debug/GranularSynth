@@ -2632,6 +2632,7 @@ var
   MM: IMidiMapping;
   Setup: TProcessSetup;
   Data: TProcessData;
+  Ev: TVst3Event;
   OutBus: TAudioBusBuffers;
   InBus: array[0..1] of TAudioBusBuffers;
   OutCh: array[0..1] of PSingle;
@@ -2768,6 +2769,12 @@ begin
        SizeOf(TProcessSetup), SizeOf(TClassInfo2), SizeOf(TFactoryInfo), SizeOf(TContextMenuItem)]);
   if (PByte(@Info.defaultNormalizedValue) - PByte(@Info) <> 776) or (PByte(@Data.inputs) - PByte(@Data) <> {$IFDEF CPUX64}24{$ELSE}20{$ENDIF}) then
     Bad := Bad + ' Feldversatz';
+  // Noten-Ereignis: Steinbergs Union (double + Zeiger, Packung 8) beginnt bei Byte 24 (sonst
+  // liest das Plugin Tonhoehe/Anschlag verschoben: MIDI kommt an, aber kein Ton - Fehlerbericht KVR 11/2026)
+  if (PByte(@Ev.onPitch) - PByte(@Ev) <> 26) or
+     (PByte(@Ev.onVelocity) - PByte(@Ev) <> 32) or
+     (PByte(@Ev.offPitch) - PByte(@Ev) <> 26) then
+    Bad := Bad + Format(' Event-Versatz(Pitch %d Vel %d)', [PByte(@Ev.onPitch) - PByte(@Ev), PByte(@Ev.onVelocity) - PByte(@Ev)]);
   Result := Format('VST3 (eigener Mini-Host): Klassen %sTon %.3f, Zustand %.3f/%.3f, Ansicht %dx%d, Chunk %d Byte -> %s',
     [Names, Peak, V1, V2, Rect.right, Rect.bottom, Length(St.FData), IfThen(Bad = '', 'OK', 'FEHLER' + Bad)]);
 end;
@@ -3702,6 +3709,58 @@ begin
   Result := Jmp;
 end;
 
+{ MIDI aus der DAW: Noten mit Zeitversatz im Block (DeltaFrames), nach langer Stille, verschiedene
+  Blockgroessen - jede muss so klingen wie ohne Versatz (Bildschirm-Klaviatur). }
+function CheckMidiDelta: string;
+const
+  BLOCKS: array[0..3] of Integer = (64, 256, 512, 1024);
+var
+  B, Delta: Integer;
+  Pk0, Pk: Double;
+  Ok: Boolean;
+  Info: string;
+
+  function Run(Blk, Dlt: Integer): Double;
+  var
+    E: TGranularEngine;
+    L, R: array of Single;
+    K, I: Integer;
+  begin
+    Result := 0;
+    SetLength(L, Blk); SetLength(R, Blk);
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(44100);
+      E.LoadSample(CreateDemoSample(44100));
+      for K := 0 to 400 do                         // lange Stille vorweg (Leerlauf-Ueberspringen aktiv)
+        E.Process(nil, nil, @L[0], @R[0], Blk);
+      E.NoteOn(60, 100 / 127, Dlt);
+      for K := 0 to (44100 div Blk) do             // ~1 s
+      begin
+        E.Process(nil, nil, @L[0], @R[0], Blk);
+        for I := 0 to Blk - 1 do
+          Result := Max(Result, Abs(L[I]));
+      end;
+    finally
+      E.Free;
+    end;
+  end;
+
+begin
+  Ok := True;
+  Info := '';
+  for B := 0 to High(BLOCKS) do
+  begin
+    Pk0 := Run(BLOCKS[B], 0);
+    Delta := BLOCKS[B] div 2;
+    Pk := Run(BLOCKS[B], Delta);
+    Info := Info + Format(' %d:%.3f/%.3f', [BLOCKS[B], Pk0, Pk]);
+    if (Pk0 < 0.01) or (Pk < Pk0 * 0.5) then
+      Ok := False;
+  end;
+  Result := 'MIDI mit Versatz (Block: ohne/mit Versatz):' + Info + ' -> ' + IfThen(Ok, 'OK', 'FEHLER');
+end;
+
 { Speichermanager: welcher ist aktiv (FastMM5 optional ueber FASTMM_DIR) und wie schnell sind viele kleine
   Anforderungen wie in der Oberflaeche (Strings, Listen, Objekte). Nur GUI/Host - der Audio-Thread fordert nichts an. }
 function CheckMemManager: string;
@@ -4586,6 +4645,7 @@ begin
     Lap('CheckWtFile', CheckWtFile) + sLineBreak +
     Lap('CheckSaveAudio', CheckSaveAudio) + sLineBreak +
     Lap('CheckMemManager', CheckMemManager) + sLineBreak +
+    Lap('CheckMidiDelta', CheckMidiDelta) + sLineBreak +
     Lap('CheckSubFx', CheckSubFx) + sLineBreak +
     Lap('CheckComb', CheckComb) + sLineBreak +
     Lap('CheckPhaser', CheckPhaser) + sLineBreak +

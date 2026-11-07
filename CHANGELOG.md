@@ -6,6 +6,13 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.21 – 07.11.2026
+
+### Behoben
+- **VST3: kein Ton bei MIDI aus der DAW** (Reaper, FL Studio): Noten kamen an (MIDI-Anzeige blinkte), wurden aber verschoben gelesen – Anschlag 0 = Note aus. Die Bildschirm-Klaviatur war nicht betroffen. Danke an lobanov (KVR) für den Hinweis.
+
+---
+
 ## Version 2.20 – 06.11.2026
 
 ### Neu

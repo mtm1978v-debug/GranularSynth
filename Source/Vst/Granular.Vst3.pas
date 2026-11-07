@@ -183,6 +183,9 @@ type
     ppqPosition: Double;
     flags: Word;
     eventType: Word;
+    pad: Int32;      // C++: die Union enthaelt ein double (NoteExpressionValue) und einen Zeiger, die Header
+                     // packen auf 8 -> sie beginnt bei Byte 24, nicht 20 (Win32 und x64). Ohne diese Luecke lasen
+                     // wir Tonhoehe/Anschlag verschoben: MIDI kam an, aber kein Ton (Anschlag 0 = Note aus).
     case Integer of
       0: (onChannel, onPitch: Int16; onTuning, onVelocity: Single; onLength, onNoteId: Int32);
       1: (offChannel, offPitch: Int16; offVelocity: Single; offNoteId: Int32; offTuning: Single);
