@@ -4574,6 +4574,93 @@ begin
   Result := Res;
 end;
 
+{ Sequencer-Pausen: Stufe als Pause markiert -> trockener Klang schweigt (Rampe), sonst unveraendert;
+  Speichern/Laden der Pausen-Bits }
+function CheckFreeRest: string;
+var
+  F: TFreeLfo;
+  E, E2: TGranularEngine;
+  D: TBytes;
+  Path: string;
+  PkOn, PkRest: Double;
+  OkFn, OkIo: Boolean;
+
+  function Run(RestBits: UInt64): Double;
+  var
+    En: TGranularEngine;
+    L, R: array of Single;
+    K, I: Integer;
+  begin
+    Result := 0;
+    SetLength(L, 256); SetLength(R, 256);
+    En := TGranularEngine.Create;
+    try
+      En.SetSampleRate(44100);
+      En.LoadSample(CreateDemoSample(44100));
+      En.SetParamById(LFO_SHAPE_IDS[0], StepToParam(Ord(LFO_SHAPE_IDS[0]), LFO_SHAPE_FREE));
+      En.FreeLfo[LFO_FREE_IDX[0]].Rest := RestBits;
+      En.NoteOn(60, 100 / 127, 0);
+      for K := 0 to 40 do
+        En.Process(nil, nil, @L[0], @R[0], 256);   // Rampe und Einschwingen
+      for K := 0 to 40 do
+      begin
+        En.Process(nil, nil, @L[0], @R[0], 256);
+        for I := 0 to 255 do
+          Result := Max(Result, Abs(L[I]));
+      end;
+    finally
+      En.Free;
+    end;
+  end;
+
+begin
+  FreeLfoDefault(F);
+  F.Mode := 1;
+  F.Steps := 4;
+  F.Rest := 2;   // Stufe 1 = Pause
+  OkFn := not FreeLfoRestAt(F, 0.1) and FreeLfoRestAt(F, 0.3) and not FreeLfoRestAt(F, 0.6);
+  PkOn := Run(0);
+  PkRest := Run(High(UInt64));   // alle Stufen Pause -> still
+  E := TGranularEngine.Create;
+  E2 := TGranularEngine.Create;
+  try
+    E.FreeLfo[3].Rest := $A5;
+    D := SaveChunk(E, '');
+    LoadChunk(E2, D, Path);
+    OkIo := E2.FreeLfo[3].Rest = $A5;
+  finally
+    E.Free;
+    E2.Free;
+  end;
+  Result := Format('Sequencer-Pausen: Stufe %s, Pegel ohne/mit Pause %.3f/%.5f, Speichern %s -> %s',
+    [IfThen(OkFn, 'OK', 'FEHLER'), PkOn, PkRest, IfThen(OkIo, 'OK', 'FEHLER'),
+     IfThen(OkFn and OkIo and (PkOn > 0.01) and (PkRest < PkOn * 0.01), 'OK', 'FEHLER')]);
+end;
+
+{ Reine Klang-/Engine-Checks ohne GUI und ohne globalen Zustand: parallel auf allen Kernen,
+  Ergebnis in fester Reihenfolge (spart Zeit beim Deploy). Nur Checks mit eigener Engine hier aufnehmen! }
+function RunParallelChecks: string;
+const
+  NAMES: array[0..2] of string = ('CheckFreeRest', 'CheckFreeSmooth', 'CheckMidiDelta');
+var
+  Res: array[0..2] of string;
+begin
+  TGranularEngine.Create.Free;   // globale Tabellen vorab (sonst Wettlauf)
+  TParallel.For(0, High(NAMES),
+    procedure(Idx: Integer)
+    begin
+      {$IFDEF CPUX86}Set8087CW(Default8087CW);{$ENDIF}
+      SetMXCSR(DefaultMXCSR);   // Worker-Threads: Delphi-Standard wie im Hauptthread
+      case Idx of
+        0: Res[Idx] := CheckFreeRest;
+        1: Res[Idx] := CheckFreeSmooth;
+        2: Res[Idx] := CheckMidiDelta;
+      end;
+    end);
+  Result := Lap('Parallel: ' + string.Join(', ', NAMES), Res[0] + sLineBreak + Res[1] + sLineBreak + Res[2]);
+end;
+
+
 procedure SaveLaps;
 begin
   if GLaps = nil then
@@ -4634,6 +4721,7 @@ begin
     'Aufschluesselung (schneller Pfad): HQ+Limiter %.1f ms | Standard+Limiter %.1f ms | HQ ohne Limiter %.1f ms',
     [S.Ms, Std.Ms, NoLim.Ms]);
   Result := Result + sLineBreak +
+    RunParallelChecks + sLineBreak +
     Lap('CheckGfxKernel', CheckGfxKernel) + sLineBreak +
     Lap('CheckSpectrumKernels', CheckSpectrumKernels) + sLineBreak +
     Lap('CheckReverb', CheckReverb) + sLineBreak +
@@ -4645,7 +4733,6 @@ begin
     Lap('CheckWtFile', CheckWtFile) + sLineBreak +
     Lap('CheckSaveAudio', CheckSaveAudio) + sLineBreak +
     Lap('CheckMemManager', CheckMemManager) + sLineBreak +
-    Lap('CheckMidiDelta', CheckMidiDelta) + sLineBreak +
     Lap('CheckSubFx', CheckSubFx) + sLineBreak +
     Lap('CheckComb', CheckComb) + sLineBreak +
     Lap('CheckPhaser', CheckPhaser) + sLineBreak +
@@ -4659,7 +4746,6 @@ begin
     Lap('CheckMorphLayers', CheckMorphLayers) + sLineBreak +
     Lap('CheckNoteLfoIsolation', CheckNoteLfoIsolation) + sLineBreak +
     Lap('CheckFreeLfo', CheckFreeLfo) + sLineBreak +
-    Lap('CheckFreeSmooth', CheckFreeSmooth) + sLineBreak +
     Lap('CheckOsc123', CheckOsc123) + sLineBreak +
     Lap('CheckGrainLevel', CheckGrainLevel) + sLineBreak +
     Lap('CheckVstMap', CheckVstMap) + sLineBreak +

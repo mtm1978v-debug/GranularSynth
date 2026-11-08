@@ -201,8 +201,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 21;
-  APP_VERSION = '2.21';
+  APP_VERSION_MINOR = 22;
+  APP_VERSION = '2.22';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -897,6 +897,7 @@ type
     Draw: array[0..FREE_DRAW_N - 1] of Single;
     Smooth: Single;   // Nov. 2026: Glaettung der Stufen 0..1 (0 = harte Stufen, 1 = runde Kurve)
     Glide: UInt64;    // Nov. 2026: Bit I = Stufe I gleitet vom vorigen Wert herueber (wie Slide beim Sequencer)
+    Rest: UInt64;     // Nov. 2026: Bit I = Stufe I ist eine Pause (Klang schweigt in dieser Stufe)
   end;
   PFreeLfo = ^TFreeLfo;
 
@@ -914,6 +915,7 @@ type
 procedure FreeLfoDefault(var F: TFreeLfo);
 procedure OscDrawDefault(var D: TOscDraw);
 function FreeLfoValue(const F: TFreeLfo; Phase: Double): Single;
+function FreeLfoRestAt(const F: TFreeLfo; Phase: Double): Boolean;
 function FreeQuantize(V: Single): Single;   // auf Halbtonraster
 
 implementation
@@ -1292,6 +1294,7 @@ begin
   F.Steps := 8;
   F.Smooth := 0;
   F.Glide := 0;
+  F.Rest := 0;
   for I := 0 to FREE_MAX_STEPS - 1 do
     F.Step[I] := MELODY[I mod 8] / FREE_SEMIS;
   for I := 0 to FREE_DRAW_N - 1 do
@@ -1311,6 +1314,20 @@ begin
   for I := 0 to OSC_DRAW_N - 1 do
     D.Pt[I] := Sin(Pi * I / OSC_DRAW_N) * (1 - 2 * I / OSC_DRAW_N);
   D.Smooth := 0;
+end;
+
+{ Pause je Stufe: steht die Phase gerade in einer als Pause markierten Stufe? (nicht im Zeichen-Modus) }
+function FreeLfoRestAt(const F: TFreeLfo; Phase: Double): Boolean;
+var
+  N, I: Integer;
+begin
+  Result := False;
+  if (F.Rest = 0) or (F.Mode = 2) then
+    Exit;
+  N := EnsureRange(F.Steps, 1, FREE_MAX_STEPS);
+  Phase := Phase - Floor(Phase);
+  I := Min(Trunc(Phase * N), N - 1);
+  Result := F.Rest and (UInt64(1) shl I) <> 0;
 end;
 
 function FreeLfoValue(const F: TFreeLfo; Phase: Double): Single;

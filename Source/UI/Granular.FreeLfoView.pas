@@ -47,6 +47,7 @@ type
     FWasFree: Boolean;         // Form war beim letzten Aufbau 'Frei' (Hinweistext)
     FRoot: Integer;            // Bezugston der Klaviatur: Stufe 0 = diese Note (0 = C)
     FLaneDrag: Boolean;        // Ziehen in der Gleit-Leiste
+    FLaneRest: Boolean;        // Leiste: Rechtsklick bearbeitet Pausen statt Gleiten
     FLaneSet: Boolean;         // ... setzt diesen Zustand
     FOnChange: TNotifyEvent;
     function Data: PFreeLfo;
@@ -267,6 +268,20 @@ begin
   F := Data;
   I := StepAt(X);
   B := UInt64(1) shl I;
+  if FLaneRest then
+  begin
+    // Pause: Stufe schweigt (Rechtsklick)
+    if First then
+      FLaneSet := F.Rest and B = 0;
+    if FLaneSet = (F.Rest and B <> 0) then
+      Exit;
+    if FLaneSet then
+      F.Rest := F.Rest or B
+    else
+      F.Rest := F.Rest and not B;
+    Changed;
+    Exit;
+  end;
   if First then
     FLaneSet := F.Glide and B = 0;      // erster Klick schaltet um, Ziehen setzt danach gleich
   if FLaneSet = (F.Glide and B <> 0) then
@@ -454,6 +469,22 @@ begin
             FStatic.VertLineS(X0, 0, H - 1, COL_BEAT)
           else
             FStatic.VertLineS(X0, 0, H - 1, COL_SEP);
+        if F.Rest and (UInt64(1) shl I) <> 0 then
+        begin
+          // Pause: kein Ton -> Feld schraffiert, Schrift "Pause" (statt Balken)
+          FStatic.FillRectTS(X0 + 1, 0, X1, H, $70000000);
+          for K := 0 to H - 1 do
+            for Px := X0 + 1 to X1 - 1 do
+              if (Px + K) mod 8 = 0 then
+                FStatic.SetPixelTS(Px, K, $30FFFFFF);
+          if X1 - X0 >= 30 then
+          begin
+            FStatic.Font.Color := $00A0A0FF;
+            FStatic.Textout(X0 + (X1 - X0 - FStatic.TextWidth(Tr('Pause'))) div 2, H div 2 - 7, Tr('Pause'));
+            FStatic.Font.Color := $00E0E0E0;
+          end;
+          Continue;
+        end;
         V := F.Step[I];
         if F.Mode = 0 then
           V := FreeQuantize(V);
@@ -504,7 +535,7 @@ begin
       if L > 0 then
       begin
         FStatic.Font.Color := $00909090;
-        FStatic.Textout(2, H + 1, Tr('Gleiten'));
+        FStatic.Textout(2, H + 1, Tr('Gleiten / Pause'));
       end;
       for I := 0 to N - 1 do
       begin
@@ -512,13 +543,23 @@ begin
         X1 := L + (I + 1) * WW div N - 1;
         if I > 0 then
           FStatic.VertLineS(X0, H + 1, FullH - 1, COL_SEP);
+        if F.Rest and (UInt64(1) shl I) <> 0 then
+        begin
+          // Pause: Feld dunkel, Stufe oben abgedunkelt mit Querstrich
+          FStatic.FillRectTS(X0 + 1, H + 1, X1, FullH - 1, $C0000000);
+          FStatic.HorzLineS(X0 + 2, (H + FullH) div 2, X1 - 1, $FFB04040);
+          Continue;
+        end;
         if (F.Glide and (UInt64(1) shl I) <> 0) and (X1 - X0 >= 3) then
         begin
           // kleine Rampe: zeigt das Herueberrutschen
           for Px := X0 + 2 to X1 - 1 do
           begin
-            Y := FullH - 2 - Round((Px - X0 - 2) / Max(1, X1 - X0 - 3) * (FullH - H - 4));
+            YF := FullH - 2 - (Px - X0 - 2) / Max(1, X1 - X0 - 3) * (FullH - H - 4);
+            Y := Ceil(YF);
             FStatic.VertLineS(Px, Y, FullH - 2, COL_GLIDE);
+            // Oberkante anteilig deckend -> keine Treppen
+            FStatic.SetPixelTS(Px, Y - 1, (COL_GLIDE and $00FFFFFF) or (TColor32(Round((Y - YF) * 255)) shl 24));
           end;
         end;
       end;
@@ -652,8 +693,16 @@ end;
 procedure TFreeLfoView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  if (Button = mbLeft) and (X >= KeysW) and (LaneH > 0) and (Y >= Height - LaneH) then
+  if (Button in [mbLeft, mbRight]) and (X >= KeysW) and (LaneH > 0) and (Y >= Height - LaneH) then
   begin
+    FLaneRest := Button = mbRight;
+    FLaneDrag := True;
+    MouseCapture := True;
+    LaneAt(X, True);
+  end
+  else if (Button = mbRight) and (X >= KeysW) and (Data.Mode <> 2) then
+  begin
+    FLaneRest := True;
     FLaneDrag := True;
     MouseCapture := True;
     LaneAt(X, True);

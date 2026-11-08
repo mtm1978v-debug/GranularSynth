@@ -135,6 +135,9 @@ type
     procedure Change; override;
   end;
 
+{ kantengeglaetteter Kreis (Fuellung, 1 Pixel Rand) - auch fuer andere Units }
+procedure Ellipse0(DC: HDC; X, Y, Rad: Integer; Fill, Edge: TColor);
+
 implementation
 
 uses
@@ -341,22 +344,45 @@ begin
   if B then Result := T else Result := F;
 end;
 
+{ Kreis kantengeglaettet (statt GDI-Ellipse mit Treppen): je Pixel Abdeckung aus dem Abstand zur Mitte,
+  1 Pixel Rand in Edge, innen Fill, aussen anteilig mit dem Untergrund gemischt }
 procedure Ellipse0(DC: HDC; X, Y, Rad: Integer; Fill, Edge: TColor);
+
+  function Mix(A, B: COLORREF; T: Single): COLORREF;
+  begin
+    Result := RGB(Round(GetRValue(A) * T + GetRValue(B) * (1 - T)),
+                  Round(GetGValue(A) * T + GetGValue(B) * (1 - T)),
+                  Round(GetBValue(A) * T + GetBValue(B) * (1 - T)));
+  end;
+
 var
-  Br: HBRUSH;
-  Pen: HPEN;
-  OB: HGDIOBJ;
-  OP: HGDIOBJ;
+  Px, Py: Integer;
+  Rf, D, Cov, Inner: Single;
+  F, E, C: COLORREF;
 begin
-  Br := CreateSolidBrush(ColorToRGB(Fill));
-  Pen := CreatePen(PS_SOLID, 1, ColorToRGB(Edge));
-  OB := SelectObject(DC, Br);
-  OP := SelectObject(DC, Pen);
-  Winapi.Windows.Ellipse(DC, X - Rad, Y - Rad, X + Rad + 1, Y + Rad + 1);
-  SelectObject(DC, OB);
-  SelectObject(DC, OP);
-  DeleteObject(Br);
-  DeleteObject(Pen);
+  F := ColorToRGB(Fill);
+  E := ColorToRGB(Edge);
+  if Rad <= 0 then
+  begin
+    SetPixel(DC, X, Y, F);
+    Exit;
+  end;
+  Rf := Rad + 0.5;
+  for Py := Y - Rad - 1 to Y + Rad + 1 do
+    for Px := X - Rad - 1 to X + Rad + 1 do
+    begin
+      D := Sqrt(Sqr(Px - X) + Sqr(Py - Y));
+      Cov := Rf + 0.5 - D;
+      if Cov <= 0 then
+        Continue;
+      Inner := Rf - 0.5 - D;
+      if Inner >= 1 then C := F
+      else if Inner <= 0 then C := E
+      else C := Mix(F, E, Inner);
+      if Cov < 1 then
+        C := Mix(C, GetPixel(DC, Px, Py), Cov);
+      SetPixel(DC, Px, Py, C);
+    end;
 end;
 
 procedure ThickLine(DC: HDC; X1, Y1, X2, Y2, W: Integer; C: TColor);

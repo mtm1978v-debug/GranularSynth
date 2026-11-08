@@ -105,6 +105,7 @@ const
   FLF8_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'F', '8');   // freie Formen LFO 5..8
   FLSM_MAGIC: array[0..3] of AnsiChar = ('F', 'L', 'S', 'M');   // Nov. 2026: Glaettung je freier Form
   OSCW_MAGIC: array[0..3] of AnsiChar = ('O', 'S', 'C', 'W');   // Nov. 2026: gezeichnete Oszillator-Wellen
+  FPAU_MAGIC: array[0..3] of AnsiChar = ('F', 'P', 'A', 'U');   // Nov. 2026: Pausen je Stufe der freien LFOs (nur wenn benutzt)
   FGLD_MAGIC: array[0..3] of AnsiChar = ('F', 'G', 'L', 'D');   // Nov. 2026: Gleiten je Stufe der freien LFOs (nur wenn benutzt)
   OSWT_MAGIC: array[0..3] of AnsiChar = ('O', 'S', 'W', 'T');   // Nov. 2026: Wavetable-Dateien der Oszillatoren (ganz hinten, nur wenn benutzt)
   MAX_STR = 4096;
@@ -254,6 +255,18 @@ begin
       S.WriteBuffer(N, 4);
       for I := 0 to FREE_LFO_COUNT - 1 do
         S.WriteBuffer(Engine.FreeLfo[I].Glide, 8);
+    end;
+    // Pausen je Stufe: nur schreiben, wenn eine Stufe pausiert
+    N := 0;
+    for I := 0 to FREE_LFO_COUNT - 1 do
+      if Engine.FreeLfo[I].Rest <> 0 then
+        N := FREE_LFO_COUNT;
+    if N > 0 then
+    begin
+      S.WriteBuffer(FPAU_MAGIC, 4);
+      S.WriteBuffer(N, 4);
+      for I := 0 to FREE_LFO_COUNT - 1 do
+        S.WriteBuffer(Engine.FreeLfo[I].Rest, 8);
     end;
     // Wavetable-Dateien: nur schreiben, wenn ein Oszillator eine hat (sonst bleibt der Chunk wie bisher)
     N := 0;
@@ -641,6 +654,19 @@ begin
           Break;
         if K < FREE_LFO_COUNT then
           Free[K].Glide := PUInt64(@Data[P])^;
+        Inc(P, 8);
+      end;
+  end;
+  if (P + 8 <= Length(Data)) and CompareMem(@Data[P], @FPAU_MAGIC[0], 4) then
+  begin
+    Inc(P, 4);
+    if ReadInt(ZN) then
+      for K := 0 to Min(ZN, 64) - 1 do
+      begin
+        if P + 8 > Length(Data) then
+          Break;
+        if K < FREE_LFO_COUNT then
+          Free[K].Rest := PUInt64(@Data[P])^;
         Inc(P, 8);
       end;
   end;

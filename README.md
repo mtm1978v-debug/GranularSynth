@@ -1,9 +1,9 @@
 ﻿﻿# GranularSynth
 
+> 🇬🇧 **[English version of this page → README_en.md](README_en.md)**
+
 **Granular- und FM-Synthesizer als VST2- und VST3-Plugin für Windows (32 und 64 Bit)**, mit eigenem Test-Host.
 Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind von Hand in SSE-Assembler optimiert, damit die CPU-Last niedrig bleibt.
-
-*Granular and FM synthesizer plugin (VST2/VST3, Windows 32/64 bit) with its own test host. **English user interface and help** from version 2.3 (switch: Extras tab › „Sprache / Language“ or the small flag in the tab row); see [README_EN.txt](README_EN.txt).*
 
 ![Reiter Grain](docs/screenshots/grain.png)
 
@@ -37,6 +37,7 @@ Geschrieben in Delphi, ohne Plugin-Framework. Die rechenintensiven Teile sind vo
 ## Alle Reiter
 
 Die Reiter folgen dem Weg des Signals. Klick auf ein Bild zeigt es groß.
+*Die Bilder können eine ältere Version zeigen, wenn sich die Oberfläche seitdem kaum geändert hat.*
 
 | | |
 |---|---|

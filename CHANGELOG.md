@@ -6,6 +6,18 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.22 – 08.11.2026
+
+### Neu
+- **Pausen im Step-Sequencer**: Rechtsklick auf eine Stufe schaltet sie auf Pause (Ziehen für mehrere), sie wird schraffiert mit „Pause“ angezeigt. In einer Pausen-Stufe schweigt der Klang kurz und klickfrei; Echo und Hall klingen frei aus. Unabhängig vom Trance-Gate.
+
+### Geändert
+- **Kantenglättung** für die letzten schrägen Linien und Kreise (Kippschalter, Schrauben, Gleit-Rampe, Flagge, Update-Symbol).
+- **README auf Englisch** (README_en.md) mit englischen Bildern.
+- Prüfstand: reine Klang-Checks laufen parallel auf allen Kernen (schnellerer Deploy).
+
+---
+
 ## Version 2.21 – 07.11.2026
 
 ### Behoben

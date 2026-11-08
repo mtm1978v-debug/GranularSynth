@@ -608,6 +608,59 @@ const
   CAP_FX     = $002E7AA8;         // Effekte: Bernstein (gedaempft)
   CAP_OUT    = $003A3C9C;         // Ausgang: warmes Rot (gedaempft)
 
+{ Kantengeglaettete Linie auf eine VCL-Canvas (fuer kleine, einmal gezeichnete Schraegen):
+  je Schritt entlang der Hauptachse zwei Pixel anteilig mit dem Untergrund gemischt; Breite W = parallele Linien }
+procedure AALineCv(Cv: TCanvas; X0, Y0, X1, Y1: Single; Col: TColor; W: Integer = 1);
+
+  procedure Blend(X, Y: Integer; A: Single);
+  var
+    Bg, Fg: TColor;
+    R, G, B: Integer;
+  begin
+    if A <= 0.01 then
+      Exit;
+    A := Min(A, 1);
+    Bg := ColorToRGB(Cv.Pixels[X, Y]);
+    Fg := ColorToRGB(Col);
+    R := Round((Fg and $FF) * A + (Bg and $FF) * (1 - A));
+    G := Round(((Fg shr 8) and $FF) * A + ((Bg shr 8) and $FF) * (1 - A));
+    B := Round(((Fg shr 16) and $FF) * A + ((Bg shr 16) and $FF) * (1 - A));
+    Cv.Pixels[X, Y] := RGB(R, G, B);
+  end;
+
+var
+  I, K, Steps: Integer;
+  T, X, Y, F, Ofs: Single;
+  Steep: Boolean;
+begin
+  Steep := Abs(Y1 - Y0) > Abs(X1 - X0);
+  Steps := Max(1, Ceil(Max(Abs(X1 - X0), Abs(Y1 - Y0))));
+  for K := 0 to W - 1 do
+  begin
+    Ofs := K - (W - 1) / 2;
+    for I := 0 to Steps do
+    begin
+      T := I / Steps;
+      X := X0 + (X1 - X0) * T;
+      Y := Y0 + (Y1 - Y0) * T;
+      if Steep then
+      begin
+        X := X + Ofs;
+        F := X - Floor(X);
+        Blend(Floor(X), Round(Y), 1 - F);
+        Blend(Floor(X) + 1, Round(Y), F);
+      end
+      else
+      begin
+        Y := Y + Ofs;
+        F := Y - Floor(Y);
+        Blend(Round(X), Floor(Y), 1 - F);
+        Blend(Round(X), Floor(Y) + 1, F);
+      end;
+    end;
+  end;
+end;
+
 function MixShade(C: TColor; F: Double): TColor;
 var
   R, G, B: Integer;
@@ -672,11 +725,9 @@ begin
   begin
     if I mod 2 = 0 then Cx := ScaleValue(4) + Sr else Cx := R0.Right - ScaleValue(4) - Sr - 1;
     if I < 2 then Cy := ScaleValue(4) + Sr else Cy := R0.Bottom - ScaleValue(4) - Sr - 1;
-    Cv.Pen.Color := $00151210;
-    Cv.Brush.Color := $005A524C;
-    Cv.Ellipse(Cx - Sr, Cy - Sr, Cx + Sr + 1, Cy + Sr + 1);
+    Granular.Fader.Ellipse0(Cv.Handle, Cx, Cy, Sr, $005A524C, $00151210);
     Cv.Pen.Color := $00201C1A;
-    Cv.MoveTo(Cx - Sr + 1, Cy + Sr - 1); Cv.LineTo(Cx + Sr, Cy - Sr);
+    AALineCv(Cv, Cx - Sr + 1, Cy + Sr - 1, Cx + Sr - 1, Cy - Sr + 1, $00201C1A);
   end;
   // eingelassenes Display (Spektrum) wie an einem modernen Digitalgeraet: breite schwarze Einfassung,
   // darum eine Fase ins Gehaeuse, oben eine feine Glas-Lichtkante
@@ -2347,13 +2398,10 @@ begin
     C.FillRect(Rect(0, 0, W, H));
     C.Pen.Style := psSolid;
     C.Pen.Color := Muted(clWhite);
-    C.Pen.Width := 3;
-    C.MoveTo(0, 0); C.LineTo(W, H);
-    C.MoveTo(W, 0); C.LineTo(0, H);
-    C.Pen.Color := Muted($002E10C8);
-    C.Pen.Width := 1;
-    C.MoveTo(0, 0); C.LineTo(W, H);
-    C.MoveTo(W, 0); C.LineTo(0, H);
+    AALineCv(C, 0, 0, W - 1, H - 1, Muted(clWhite), 3);
+    AALineCv(C, W - 1, 0, 0, H - 1, Muted(clWhite), 3);
+    AALineCv(C, 0, 0, W - 1, H - 1, Muted($002E10C8));
+    AALineCv(C, W - 1, 0, 0, H - 1, Muted($002E10C8));
     C.Pen.Style := psClear;
     C.Brush.Color := Muted(clWhite);
     C.FillRect(Rect(W div 2 - 2, 0, W div 2 + 2, H));
@@ -2393,14 +2441,13 @@ begin
   H := FUpdIcon.Height;
   C.Brush.Color := BG_MAIN;
   C.FillRect(Rect(0, 0, W, H));
-  C.Pen.Color := $0040A8E0;
-  C.Brush.Color := $00284C66;
-  C.Ellipse(0, 0, W, H);
+  Granular.Fader.Ellipse0(C.Handle, W div 2, H div 2, Min(W, H) div 2 - 1, $00284C66, $0040A8E0);
   Cx := W div 2;
   C.Pen.Color := $0070D0F8;
   C.Pen.Width := 2;
   C.MoveTo(Cx, H - 4); C.LineTo(Cx, 4);
-  C.MoveTo(Cx - 3, 7); C.LineTo(Cx, 4); C.LineTo(Cx + 3, 7);
+  AALineCv(C, Cx - 3.5, 7.5, Cx, 4, $0070D0F8, 2);
+  AALineCv(C, Cx + 3.5, 7.5, Cx, 4, $0070D0F8, 2);
   C.Pen.Width := 1;
 end;
 
@@ -4195,6 +4242,8 @@ begin
 
     FFreeView[K] := TFreeLfoView.Create(Frm, FEngine, K);
     FFreeView[K].Parent := P;
+    FFreeView[K].Hint := Tr('Linksklick: Stufe setzen (Ziehen zeichnet). Rechtsklick: Pause an/aus. Leiste unten: Gleiten');
+    FFreeView[K].ShowHint := True;
     FFreeView[K].SetBounds(8, 84, P.ClientWidth - 16, P.ClientHeight - 84 - 76);
     FFreeView[K].Anchors := [akLeft, akTop, akRight, akBottom];
 

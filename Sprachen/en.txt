@@ -1913,3 +1913,6 @@ Ergebnis	Result
 Frequenzgang der Filter (rot = was die Filter wegschneiden)	Filter response (red = what the filters cut away)
 Türkis = Filter 1, orange = Filter 2, hell = Ergebnis (Reihe: nacheinander, parallel: gemischt). Der Cutoff wandert mit der Filter-Hüllkurve. Unten das Spektrum vor (blass) und nach den Filtern, rot = weggeschnitten.	Turquoise = filter 1, orange = filter 2, bright = result (series: one after the other, parallel: mixed). The cutoff follows the filter envelope. Below: the spectrum before (faint) and after the filters, red = cut away.
 weg	cut
+Gleiten / Pause	Glide / Rest
+Pause	Rest
+Linksklick: Stufe setzen (Ziehen zeichnet). Rechtsklick: Pause an/aus. Leiste unten: Gleiten	Left-click: set step (drag to draw). Right-click: rest on/off. Strip below: glide

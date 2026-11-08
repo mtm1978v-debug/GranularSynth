@@ -343,6 +343,8 @@ type
     FBmFreq, FBmB0, FBmB1, FBmB2, FBmA1, FBmA2: Double;
     FBmWas: Boolean;
     FGainPrev: Double;                   // Lautstaerke des vorigen Subblocks (Rampe -> klickfrei)
+    FRestNow: Boolean;                   // Nov. 2026: ein Sequencer steht in einer Pausen-Stufe
+    FRestGain: Single;                   // Pausen-Blende 0..1 (kurze Rampe, klickfrei)
     FGrainGainPrev: Double;              // Grain-Pegel des vorigen Subblocks (Rampe)
     FScale, FScaleRoot: Integer;
     // Arpeggiator: gehaltene Tasten (in Anschlagreihenfolge), Takt, gerade klingende Arp-Noten
@@ -552,6 +554,7 @@ type
     procedure ProcessPhaser(N: Integer);
     procedure ProcessCrush(N: Integer);
     procedure ProcessTranceGate(N: Integer);
+    procedure ApplyRest(N: Integer);
     function PerfLevel: Integer;
     function ZoneOfNote(Note: Integer): Integer;
     procedure UpdateLfoUsed;
@@ -973,6 +976,7 @@ begin
     FWtCur[I] := 0;
   end;
   FGainPrev := -1;
+  FRestGain := 1;
   FGrainGainPrev := -1;
   FArpMask := $FFFF;
   for I := 0 to 4097 do
@@ -2877,6 +2881,7 @@ begin
   if GSectProfOn then SectMark(14, T);
   // LFOs (Rate aus den Wirkwerten des vorigen Subblocks -> LFO kann LFO modulieren)
   UpdateLfoUsed;
+  FRestNow := False;
   for K := 0 to LFO_COUNT - 1 do
   begin
     // LFO 5..8 ohne Benutzer: nicht rechnen (LFO 1..4 laufen immer - sie teilen den Zufallsgenerator mit
@@ -3009,7 +3014,11 @@ begin
     if Stopped then
       FSource[LFO_SRC[K]] := 0                    // angehalten: keine Modulation
     else if Round(Eff(LFO_SHAPE_IDS[K])) = LFO_SHAPE_FREE then
-      FSource[LFO_SRC[K]] := FreeLfoValue(FFree[LFO_FREE_IDX[K]], FLfoPhase[K])
+    begin
+      FSource[LFO_SRC[K]] := FreeLfoValue(FFree[LFO_FREE_IDX[K]], FLfoPhase[K]);
+      if FreeLfoRestAt(FFree[LFO_FREE_IDX[K]], FLfoPhase[K]) then
+        FRestNow := True;                         // Pausen-Stufe: Klang schweigt (vor den Effekten)
+    end
     else
       FSource[LFO_SRC[K]] := LfoShapeValue(Round(Eff(LFO_SHAPE_IDS[K])), FLfoPhase[K], FLfoHold[K]);
   end;
@@ -4028,6 +4037,9 @@ begin
   if FOscOwnFlt then
     for I := 0 to N * 2 - 1 do
       FMix[I] := FMix[I] + FOscMix[I] * FGainPrev;
+  // Sequencer-Pause: trockener Klang blendet in ~3 ms aus/ein; Echo und Hall klingen frei aus
+  if FRestNow or (FRestGain < 1) then
+    ApplyRest(N);
   if FMeterOn then
   begin
     MeterPeak(MM_SUM, @FMix[0], N * 2);
@@ -4133,6 +4145,25 @@ begin
     Result := FMeter[Ch];
     FMeter[Ch] := 0;
   end;
+end;
+
+{ Pausen-Blende: je Sample zum Ziel (0 in einer Pausen-Stufe, sonst 1), ~3 ms Rampe }
+procedure TGranularEngine.ApplyRest(N: Integer);
+var
+  I: Integer;
+  G, Tgt, Stp: Single;
+begin
+  G := FRestGain;
+  if FRestNow then Tgt := 0 else Tgt := 1;
+  Stp := 1 / Max(1.0, 0.003 * FSampleRate);
+  for I := 0 to N - 1 do
+  begin
+    if G < Tgt then G := Min(Tgt, G + Stp)
+    else if G > Tgt then G := Max(Tgt, G - Stp);
+    FMix[I * 2] := FMix[I * 2] * G;
+    FMix[I * 2 + 1] := FMix[I * 2 + 1] * G;
+  end;
+  FRestGain := G;
 end;
 
 procedure TGranularEngine.Process(InL, InR, OutL, OutR: PSingle; Frames: Integer; In2L: PSingle; In2R: PSingle);
