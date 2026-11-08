@@ -191,10 +191,10 @@ begin
     KeyRect(N, X0, X1, Y1, Black);
     if Black then Continue;
     if FPressed[N] then Col := Color32(255, 200, 60)
-    else Col := Mix(Color32(235, 235, 230), Color32(90, 200, 255), FGlow[N]);
+    else Col := Mix(Color32(235, 235, 230), Color32(236, 168, 70), FGlow[N]);   // klingende Note: Bernstein nach Pegel
     B.FillRectS(X0 + 1, 0, X1, Y1 - 1, Col);
     if (N >= FPcBase) and (N < FPcBase + FPcRange) then
-      B.FillRectS(X0 + 1, Y1 - 5, X1, Y1 - 1, Color32(90, 160, 220));
+      B.FillRectS(X0 + 1, Y1 - 5, X1, Y1 - 1, Color32(196, 142, 64));
 
   end;
   for N := FFirstNote to Last do
@@ -202,10 +202,10 @@ begin
     KeyRect(N, X0, X1, Y1, Black);
     if not Black then Continue;
     if FPressed[N] then Col := Color32(220, 160, 30)
-    else Col := Mix(Color32(30, 30, 34), Color32(40, 170, 240), FGlow[N]);
+    else Col := Mix(Color32(30, 30, 34), Color32(214, 140, 44), FGlow[N]);
     B.FillRectS(X0, 0, X1, Y1, Col);
     if (N >= FPcBase) and (N < FPcBase + FPcRange) then
-      B.FillRectS(X0 + 1, Y1 - 4, X1 - 1, Y1, Color32(90, 160, 220));
+      B.FillRectS(X0 + 1, Y1 - 4, X1 - 1, Y1, Color32(196, 142, 64));
   end;
   // Notennamen: einmal je Groesse rendern, danach nur noch einblenden (kein GDI-Text je Bild)
   if (FLabels = nil) or (FLabels.Width <> B.Width) or (FLabels.Height <> B.Height) then

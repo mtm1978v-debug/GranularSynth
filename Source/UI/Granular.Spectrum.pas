@@ -44,7 +44,9 @@ type
     FPeak: array of Single;          // Spitzenhalten je Spalte
     FPeakHold: array of Integer;     // Frames, die die Spitze noch gehalten wird
     FGrid: TBitmap32;                // Hintergrund mit Raster und Beschriftung
-    FFill: array[0..63] of TColor32; // Flaechenfarben (deckend, nach Pegel abgestuft)
+    FFill: array[0..63] of TColor32; // (frueher Flaechenfarben)
+    FGrad: array of TColor32;
+    FSm: array of Single;            // geglaettete Anzeige-Werte (nur Darstellung)        // Flaeche: Farbe je Hoehe (oben hell, unten dunkel), Bernstein
     FIdleFrames: Integer;
     FBinLo, FBinHi: array of Integer;   // Bin-Bereich je Pixelspalte (einmal je Breite berechnet)
     FBinSr: Double;
@@ -183,7 +185,16 @@ const
   LABELS: array[0..8] of string = ('50', '100', '200', '500', '1k', '2k', '5k', '10k', '20k');
 var
   I, X, Y, D, Tx, LastX: Integer;
+  T: Single;
 begin
+  // Flaechen-Verlauf: oben warmes Bernstein, nach unten in dunkles Braun auslaufend
+  SetLength(FGrad, H);
+  for Y := 0 to H - 1 do
+  begin
+    T := Y / Max(1, H - 14);
+    T := Min(T, 1);
+    FGrad[Y] := Color32(Round(214 - 160 * T), Round(150 - 120 * T), Round(62 - 48 * T), Round(235 - 90 * T));
+  end;
   if FGrid = nil then
   begin
     FGrid := TBitmap32.Create;
@@ -337,6 +348,8 @@ procedure TSpectrumView.DoPaintBuffer;
 var
   Bm: TBitmap32;
   W, H, X, Y, YP, Base, YPrev, A: Integer;
+  YY: Integer;
+  PkS: Single;
   YF, YPrevF: Single;
 begin
   Buffer.BeginUpdate;
@@ -356,28 +369,43 @@ begin
     Base := H - 14;
     if Length(FCol) = W then
     begin
+      // seitlich glaetten (1-2-3-2-1), nur fuer die Darstellung: ruhigere Kurve ohne Zacken
+      if Length(FSm) <> W then
+        SetLength(FSm, W);
+      for X := 0 to W - 1 do
+        FSm[X] := (FCol[Max(X - 2, 0)] + 2 * FCol[Max(X - 1, 0)] + 3 * FCol[X] + 2 * FCol[Min(X + 1, W - 1)] +
+          FCol[Min(X + 2, W - 1)]) / 9;
       YPrev := Base;
       YPrevF := Base;
       for X := 0 to W - 1 do
       begin
-        YF := Base - FCol[X] * Base;
+        YF := Base - FSm[X] * Base;
         Y := Round(YF);
-        // Flaeche: Verlauf von tiefblau (unten) nach cyan (oben), leicht transparent
-        if Y < Base then
-          Bm.VertLineS(X, Y, Base - 1, FFill[EnsureRange(Round(FCol[X] * 63), 0, 63)]);
-        // leuchtende Kontur: Kern + weicher Lichthof
-        A := Round(120 + 135 * FCol[X]);
+        // Flaeche: Verlauf nach Hoehe (oben hell, unten dunkel), Oberkante anteilig
+        if (Y < Base) and (Length(FGrad) = H) then
+        begin
+          for YY := Max(Ceil(YF), 0) to Base - 1 do
+            Bm.SetPixelTS(X, YY, FGrad[YY]);
+          if (Ceil(YF) > YF) and (Ceil(YF) - 1 >= 0) then
+            Bm.SetPixelTS(X, Ceil(YF) - 1, (FGrad[Ceil(YF) - 1] and $00FFFFFF) or
+              (TColor32(Round(((FGrad[Ceil(YF) - 1] shr 24) and $FF) * (Ceil(YF) - YF))) shl 24));
+        end;
+        // Kontur: weicher Lichthof + kantengeglaettete Linie
+        A := Round(60 + 90 * FSm[X]);
         if X > 0 then
         begin
-          Bm.VertLineTS(X, Min(Y, YPrev) - 2, Max(Y, YPrev) + 2, Color32(120, 220, 255, A div 4));
-          AASpan(Bm, X, YPrevF, YF, Color32(170, 240, 255));   // geglaettete Kontur
+          Bm.VertLineTS(X, Min(Y, YPrev) - 1, Max(Y, YPrev) + 1, Color32(255, 176, 72, A div 7));   // Lichthof nur angedeutet
+          Bm.LineXS(Fixed(X - 1), Fixed(YPrevF), Fixed(X), Fixed(YF), Color32(255, 214, 140, 190));   // feine Kontur
         end;
         YPrev := Y;
         YPrevF := YF;
         // Spitzenpunkt
-        YP := Base - Round(FPeak[X] * Base);
-        if (FPeak[X] > 0.02) and (YP < Base) then
-          Bm.PixelS[X, YP] := $FFFFD070;
+        // Spitzenwert genauso geglaettet wie die Kurve; nur zeigen, wenn er ueber der Kurve liegt
+        PkS := (FPeak[Max(X - 2, 0)] + 2 * FPeak[Max(X - 1, 0)] + 3 * FPeak[X] + 2 * FPeak[Min(X + 1, W - 1)] +
+          FPeak[Min(X + 2, W - 1)]) / 9;
+        YP := Base - Round(PkS * Base);
+        if (PkS > 0.02) and (PkS > FSm[X] + 1.5 / Base) and (YP < Base) then
+          Bm.SetPixelTS(X, YP, Color32(255, 236, 200, 200));   // Spitze: heller Punkt
       end;
     end;
   finally

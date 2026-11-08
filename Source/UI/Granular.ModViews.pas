@@ -260,6 +260,8 @@ const
   COL_BG    = $FF16181C;
   COL_GRID  = $FF32363C;
   COL_CURVE = $FF78C88C;
+  COL_ENV   = $FFF0B450;   // Huellkurven: Bernstein wie Werte-Schrift und Lampen
+  COL_ENV_FILL = $30F0B450;
   COL_FILL  = $3078C88C;
   COL_MARK  = $FFFF5A5A;
   COL_TEXT  = $C8C8C8;
@@ -309,9 +311,11 @@ const
 var
   YF, YFPrev: Single;
   B: TBitmap32;
-  Top, Bot, X, Y, XPrev, YPrev: Integer;
+  Top, Bot, X, Y, XPrev, YPrev, YY: Integer;
   Lvl: Double;
   IdA, IdD, IdS, IdR: TGranularParamId;
+  Grad: array of TColor32;   // Flaeche je Hoehe: unten fast nichts, nach oben leicht leuchtend
+  T: Single;
 
   function LvlToY(L: Double): Integer;
   begin
@@ -321,9 +325,17 @@ var
 begin
   B := FCurve;
   B.SetSize(W, H);
-  B.Clear(COL_BG);
   Top := 6;
   Bot := H - 6;
+  // Hintergrund: unten schwarz, nach oben ein Hauch heller (Schimmer); Flaechen-Verlauf je Hoehe vorab
+  SetLength(Grad, H);
+  for YY := 0 to H - 1 do
+  begin
+    T := EnsureRange((Bot - YY) / Max(1, Bot - Top), 0, 1);   // 0 = unten, 1 = oben
+    B.HorzLineS(0, YY, W - 1, Color32(Round(8 + 18 * T), Round(9 + 18 * T), Round(11 + 21 * T)));
+    // Flaeche: unten dunkel, oben kraeftiger - Kontrast nimmt nach oben leicht ab, bleibt knackig
+    Grad[YY] := (COL_ENV and $00FFFFFF) or (TColor32(Round(10 + 78 * T)) shl 24);
+  end;
   GetIds(IdA, IdD, IdS, IdR);
   // logarithmisch gestauchte Zeitachse, damit kurze und lange Zeiten lesbar bleiben
   FTA := Ln(1 + ParamToPlain(IdA, FEngine.EffParam[Ord(IdA)]));
@@ -359,8 +371,13 @@ begin
       Lvl := FSus * Power(0.0001, (X - FXS) / Max(1, FXR - FXS));
     Y := LvlToY(Lvl);
     YF := Bot - Lvl * (Bot - Top);
-    B.VertLineTS(X, Y, Bot, COL_FILL);
-    AASpan(B, X, YFPrev, YF, COL_CURVE);   // geglaettete Kontur
+    // Flaeche: Oberkante anteilig (keine Treppe unter der Linie)
+    for YY := Max(Ceil(YF), 0) to Min(Bot, H - 1) do
+      B.SetPixelTS(X, YY, Grad[YY]);
+    if (Ceil(YF) > YF) and (Ceil(YF) - 1 >= 0) then
+      B.SetPixelTS(X, Ceil(YF) - 1, (Grad[Ceil(YF) - 1] and $00FFFFFF) or
+        (TColor32(Round((Grad[Ceil(YF) - 1] shr 24) * (Ceil(YF) - YF))) shl 24));
+    B.LineXS(Fixed(X - 1), Fixed(YFPrev), Fixed(X), Fixed(YF), COL_ENV);   // kantengeglaettete Kontur
     XPrev := X;
     YPrev := Y;
     YFPrev := YF;
@@ -369,9 +386,9 @@ begin
   begin
     // Anfasser: Spitze (Attack), Knick (Decay waagrecht, Sustain senkrecht), Beginn des Release
     Y := LvlToY(FSus);
-    B.FrameRectS(FXA - 3, Top - 3, FXA + 4, Top + 4, COL_CURVE);
-    B.FrameRectS(FXD - 3, Y - 3, FXD + 4, Y + 4, COL_CURVE);
-    B.FrameRectS(FXS - 3, Y - 3, FXS + 4, Y + 4, COL_CURVE);
+    B.FrameRectS(FXA - 3, Top - 3, FXA + 4, Top + 4, COL_ENV);
+    B.FrameRectS(FXD - 3, Y - 3, FXD + 4, Y + 4, COL_ENV);
+    B.FrameRectS(FXS - 3, Y - 3, FXS + 4, Y + 4, COL_ENV);
   end;
   B.Font.Name := 'Tahoma';
   B.Font.Size := UiPt(7);

@@ -105,7 +105,13 @@ type
 
   { Aufklappliste: geschlossenes Feld in gebuerstetem Aluminium (selbst gezeichnet), Liste dunkel mit
     bernsteinfarbener Auswahl (Owner-Draw). Eingabefelder (csDropDown) bekommen nur die Farben. }
+  { Bild vor einem Eintrag (z. B. Wellenform): in R zeichnen, Col = Schriftfarbe }
+  TComboIconEvent = procedure(Sender: TObject; Index: Integer; Cv: TCanvas; const R: TRect; Col: TColor) of object;
+
   TComboBox = class(Vcl.StdCtrls.TComboBox)
+  public
+    OnItemIcon: TComboIconEvent;   // gesetzt: Bild vor jedem Eintrag (Liste und geschlossenes Feld)
+    function IconW: Integer;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
@@ -346,7 +352,7 @@ end;
 
 { Kreis kantengeglaettet (statt GDI-Ellipse mit Treppen): je Pixel Abdeckung aus dem Abstand zur Mitte,
   1 Pixel Rand in Edge, innen Fill, aussen anteilig mit dem Untergrund gemischt }
-procedure Ellipse0(DC: HDC; X, Y, Rad: Integer; Fill, Edge: TColor);
+procedure Ellipse0Raw(DC: HDC; X, Y, Rad: Integer; Fill, Edge: TColor);
 
   function Mix(A, B: COLORREF; T: Single): COLORREF;
   begin
@@ -383,6 +389,27 @@ begin
         C := Mix(C, GetPixel(DC, Px, Py), Cov);
       SetPixel(DC, Px, Py, C);
     end;
+end;
+
+{ dasselbe, aber im Speicher gerechnet: Untergrund einmal holen, Pixel im Speicher-DC, einmal zurueck
+  (GetPixel/SetPixel direkt auf dem Bildschirm waren beim Reiterwechsel deutlich spuerbar) }
+procedure Ellipse0(DC: HDC; X, Y, Rad: Integer; Fill, Edge: TColor);
+var
+  B: TBitmap;
+  E, S: Integer;
+begin
+  E := Max(Rad, 0) + 2;
+  S := 2 * E + 1;
+  B := TBitmap.Create;
+  try
+    B.PixelFormat := pf24bit;
+    B.SetSize(S, S);
+    BitBlt(B.Canvas.Handle, 0, 0, S, S, DC, X - E, Y - E, SRCCOPY);
+    Ellipse0Raw(B.Canvas.Handle, E, E, Rad, Fill, Edge);
+    BitBlt(DC, X - E, Y - E, S, S, B.Canvas.Handle, 0, 0, SRCCOPY);
+  finally
+    B.Free;
+  end;
 end;
 
 procedure ThickLine(DC: HDC; X1, Y1, X2, Y2, W: Integer; C: TColor);
@@ -781,6 +808,26 @@ begin
   end;
 end;
 
+function TComboBox.IconW: Integer;
+begin
+  if Assigned(OnItemIcon) then Result := MulDiv(28, Font.Height, -12) else Result := 0;
+end;
+
+{ Bild per Canvas auf einen fremden DC (WM_PAINT) }
+procedure DrawItemIconDC(C: TComboBox; DC: HDC; Index: Integer; const R: TRect; Col: TColor);
+var
+  Cv: TCanvas;
+begin
+  Cv := TCanvas.Create;
+  try
+    Cv.Handle := DC;
+    C.OnItemIcon(C, Index, Cv, R, Col);
+    Cv.Handle := 0;
+  finally
+    Cv.Free;
+  end;
+end;
+
 procedure TComboBox.DrawItem(Index: Integer; Rect: TRect; State: TOwnerDrawState);
 var
   Txt: string;
@@ -814,6 +861,12 @@ begin
   begin
     Txt := Items[Index];
     Inc(Rect.Left, 3);
+    if Assigned(OnItemIcon) then
+    begin
+      OnItemIcon(Self, Index, Canvas, Bounds(Rect.Left, Rect.Top + 2, IconW, Rect.Bottom - Rect.Top - 4),
+        Canvas.Font.Color);
+      Inc(Rect.Left, IconW + 6);
+    end;
     DrawText(Canvas.Handle, PChar(Txt), Length(Txt), Rect, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   end;
 end;
@@ -917,6 +970,14 @@ begin
     // Text
     if ItemIndex >= 0 then Txt := Items[ItemIndex] else Txt := Text;
     TR := Rect(R.Left + 5, R.Top, R.Right - 22, R.Bottom);
+    if Assigned(OnItemIcon) and (ItemIndex >= 0) then
+    begin
+      if FLAT_UI then
+        DrawItemIconDC(Self, DC, ItemIndex, Rect(TR.Left, TR.Top + 4, TR.Left + IconW, TR.Bottom - 4), FLAT_TEXT)
+      else
+        DrawItemIconDC(Self, DC, ItemIndex, Rect(TR.Left, TR.Top + 4, TR.Left + IconW, TR.Bottom - 4), ALU_TEXT);
+      Inc(TR.Left, IconW + 6);
+    end;
     SetBkMode(DC, TRANSPARENT);
     if FLAT_UI then
     begin

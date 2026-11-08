@@ -65,6 +65,10 @@ const
   COL_DOWN   = $00302B28;
   COL_EDGE   = $00605852;
   COL_TEXT   = $00DCDCDC;
+  ICO_AMBER  = $0048A0DC;   // Bernstein (BGR) wie Lampen, Huellkurven, Schrittmuster
+  ICO_AMBER_D = $00387EB0;  // dunkler Ton fuer Rueckseiten
+  ICO_DEEP   = $00286A9C;   // tiefes Bernstein: Flaechen mit heller Schrift darauf (Speichern, Info, Hilfe)
+  ICO_WARMRED = $003A5AC8;  // gedaempftes, warmes Orangerot (Stopp/Panik)
 
 constructor TIconButton.Create(AOwner: TComponent);
 begin
@@ -215,8 +219,10 @@ var
   Arc: TArrayOfFloatPoint;
   Ang: Single;
 begin
-  if Dim then Fg := Col($00808080) else if Active and (Icon <> eiRec) then Fg := Col($0040C8FF)
-  else Fg := Col($00E8E8E8);
+  // Grundfarbe der Symbole: Bernstein wie im ganzen Geraet (weniger Kontrast als Weiss);
+  // aktiv = helles Bernstein
+  if Dim then Fg := Col($00808080) else if Active and (Icon <> eiRec) then Fg := Col($0070C8FF)
+  else Fg := Col(ICO_AMBER);
   W := S * 0.1;
   case Icon of
     eiPlay: Fill([P(0.22, 0.12), P(0.88, 0.5), P(0.22, 0.88)], Col($0060D878));
@@ -233,8 +239,8 @@ begin
       end;
     eiOpen:
       begin
-        Fill([P(0.05, 0.22), P(0.4, 0.22), P(0.5, 0.32), P(0.95, 0.32), P(0.95, 0.85), P(0.05, 0.85)], Col($0050B4E6));
-        Box(0.05, 0.42, 0.95, 0.85, Col($0068C8F0));
+        Fill([P(0.05, 0.22), P(0.4, 0.22), P(0.5, 0.32), P(0.95, 0.32), P(0.95, 0.85), P(0.05, 0.85)], Col(ICO_AMBER_D));
+        Box(0.05, 0.42, 0.95, 0.85, Col(ICO_AMBER));
       end;
     eiSelAll:
       begin
@@ -332,13 +338,13 @@ begin
       end;
     eiSave:
       begin
-        Fill([P(0.1, 0.1), P(0.78, 0.1), P(0.9, 0.22), P(0.9, 0.9), P(0.1, 0.9)], Col($00C89650));
+        Fill([P(0.1, 0.1), P(0.78, 0.1), P(0.9, 0.22), P(0.9, 0.9), P(0.1, 0.9)], Col(ICO_DEEP));
         Box(0.26, 0.1, 0.68, 0.36, Col($00F0E6DC));
         Box(0.24, 0.55, 0.76, 0.9, Col($00403830));
       end;
     eiInfo, eiHelp:
       begin
-        PolygonFS(B, Circle(0.5 * S, 0.5 * S, 0.45 * S, 32), Col($00C89650));
+        PolygonFS(B, Circle(0.5 * S, 0.5 * S, 0.45 * S, 32), Col(ICO_DEEP));
         W := S * 0.13;
         if Icon = eiInfo then
         begin
@@ -360,7 +366,7 @@ begin
       end;
     eiPencil:
       begin
-        Fill([P(0.7, 0.1), P(0.9, 0.3), P(0.35, 0.85), P(0.15, 0.65)], Col($0040C8FF));
+        Fill([P(0.7, 0.1), P(0.9, 0.3), P(0.35, 0.85), P(0.15, 0.65)], Col(ICO_AMBER));
         Fill([P(0.15, 0.65), P(0.35, 0.85), P(0.08, 0.92)], Fg);
       end;
     eiDice:
@@ -373,11 +379,11 @@ begin
     eiTrash:
       begin
         W := S * 0.08;
-        Line(0.15, 0.24, 0.85, 0.24, Fg);
-        Line(0.4, 0.12, 0.6, 0.12, Fg);
-        Fill([P(0.24, 0.32), P(0.76, 0.32), P(0.7, 0.9), P(0.3, 0.9)], Fg);
+        Line(0.15, 0.24, 0.85, 0.24, Col(ICO_AMBER));
+        Line(0.4, 0.12, 0.6, 0.12, Col(ICO_AMBER));
+        Fill([P(0.24, 0.32), P(0.76, 0.32), P(0.7, 0.9), P(0.3, 0.9)], Col(ICO_AMBER_D));
       end;
-    eiBookmark: Fill([P(0.25, 0.08), P(0.75, 0.08), P(0.75, 0.92), P(0.5, 0.7), P(0.25, 0.92)], Col($0040C8FF));
+    eiBookmark: Fill([P(0.25, 0.08), P(0.75, 0.08), P(0.75, 0.92), P(0.5, 0.7), P(0.25, 0.92)], Col(ICO_AMBER));
     eiSwap:
       begin
         W := S * 0.09;
@@ -393,8 +399,8 @@ begin
           Ang := Pi / 8 + I * Pi / 4;
           Arc[I] := FloatPoint((0.5 + 0.46 * Cos(Ang)) * S, (0.5 + 0.46 * Sin(Ang)) * S);
         end;
-        PolygonFS(B, Arc, Col($003C3CD8));
-        Box(0.24, 0.44, 0.76, 0.56, Col($00FFFFFF));
+        PolygonFS(B, Arc, Col(ICO_WARMRED));
+        Box(0.24, 0.44, 0.76, 0.56, Col($00F0E8E0));
       end;
     eiKeys:
       begin

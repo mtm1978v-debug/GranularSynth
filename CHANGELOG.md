@@ -6,6 +6,20 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.23 – 08.11.2026
+
+### Neu
+- **Betriebslampen**: Jeder Funktionsbereich hat oben rechts eine eingelassene LED, die zeigt, ob er in Betrieb ist (Ein-Schalter, abhängige Bereiche wie Hüllkurve und eigener Filter eines Oszillators, oder Bedingungen: Makros verstellt, Zone geladen, Sättigung > 0, Tonleiter gewählt …). Bei lautem Ausgang sackt das Licht leicht ab wie bei einem Netzteil am Limit.
+- **Bilder in den Auswahllisten**: Wellenformen (Oszillatoren, Sub, LFOs, Morph-LFO) und Filterkurven (Tiefpass, Hochpass, Bandpass, Ladder, Kamm, Formant) als kleine Grafik vor dem Namen.
+
+### Geändert
+- **Neues Farbschema Bernstein**: Hüllkurven (mit Schimmer), Wellenform, Spektrum (geglättet), Schrittmuster, Klaviatur und alle Symbole passen jetzt zusammen.
+- **Gerät-Look**: Funktionsbereiche sind angeschraubt (Schrauben in den Ecken) und haben dezenten Flugrost.
+- Samples-Reiter: Feedback-Resampling als eigener Bereich; LFO-Reiter: gleichmäßige Abstände; Timing-Reiter: letzte Zeile passt in den Bereich.
+- Schneller: Reiterwechsel in einem Rutsch ohne sichtbaren Aufbau, Kreise und Lampen werden im Speicher gerechnet.
+
+---
+
 ## Version 2.22 – 08.11.2026
 
 ### Neu

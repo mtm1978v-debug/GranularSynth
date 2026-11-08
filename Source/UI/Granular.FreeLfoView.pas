@@ -948,8 +948,8 @@ begin
       X1 := (I + 1) * W div ARP_MAX_STEPS - 1;
       On := (FMask and (1 shl I)) <> 0;
       Active := I < FSteps;
-      if On and Active then C := COL_BAR
-      else if On then C := $FF263240
+      if On and Active then C := $FFC48E40          // Bernstein wie Lampen und Huellkurven
+      else if On then C := $FF3A3022
       else if Active then C := $FF2A2E34
       else C := $FF1E2024;
       B.FillRectS(X0, 2, X1, H - 2, C);
@@ -957,10 +957,11 @@ begin
         B.VertLineS(X0 - 1, 0, H - 1, COL_BEAT);
       if I = FShown then
       begin
-        B.FillRectTS(X0, 2, X1, H - 2, $60FFD070);
-        B.FillRectS(X0, H - 5, X1, H - 2, $FFFFD070);
+        B.FillRectTS(X0, 2, X1, H - 2, $48FFFFFF);   // laufender Schritt: heller
+        B.FillRectS(X0, H - 5, X1, H - 2, $FFFFE8B8);
       end;
-      if Active then B.Font.Color := $00E0E0E0 else B.Font.Color := $00606060;
+      if On and Active then B.Font.Color := $00202020          // dunkle Schrift auf Bernstein
+      else if Active then B.Font.Color := $00E0E0E0 else B.Font.Color := $00606060;
       B.Textout(X0 + 3, 4, IntToStr(I + 1));
     end;
   finally

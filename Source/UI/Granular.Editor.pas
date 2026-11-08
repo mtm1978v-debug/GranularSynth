@@ -194,6 +194,8 @@ type
     FSlotCtrls: array[0..MOD_SLOTS - 1] of TArray<TControl>;   // alle Steuerelemente einer Zeile (Seitenwechsel)
     FMatPage: Integer;                                  // sichtbare Seite der Matrix (je MAT_ROWS Zeilen)
     FMatPageBtn: array of TButton;
+    FLedsDirty: Boolean;
+    FLedSag: Single;              // 0 = volle Spannung, >0 = Lampen sacken bei lautem Ausgang leicht ab          // ein Schalter wurde aus der Engine gesetzt -> Lampen nachziehen
     FMacroTargets: array[0..UMAC_COUNT - 1] of TLabel;   // freie Makros: welche Regler sie bewegen
     FSpectrum: TSpectrumView;
     FMixSpectrum: TSpectrumView;   // dasselbe Frequenzband im Mischpult (laeuft nur, wenn der Reiter sichtbar ist)
@@ -397,6 +399,8 @@ type
 
     procedure TrackChange(Sender: TObject);
     procedure ComboChange(Sender: TObject);
+    procedure SetupLeds;
+    procedure WaveItemIcon(Sender: TObject; Index: Integer; Cv: TCanvas; const R: TRect; Col: TColor);
     procedure CheckClick(Sender: TObject);
     procedure MicClick(Sender: TObject);
     procedure ParamChangedByUser(Index: Integer; FromBinding: Integer = -1);
@@ -661,6 +665,13 @@ begin
   end;
 end;
 
+{ Schraube (Kreuzschlitz schraeg): Kopf mit Rand, Schlitz kantengeglaettet }
+procedure DrawScrew(Cv: TCanvas; Cx, Cy, Sr: Integer);
+begin
+  Granular.Fader.Ellipse0(Cv.Handle, Cx, Cy, Sr, $005A524C, $00151210);
+  AALineCv(Cv, Cx - Sr + 1, Cy + Sr - 1, Cx + Sr - 1, Cy - Sr + 1, $00201C1A);
+end;
+
 function MixShade(C: TColor; F: Double): TColor;
 var
   R, G, B: Integer;
@@ -725,9 +736,7 @@ begin
   begin
     if I mod 2 = 0 then Cx := ScaleValue(4) + Sr else Cx := R0.Right - ScaleValue(4) - Sr - 1;
     if I < 2 then Cy := ScaleValue(4) + Sr else Cy := R0.Bottom - ScaleValue(4) - Sr - 1;
-    Granular.Fader.Ellipse0(Cv.Handle, Cx, Cy, Sr, $005A524C, $00151210);
-    Cv.Pen.Color := $00201C1A;
-    AALineCv(Cv, Cx - Sr + 1, Cy + Sr - 1, Cx + Sr - 1, Cy - Sr + 1, $00201C1A);
+    DrawScrew(Cv, Cx, Cy, Sr);
   end;
   // eingelassenes Display (Spektrum) wie an einem modernen Digitalgeraet: breite schwarze Einfassung,
   // darum eine Fase ins Gehaeuse, oben eine feine Glas-Lichtkante
@@ -778,10 +787,25 @@ type
   TGroupPanel = class(TPanel)
   private
     FCache: Vcl.Graphics.TBitmap;
+    FLedShown: Boolean;
+    FLedBr: Single;       // gezeigte Helligkeit (Spannungsabfall bei lautem Ausgang)
+    FLedX, FLedY, FLedR: Integer;
+    FLedImg: array[0..11] of Vcl.Graphics.TBitmap;   // vorgerechnete Helligkeitsstufen (einmal je Groesse)
+    FLedOff: Vcl.Graphics.TBitmap;                    // Lampe aus
+    FScrewImg: array[0..1] of Vcl.Graphics.TBitmap;   // untere Schrauben obenauf (mit Ring)
+    function LedImage(On_: Boolean; K: Integer): Vcl.Graphics.TBitmap;
+    procedure FreeLedImgs;
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+    function LedOn: Boolean;
   protected
     procedure Paint; override;
     procedure Resize; override;
   public
+    LedCheck: TCheckBox;    // Ein-Schalter der Funktionseinheit -> Betriebslampe oben rechts
+    LedMaster: TCheckBox;   // uebergeordneter Schalter (z. B. Oszillator an): aus = Lampe aus
+    LedFunc: TFunc<Boolean>;   // Lampe nach Bedingung (z. B. Saettigung > 0, Zone geladen)
+    procedure UpdateLed;
+    procedure SagLed(Br: Single);
     destructor Destroy; override;
   end;
 
@@ -791,20 +815,191 @@ const
 
 destructor TGroupPanel.Destroy;
 begin
+  FreeLedImgs;
   FCache.Free;
   inherited;
 end;
 
+{ nach den Beschriftungen (TLabel zeichnen sich nach Paint): die unteren Schrauben noch einmal obenauf,
+  mit einem schmalen Ring in Plattenfarbe - ragt ein Text in die Ecke, ist er dort "durchgeschraubt" }
+procedure TGroupPanel.WMPaint(var Message: TWMPaint);
+var
+  DC: HDC;
+  Cv: TCanvas;
+  Sr, D, Y, E, K, X: Integer;
+begin
+  inherited;
+  if FCache = nil then
+    Exit;
+  Sr := Max(2, ScaleValue(3));
+  D := ScaleValue(3) + Sr;
+  Y := ClientHeight - 1 - D;
+  E := Sr + 4;
+  for K := 0 to 1 do
+  begin
+    if K = 0 then X := D else X := ClientWidth - 1 - D;
+    if FScrewImg[K] = nil then
+    begin
+      // einmal rechnen: Untergrund aus dem Zwischenbild, Ring in Plattenfarbe, Schraube
+      FScrewImg[K] := Vcl.Graphics.TBitmap.Create;
+      FScrewImg[K].PixelFormat := pf24bit;
+      FScrewImg[K].SetSize(2 * E + 1, 2 * E + 1);
+      Cv := FScrewImg[K].Canvas;
+      BitBlt(Cv.Handle, 0, 0, 2 * E + 1, 2 * E + 1, FCache.Canvas.Handle, X - E, Y - E, SRCCOPY);
+      Granular.Fader.Ellipse0(Cv.Handle, E, E, Sr + 2, Color, Color);
+      DrawScrew(Cv, E, E, Sr);
+    end;
+  end;
+  DC := GetDC(Handle);
+  try
+    BitBlt(DC, D - E, Y - E, 2 * E + 1, 2 * E + 1, FScrewImg[0].Canvas.Handle, 0, 0, SRCCOPY);
+    BitBlt(DC, ClientWidth - 1 - D - E, Y - E, 2 * E + 1, 2 * E + 1, FScrewImg[1].Canvas.Handle, 0, 0, SRCCOPY);
+  finally
+    ReleaseDC(Handle, DC);
+  end;
+end;
+
 procedure TGroupPanel.Resize;
 begin
+  FreeLedImgs;
   FreeAndNil(FCache);
   inherited;
+end;
+
+{ Gebrauchsspuren auf einer Metallplatte (24-Bit-Bitmap): feines Korn und einzelne Flugrost-Flecken,
+  dezent. Zufall mit eigenem Startwert je Platte -> jede Platte anders, aber
+  bei jedem Neuzeichnen gleich (kein Flackern). }
+procedure WearPlate(B: Vcl.Graphics.TBitmap; Seed: Cardinal);
+var
+  St: Cardinal;
+  X, Y, I, K, N, Cx, Cy, Rad, W, H: Integer;
+  P: PByteArray;
+  A, D, Rn: Single;
+
+  function Rnd: Single;   // 0..1
+  begin
+    St := St * 1664525 + 1013904223;
+    Result := (St shr 8) / 16777216;
+  end;
+
+  procedure Mix(X, Y: Integer; R, G, Bl: Integer; Alpha: Single);
+  var
+    Q: PByteArray;
+  begin
+    if (X < 2) or (Y < 2) or (X >= W - 2) or (Y >= H - 2) or (Alpha <= 0) then
+      Exit;
+    Q := B.ScanLine[Y];
+    Q[X * 3] := Round(Q[X * 3] + (Bl - Q[X * 3]) * Alpha);
+    Q[X * 3 + 1] := Round(Q[X * 3 + 1] + (G - Q[X * 3 + 1]) * Alpha);
+    Q[X * 3 + 2] := Round(Q[X * 3 + 2] + (R - Q[X * 3 + 2]) * Alpha);
+  end;
+
+begin
+  W := B.Width; H := B.Height;
+  if (W < 20) or (H < 20) then
+    Exit;
+  St := Seed or 1;
+  // feines Korn (+-2 Helligkeit)
+  for Y := 2 to H - 3 do
+  begin
+    P := B.ScanLine[Y];
+    for X := 2 to W - 3 do
+      if Rnd < 0.5 then
+      begin
+        K := Round(Rnd * 8) - 4;
+        for I := 0 to 2 do
+          P[X * 3 + I] := EnsureRange(P[X * 3 + I] + K, 0, 255);
+      end;
+  end;
+  // Flugrost: wenige weiche, unregelmaessige Flecken
+  N := 2 + (W * H) div 25000;
+  for K := 1 to N do
+  begin
+    Cx := Round(Rnd * W); Cy := Round(Rnd * H);
+    Rad := 3 + Round(Rnd * 7);
+    for Y := Cy - Rad to Cy + Rad do
+      for X := Cx - Rad to Cx + Rad do
+      begin
+        D := Sqrt(Sqr(X - Cx) + Sqr(Y - Cy)) / Rad;
+        Rn := Rnd;
+        if (D < 1) and (Rn < 0.75 - 0.5 * D) then
+        begin
+          A := (1 - D) * (0.20 + 0.20 * Rnd);
+          Mix(X, Y, 120 + Round(Rnd * 40), 62 + Round(Rnd * 20), 30, A);
+        end;
+      end;
+  end;
+end;
+
+{ Betriebs-LED, je Pixel berechnet (weich, ohne Fragmente): schmale dunkle Fassung, Kuppel mit Verlauf,
+  an = warmes Bernstein wie die Werte-Schrift mit leichtem Schein, aus = mattes, ungefaerbtes Glas }
+procedure DrawLed(Cv: TCanvas; Cx, Cy, Rad: Integer; On_: Boolean; Br: Single = 1);
+var
+  X, Y: Integer;
+  D, Cov, T, Rf, Hl, Gl: Single;
+  Bg: TColor;
+  R, G, B, R0, G0, B0, R1, G1, B1: Single;
+
+  procedure Put(X, Y: Integer; Rr, Gg, Bb, A: Single);
+  begin
+    if A <= 0.01 then
+      Exit;
+    A := Min(A, 1);
+    Bg := ColorToRGB(Cv.Pixels[X, Y]);
+    Cv.Pixels[X, Y] := RGB(Round(Rr * A + (Bg and $FF) * (1 - A)), Round(Gg * A + ((Bg shr 8) and $FF) * (1 - A)),
+      Round(Bb * A + ((Bg shr 16) and $FF) * (1 - A)));
+  end;
+
+begin
+  if On_ then
+  begin
+    R0 := 255; G0 := 214; B0 := 130;   // Mitte (Bernstein)
+    R1 := 214; G1 := 132; B1 := 40;    // Rand
+    // Spannung sackt ab: dunkler und waermer (Blau/Gruen sinken staerker als Rot)
+    R0 := R0 * (0.55 + 0.45 * Br); G0 := G0 * Br; B0 := B0 * Br * Br;
+    R1 := R1 * (0.55 + 0.45 * Br); G1 := G1 * Br; B1 := B1 * Br * Br;
+  end
+  else
+  begin
+    R0 := 100; G0 := 96; B0 := 90;
+    R1 := 74; G1 := 71; B1 := 67;
+  end;
+  Rf := Rad + 0.5;
+  for Y := Cy - Rad - 8 to Cy + Rad + 8 do
+    for X := Cx - Rad - 8 to Cx + Rad + 8 do
+    begin
+      D := Sqrt(Sqr(X - Cx) + Sqr(Y - Cy));
+      // Schein (nur an): ganz leicht, weich auslaufend
+      if On_ and (D > Rf) then
+      begin
+        Gl := 0.26 * Br * Sqr(Max(0, 1 - (D - Rf) / 7.5));   // weit und weich auslaufend
+        if Gl > 0 then
+          Put(X, Y, 255, 176, 72, Gl);
+      end;
+      // Fassung: duenner dunkler Ring
+      Cov := EnsureRange(Rf + 1.5 - D, 0, 1);
+      if (Cov > 0) and (D > Rf - 0.5) then
+        if On_ then
+          Put(X, Y, 72, 50, 26, Cov * 0.85)   // Fassung vom Licht leicht angestrahlt
+        else
+          Put(X, Y, 40, 38, 36, Cov * 0.7);   // Fassung aus: weicher, kaum dunkler als die Platte
+      // Kuppel
+      Cov := EnsureRange(Rf - D, 0, 1);
+      if Cov > 0 then
+      begin
+        T := EnsureRange(Sqrt(Sqr(X - Cx + 0.6) + Sqr(Y - Cy + 0.6)) / Rf, 0, 1);   // Licht von oben links
+        R := R0 + (R1 - R0) * T; G := G0 + (G1 - G0) * T; B := B0 + (B1 - B0) * T;
+        Hl := EnsureRange(1 - Sqrt(Sqr(X - Cx + Rad * 0.45) + Sqr(Y - Cy + Rad * 0.45)) / (Rad * 0.55), 0, 1) * 0.55;
+        R := R + (255 - R) * Hl; G := G + (255 - G) * Hl; B := B + (255 - B) * Hl;   // Glanzpunkt
+        Put(X, Y, R, G, B, Cov);
+      end;
+    end;
 end;
 
 procedure TGroupPanel.Paint;
 var
   R: TRect;
-  Hh, Y: Integer;
+  Hh, Y, Sr, D: Integer;
   Cv: TCanvas;
 begin
   if (FCache = nil) or (FCache.Width <> ClientWidth) or (FCache.Height <> ClientHeight) then
@@ -826,8 +1021,97 @@ begin
     Cv.Pen.Color := MixShade($005AD2FF, 0.42);
     Cv.MoveTo(1, Hh); Cv.LineTo(R.Right - 1, Hh);
     MixBevel(Cv, R, $005C5550, $00141110);
+    // Gebrauchsspuren (Startwert aus Lage und Groesse: jede Platte eigen, stabil beim Neuzeichnen)
+    WearPlate(FCache, Cardinal(Left * 7919 + Top * 104729 + ClientWidth * 31 + ClientHeight * 131 + Length(Name) * 17));
+    // aufs Geraet geschraubt: kleine Schrauben in den vier Ecken (oben in der Kopfleiste)
+    Sr := Max(2, ScaleValue(3));
+    D := ScaleValue(3) + Sr;
+    DrawScrew(Cv, D, Hh div 2, Sr);
+    DrawScrew(Cv, R.Right - 1 - D, Hh div 2, Sr);
+    DrawScrew(Cv, D, R.Bottom - 1 - D, Sr);
+    DrawScrew(Cv, R.Right - 1 - D, R.Bottom - 1 - D, Sr);
   end;
   Canvas.Draw(0, 0, FCache);
+  // Betriebslampe: eingelassene LED oben rechts, etwas Abstand zur Schraube
+  if (LedCheck <> nil) or (LedMaster <> nil) or Assigned(LedFunc) then
+  begin
+    Sr := Max(2, ScaleValue(3));
+    D := ScaleValue(3) + Sr;
+    Y := ScaleValue(GRP_HEAD) div 2;
+    Hh := ScaleValue(3);                                        // LED-Radius
+    R.Left := ClientWidth - 1 - D - Sr - ScaleValue(10) - Hh;   // Mitte: rechts, etwas Abstand zur Schraube
+    FLedShown := LedOn;
+    if FLedBr <= 0 then FLedBr := 1;
+    if (FLedX <> R.Left) or (FLedY <> Y) or (FLedR <> Hh) then
+      FreeLedImgs;
+    FLedX := R.Left; FLedY := Y; FLedR := Hh;
+    D := FLedR + 9;
+    BitBlt(Canvas.Handle, FLedX - D, FLedY - D, 2 * D + 1, 2 * D + 1,
+      LedImage(FLedShown, EnsureRange(Round((1 - FLedBr) / 0.5 * 11), 0, 11)).Canvas.Handle, 0, 0, SRCCOPY);
+  end;
+end;
+
+function TGroupPanel.LedOn: Boolean;
+begin
+  Result := ((LedCheck = nil) or LedCheck.Checked) and ((LedMaster = nil) or LedMaster.Checked) and
+    (not Assigned(LedFunc) or LedFunc());
+end;
+
+{ nur die Lampe neu: Untergrund aus dem Zwischenbild, Lampe mit neuer Helligkeit, ein BitBlt }
+procedure TGroupPanel.FreeLedImgs;
+var
+  I: Integer;
+begin
+  for I := 0 to High(FLedImg) do
+    FreeAndNil(FLedImg[I]);
+  FreeAndNil(FLedOff);
+  FreeAndNil(FScrewImg[0]);
+  FreeAndNil(FScrewImg[1]);
+end;
+
+{ Lampe als fertiges Bild (Untergrund aus dem Zwischenbild); einmal gerechnet, danach nur kopiert }
+function TGroupPanel.LedImage(On_: Boolean; K: Integer): Vcl.Graphics.TBitmap;
+var
+  E: Integer;
+begin
+  if On_ then Result := FLedImg[K] else Result := FLedOff;
+  if Result <> nil then
+    Exit;
+  E := FLedR + 9;
+  Result := Vcl.Graphics.TBitmap.Create;
+  Result.PixelFormat := pf24bit;
+  Result.SetSize(2 * E + 1, 2 * E + 1);
+  BitBlt(Result.Canvas.Handle, 0, 0, 2 * E + 1, 2 * E + 1, FCache.Canvas.Handle, FLedX - E, FLedY - E, SRCCOPY);
+  DrawLed(Result.Canvas, E, E, FLedR, On_, 1 - K * 0.5 / 11);
+  if On_ then FLedImg[K] := Result else FLedOff := Result;
+end;
+
+procedure TGroupPanel.SagLed(Br: Single);
+var
+  E, X0, Y0, K: Integer;
+  DC: HDC;
+begin
+  if not FLedShown or (FCache = nil) or (FLedR <= 0) or not HandleAllocated or not IsWindowVisible(Handle) then
+    Exit;
+  // 12 Stufen von 0,5 bis 1: nur bei Stufenwechsel etwas tun
+  K := EnsureRange(Round((1 - Br) / 0.5 * 11), 0, 11);
+  if Round((1 - FLedBr) / 0.5 * 11) = K then
+    Exit;
+  FLedBr := 1 - K * 0.5 / 11;
+  E := FLedR + 9;
+  X0 := FLedX - E; Y0 := FLedY - E;
+  DC := GetDC(Handle);
+  try
+    BitBlt(DC, X0, Y0, 2 * E + 1, 2 * E + 1, LedImage(True, K).Canvas.Handle, 0, 0, SRCCOPY);
+  finally
+    ReleaseDC(Handle, DC);
+  end;
+end;
+
+procedure TGroupPanel.UpdateLed;
+begin
+  if ((LedCheck <> nil) or (LedMaster <> nil) or Assigned(LedFunc)) and (LedOn <> FLedShown) then
+    Invalidate;
 end;
 
 
@@ -876,7 +1160,7 @@ begin
   begin
     L := TLabel.Create(Self);
     L.Parent := Result;
-    L.SetBounds(8, 4, 300, 16);
+    L.SetBounds(18, 4, 300, 16);
     L.Caption := ATitle;
     L.Font.Color := COL_VAL;
     L.Font.Style := [fsBold];
@@ -936,6 +1220,8 @@ begin
 end;
 
 procedure TGranularEditor.PagesChange(Sender: TObject);
+var
+  ExSt: NativeInt;
 begin
   try
     RelayoutAll(Sender);
@@ -946,8 +1232,13 @@ begin
   finally
     if FPages.HandleAllocated then
     begin
+      // ganzer Reiter-Baum in einem Rutsch: Windows setzt alle Unterfenster erst im Speicher zusammen
+      // (WS_EX_COMPOSITED) und zeigt das fertige Bild - kein sichtbarer Aufbau, bis dahin bleibt der alte Reiter
+      ExSt := GetWindowLong(FPages.Handle, GWL_EXSTYLE);
+      SetWindowLong(FPages.Handle, GWL_EXSTYLE, ExSt or WS_EX_COMPOSITED);
       SendMessage(FPages.Handle, WM_SETREDRAW, 1, 0);
       RedrawWindow(FPages.Handle, nil, 0, RDW_ERASE or RDW_FRAME or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_UPDATENOW);
+      SetWindowLong(FPages.Handle, GWL_EXSTYLE, ExSt);
     end;
   end;
 end;
@@ -971,6 +1262,117 @@ begin
       FUpdHost.BringToFront;
     end;
   end;
+end;
+
+const
+  WK_NONE = -1; WK_SINE = 0; WK_TRI = 1; WK_SAW = 2; WK_SQUARE = 3; WK_FM = 4; WK_NOISE = 5; WK_SH = 6;
+  WK_FREE = 7; WK_OFF = 8;
+  // Filter: Frequenzgang (links tief, rechts hoch)
+  WK_LP = 10; WK_BP = 11; WK_HP = 12; WK_LADDER = 13; WK_COMB = 14; WK_FORMANT = 15;
+
+{ Wellenform eines Listeneintrags (fuer das Bild in der Auswahlliste), WK_NONE = keine Wellen-Liste }
+function WaveKind(ParamIdx, Step: Integer): Integer;
+const
+  LFO_MAP: array[0..5] of Integer = (WK_SINE, WK_TRI, WK_SAW, WK_SQUARE, WK_SH, WK_FREE);
+  MORPH_MAP: array[0..6] of Integer = (WK_OFF, WK_SINE, WK_TRI, WK_SAW, WK_SQUARE, WK_SH, WK_FREE);
+begin
+  Result := WK_NONE;
+  if (ParamIdx < 0) or (ParamIdx >= PARAM_COUNT) then
+    Exit;
+  case TGranularParamId(ParamIdx) of
+    gpOscWave, gpOsc2Wave, gpOsc3Wave: Result := EnsureRange(Step, 0, 5);
+    gpSubWave: if Step = 1 then Result := WK_SQUARE else Result := WK_SINE;
+    gpLfo1Shape, gpLfo2Shape, gpLfo3Shape, gpLfo4Shape, gpLfo5Shape, gpLfo6Shape, gpLfo7Shape, gpLfo8Shape:
+      Result := LFO_MAP[EnsureRange(Step, 0, 5)];
+    gpMorphLfoShape: Result := MORPH_MAP[EnsureRange(Step, 0, 6)];
+    gpFltType, gpFlt2Type: Result := WK_LP + EnsureRange(Step, 0, 5);
+    gpOscFltType, gpOsc2FltType, gpOsc3FltType: Result := WK_LP + EnsureRange(Step, 0, 2);
+  end;
+end;
+
+{ eine Periode der Form in R zeichnen (kantengeglaettet) }
+procedure DrawWaveIcon(Cv: TCanvas; const R: TRect; Kind: Integer; Col: TColor);
+const
+  SH: array[0..5] of Single = (0.3, -0.7, 0.9, -0.2, 0.6, -0.9);
+  FREE_PTS: array[0..7] of Single = (0, 0.8, 0.3, -0.5, -0.9, 0.2, 0.6, 0);
+var
+  I, N: Integer;
+  X0, Y0, X1, Y1, W, Hh, Mid, T, V, PV: Single;
+
+  function Val(T: Single): Single;
+  begin
+    case Kind of
+      WK_SINE: Result := Sin(2 * Pi * T);
+      WK_TRI: if T < 0.25 then Result := 4 * T else if T < 0.75 then Result := 2 - 4 * T else Result := 4 * T - 4;
+      WK_SAW: Result := 1 - 2 * T;
+      WK_FM: Result := Sin(2 * Pi * T + 2.2 * Sin(4 * Pi * T));
+      WK_LP: Result := 0.45 - 1.5 / (1 + Exp(-(T - 0.66) * 16)) + 0.25 * Exp(-Sqr((T - 0.56) / 0.06));
+      WK_HP: Result := 0.45 - 1.5 / (1 + Exp(-(0.34 - T) * 16)) + 0.25 * Exp(-Sqr((T - 0.44) / 0.06));
+      WK_LADDER: Result := 0.45 - 1.6 / (1 + Exp(-(T - 0.64) * 30)) + 0.45 * Exp(-Sqr((T - 0.58) / 0.045));
+      WK_BP: Result := -0.9 + 1.7 * Exp(-Sqr((T - 0.5) / 0.13));
+      WK_COMB: Result := -0.85 + 1.6 * Sqr(Sqr(Abs(Cos(Pi * 3.5 * T))));
+      WK_FORMANT: Result := Min(0.95, -0.9 + 1.7 * Exp(-Sqr((T - 0.22) / 0.05)) + 1.4 * Exp(-Sqr((T - 0.52) / 0.05))
+        + 1.0 * Exp(-Sqr((T - 0.8) / 0.05)));
+      WK_FREE: Result := FREE_PTS[Min(7, Trunc(T * 7))] + (FREE_PTS[Min(7, Trunc(T * 7) + 1)] - FREE_PTS[Min(7, Trunc(T * 7))]) * Frac(T * 7);
+    else
+      Result := 0;
+    end;
+  end;
+
+begin
+  W := R.Right - R.Left - 1;
+  Hh := (R.Bottom - R.Top) / 2 - 2;
+  Mid := (R.Top + R.Bottom) / 2;
+  case Kind of
+    WK_OFF:
+      AALineCv(Cv, R.Left, Mid, R.Right - 1, Mid, Col);
+    WK_SQUARE:
+      begin
+        AALineCv(Cv, R.Left, Mid - Hh, R.Left + W / 2, Mid - Hh, Col);
+        AALineCv(Cv, R.Left + W / 2, Mid - Hh, R.Left + W / 2, Mid + Hh, Col);
+        AALineCv(Cv, R.Left + W / 2, Mid + Hh, R.Left + W, Mid + Hh, Col);
+      end;
+    WK_SH:
+      for I := 0 to 5 do
+      begin
+        X0 := R.Left + W * I / 6; X1 := R.Left + W * (I + 1) / 6;
+        AALineCv(Cv, X0, Mid - SH[I] * Hh, X1, Mid - SH[I] * Hh, Col);
+        if I < 5 then
+          AALineCv(Cv, X1, Mid - SH[I] * Hh, X1, Mid - SH[I + 1] * Hh, Col);
+      end;
+    WK_NOISE:
+      begin
+        N := 7;
+        PV := 0;
+        for I := 0 to Round(W) div 2 do
+        begin
+          N := (N * 1103515245 + 12345) and $7FFFFFFF;
+          V := (N mod 2000) / 1000 - 1;
+          AALineCv(Cv, R.Left + (I - 1) * 2, Mid - PV * Hh, R.Left + I * 2, Mid - V * Hh, Col);
+          PV := V;
+        end;
+      end;
+  else
+    begin
+      N := Max(8, Round(W));
+      X0 := R.Left; Y0 := Mid - Val(0) * Hh;
+      for I := 1 to N do
+      begin
+        T := I / N;
+        if (Kind = WK_SAW) and (I = N) then T := 0.9999;
+        X1 := R.Left + W * T; Y1 := Mid - Val(T) * Hh;
+        AALineCv(Cv, X0, Y0, X1, Y1, Col);
+        X0 := X1; Y0 := Y1;
+      end;
+      if Kind = WK_SAW then
+        AALineCv(Cv, X0, Y0, X0, Mid - Hh, Col);
+    end;
+  end;
+end;
+
+procedure TGranularEditor.WaveItemIcon(Sender: TObject; Index: Integer; Cv: TCanvas; const R: TRect; Col: TColor);
+begin
+  DrawWaveIcon(Cv, R, WaveKind(FBindings[(Sender as TComponent).Tag].Index, Index), Col);
 end;
 
 function TGranularEditor.AddParam(AParent: TWinControl; Index, X, Y, NameW, ValueW: Integer;
@@ -999,6 +1401,10 @@ begin
     B.Check.Caption := '';
     B.Check.Tag := Result;
     B.Check.OnClick := CheckClick;
+    // erster Ein-Schalter oben in einem Bereich ("... an") = Betriebslampe dieses Bereichs
+    if (AParent is TGroupPanel) and (TGroupPanel(AParent).LedCheck = nil) and (Y <= 30) and
+      (Info.Name.EndsWith(' an') or Cap.EndsWith(' an')) then
+      TGroupPanel(AParent).LedCheck := B.Check;
     // eigenes Label: Windows-Themes ignorieren Font.Color bei Checkboxen
     B.NameLabel := TLabel.Create(Self);
     B.NameLabel.Parent := AParent;
@@ -1054,6 +1460,11 @@ begin
         SortDestCombo(B);
       B.Combo.Tag := Result;
       B.Combo.OnChange := ComboChange;
+      // Wellenform-Auswahl (Oszillatoren, Sub, LFOs, Morph-LFO): kleines Bild der Form vor dem Namen
+      if WaveKind(Index, 0) <> WK_NONE then
+      begin
+        B.Combo.OnItemIcon := WaveItemIcon;
+      end;
     end
     else
     begin
@@ -1438,6 +1849,7 @@ begin
   StartMark('BuildOscTabs');
   BuildMixTab;
   BuildPerfTab;
+  SetupLeds;
   StartMark('BuildMixTab');
   ApplyCaptionHints;
   ShowMatrixPage(0);
@@ -1542,7 +1954,7 @@ begin
 
   // LFO 1/2 und an denselben Plaetzen LFO 5/6 (Umschalter im Reiter LFO)
   for K in [0, 1, 4, 5] do
-    BuildLfoPanel(Left, K, (K mod 4) * 184, Left.Width);
+    BuildLfoPanel(Left, K, (K mod 4) * 187, Left.Width);
 
   // Sidechain-Trigger: wann die LFO-Neustart-Option "Sidechain-Trigger" ausloest
   // (Verstaerkung/Attack/Release des Huellkurvenfolgers bleiben im Preset, ohne eigene Regler)
@@ -1620,7 +2032,7 @@ begin
     FMatPageBtn[S].Parent := Right;
     // in der Kopfleiste der Matrix, rechtsbuendig
     FMatPageBtn[S].SetBounds(0, 1, 84, 20);
-    AddStretch(FMatPageBtn[S], 8 + (High(FMatPageBtn) - S) * 88, True);
+    AddStretch(FMatPageBtn[S], 16 + (High(FMatPageBtn) - S) * 88, True);   // rechts frei fuer die Schraube
     FMatPageBtn[S].Tag := S;
     FMatPageBtn[S].TabStop := False;
     FMatPageBtn[S].OnClick := MatPageClick;
@@ -1789,7 +2201,7 @@ begin
   FFltView := TFilterView.Create(Self, FEngine);
   FFltView.Parent := PResp;
   FFltView.AlignWithMargins := True;
-  FFltView.Margins.SetBounds(8, 26, 8, 8);
+  FFltView.Margins.SetBounds(8, 26, 8, 14);   // unten Platz fuer die Schrauben
   FFltView.Align := alClient;
   FFltView.Hint := Tr('Türkis = Filter 1, orange = Filter 2, hell = Ergebnis (Reihe: nacheinander, parallel: gemischt). ' +
     'Der Cutoff wandert mit der Filter-Hüllkurve. Unten das Spektrum vor (blass) und nach den Filtern, rot = weggeschnitten.');
@@ -2528,15 +2940,18 @@ begin
   Area.ParentBackground := False;
   Area.Color := AREA_BG;
   for K in [2, 3, 6, 7] do
-    BuildLfoPanel(Area, K, ((K mod 4) - 2) * 184, 356);
+    BuildLfoPanel(Area, K, ((K mod 4) - 2) * 187, 356);
+  // gleicher Abstand zur linken LFO-Spalte wie zwischen den Reihen (4 px)
+  for K in [2, 3, 6, 7] do
+    FLfoPanels[K].Left := 4;
   P := MakePanel(Area, alNone, Tr('So arbeiten die LFOs'));
-  P.SetBounds(366, 184, 330, 180);
+  P.SetBounds(364, 187, 330, 183);
   // Umschalter LFO 1-4 / 5-8 (unter der Erklaerung in der dritten Spalte)
   for K := 0 to 1 do
   begin
     FLfoPageBtn[K] := TButton.Create(Self);
     FLfoPageBtn[K].Parent := P;
-    FLfoPageBtn[K].SetBounds(8 + K * 160, 144, 154, 26);
+    FLfoPageBtn[K].SetBounds(14 + K * 154, 144, 148, 24);   // Ecken frei fuer die Schrauben
     FLfoPageBtn[K].Tag := K;
     FLfoPageBtn[K].TabStop := False;
     FLfoPageBtn[K].OnClick := LfoPageClick;
@@ -2548,7 +2963,7 @@ begin
   // dritte Spalte: Trigger-Schwellen (so hoch wie die obere LFO-Reihe), darunter die Erklaerung mit dem
   // Umschalter (so hoch wie die untere Reihe) - beide Spalten enden auf einer Linie
   FTrigPanel.Parent := Area;
-  FTrigPanel.SetBounds(366, 0, 330, 180);
+  FTrigPanel.SetBounds(364, 0, 330, 183);
   L.SetBounds(8, 26, 314, 116);
   L.AutoSize := False;
   L.WordWrap := True;
@@ -2565,9 +2980,10 @@ end;
 procedure TGranularEditor.BuildLfoPanel(AParent: TWinControl; K, Y, W: Integer);
 var
   P: TPanel;
+  I: Integer;
 begin
   P := MakePanel(AParent, alNone, Format(Tr('LFO %d'), [K + 1]));
-  P.SetBounds(0, Y, W, 180);
+  P.SetBounds(0, Y, W, 183);
   P.Visible := K < 4;
   FLfoPanels[K] := P;
   FLfoViews[K] := TLfoView.Create(Self, FEngine);
@@ -2590,6 +3006,10 @@ begin
   FPartnerIdx[K] := AddParam(P, Ord(LFO_PARTNER_IDS[K]), 8 + COMBO_INSET, 22 + 3 * ROW_H, 0, 0, 100);
   FBindings[FPartnerIdx[K]].Combo.Hint := Tr('Partner: dessen Einmal-Ende ist das Ereignis "Ende Partner-LFO"');
   FBindings[FPartnerIdx[K]].Combo.ShowHint := True;
+  // Inhalt 3 px tiefer: nicht an die Kopfleiste geklatscht (Titel bleibt)
+  for I := 0 to P.ControlCount - 1 do
+    if P.Controls[I].Top >= 8 then
+      P.Controls[I].Top := P.Controls[I].Top + 3;
 end;
 
 procedure TGranularEditor.ShowLfoPage(Page: Integer);
@@ -2667,7 +3087,7 @@ begin
   Head(X_SYNC, Tr('oder im Takt'));
   for I := 0 to DLY_EVENT_COUNT - 1 do
   begin
-    Y := 46 + I * ROW_H;
+    Y := 42 + I * (ROW_H - 3);   // enger: letzte Zeile bleibt im Bereich
     FDlyMsIdx[I] := AddParam(P, Ord(DLY_MS[I]), X_MS, Y, NAME_W, 66, 0, DLY_EVENT_NAMES[I], TRACK_W);
     AddParam(P, Ord(DLY_SYNC[I]), X_SYNC, Y, 0, 0, 110);
   end;
@@ -2703,7 +3123,7 @@ begin
     FMEnvView[I].OscIndex := I;
     FMEnvView[I].Title := Tr(MOD_SOURCE_NAMES[MENV_SRC[I]]);
     FMEnvView[I].Parent := P;
-    FMEnvView[I].SetBounds(8 + I * 620, 26, 210, 4 * ROW_H - 6);
+    FMEnvView[I].SetBounds(8 + I * 620, 26, 210, 4 * ROW_H - 14);   // unten frei fuer die Schraube
     for Y := 0 to 3 do
       AddParam(P, Ord(MENV_IDS[I, Y]), 228 + I * 620, 24 + Y * ROW_H, 64, 70, 0, Tr(MENV_CAP[Y]), 230);
   end;
@@ -2868,6 +3288,9 @@ begin
       'leicht verstimmte Sägezähne + Sub-Sinus). Alle Regler sind Matrix-Ziele, auch je Note.');
     AddStretch(L, 10);
   end;
+  // abhaengige Bereiche: Oszillator aus = Lampe aus
+  TGroupPanel(P1).LedMaster := TGroupPanel(P0).LedCheck;
+  TGroupPanel(P2).LedMaster := TGroupPanel(P0).LedCheck;
 end;
 
 { --- Reiter Mischpult: alle Lautstaerken an einem Ort - dieselben Parameter wie in den anderen
@@ -2887,6 +3310,7 @@ var
   Z, N: Integer;
   L: TLabel;
   B: TButton;
+  RCol: TPanel;
 begin
   Area := TPanel.Create(Self);
   Area.Parent := FTabSamples;
@@ -2896,7 +3320,15 @@ begin
   Area.Color := AREA_BG;
   PZ := MakePanel(Area, alLeft, Tr('Zonen: weitere Samples je Tastenbereich'));
   PZ.Width := 640;
-  PR := MakePanel(Area, alClient, Tr('Sample bearbeiten und Aufnahme vom Eingang'));
+  // rechte Spalte: oben Sample bearbeiten/Aufnahme, darunter Feedback-Resampling (zwei eigene Bereiche)
+  RCol := TPanel.Create(Self);
+  RCol.Parent := Area;
+  RCol.Align := alClient;
+  RCol.BevelOuter := bvNone;
+  RCol.ParentBackground := False;
+  RCol.Color := AREA_BG;
+  PR := MakePanel(RCol, alTop, Tr('Sample bearbeiten und Aufnahme vom Eingang'));
+  PR.Height := 146;
 
   L := TLabel.Create(Self);
   L.Parent := PZ;
@@ -3017,9 +3449,7 @@ begin
   AddStretch(L, 10);
 
   // Feedback-Resampling: der eigene Klang wird Durchlauf fuer Durchlauf zur neuen Grain-Quelle
-  PF := MakePanel(PR, alNone, Tr('Feedback-Resampling'));
-  PF.SetBounds(0, 150, 440, 300);
-  AddStretch(PF, 0);      // eigene Breitenanpassung (Anchors rechnete beim Skalieren auf 125 % ff. falsch)
+  PF := MakePanel(RCol, alClient, Tr('Feedback-Resampling'));
   AddParam(PF, Ord(gpResOn), 8, 24, 0, 0, 0, Tr('Resampling an'));
   AddParam(PF, Ord(gpResMix), 8, 24 + ROW_H, 90, 66, 0, Tr('Anteil neu'));
   AddParam(PF, Ord(gpResTime), 8, 24 + 2 * ROW_H, 90, 66, 0, Tr('Durchlauf'));
@@ -3111,14 +3541,84 @@ begin
   T.OnTimer := PresetLaterTimer;
 end;
 
+{ Testhilfe GRANULAR_SCREWCHECK=<Datei>: alle Bereiche durchgehen und auflisten, welche Bedienelemente in
+  eine Schraubenecke ragen (Bereich, Ecke, Element, Text) }
+procedure ScrewCheck(Root: TWinControl; L: TStrings);
+const
+  CORNER: array[0..3] of string = ('oben links', 'oben rechts', 'unten links', 'unten rechts');
+var
+  I, J, K, Sr, D, Cx, Cy: Integer;
+  P: TWinControl;
+  C: TControl;
+  R, S, T: TRect;
+  Txt, Title: string;
+begin
+  for I := 0 to Root.ControlCount - 1 do
+    if Root.Controls[I] is TWinControl then
+    begin
+      P := TWinControl(Root.Controls[I]);
+      if (P is TGroupPanel) and (P.ClientWidth > 20) then
+      begin
+        Sr := Max(2, P.ScaleValue(3));
+        D := P.ScaleValue(3) + Sr;
+        Title := '';
+        for J := 0 to P.ControlCount - 1 do
+          if (P.Controls[J] is TLabel) and (P.Controls[J].Top < 8) then
+            Title := TLabel(P.Controls[J]).Caption;
+        for K := 0 to 3 do
+        begin
+          if K mod 2 = 0 then Cx := D else Cx := P.ClientWidth - 1 - D;
+          if K < 2 then Cy := P.ScaleValue(GRP_HEAD) div 2 else Cy := P.ClientHeight - 1 - D;
+          S := Rect(Cx - Sr - 2, Cy - Sr - 2, Cx + Sr + 3, Cy + Sr + 3);
+          for J := 0 to P.ControlCount - 1 do
+          begin
+            C := P.Controls[J];
+            if not C.Visible then
+              Continue;
+            R := C.BoundsRect;
+            if C is TLabel then
+            begin
+              // nur der tatsaechlich beschriebene Teil zaehlt
+              Txt := TLabel(C).Caption;
+              if TLabel(C).Alignment = taRightJustify then
+                R.Left := R.Right - TLabel(C).Canvas.TextWidth(Txt)
+              else
+                R.Right := R.Left + TLabel(C).Canvas.TextWidth(Txt);
+              R.Bottom := R.Top + TLabel(C).Canvas.TextHeight('Ag');
+            end
+            else
+              Txt := C.ClassName;
+            if (C is TLabel) and (C.Top < 8) then
+              Continue;   // Titel
+            if IntersectRect(T, R, S) then
+              L.Add(Format('%s | %s | %s | %s', [Title, CORNER[K], C.ClassName,
+                StringReplace(Txt, sLineBreak, ' ', [rfReplaceAll])]));
+          end;
+        end;
+      end;
+      ScrewCheck(P, L);
+    end;
+end;
+
 procedure TGranularEditor.PresetLaterTimer(Sender: TObject);
 var
   Items: TArray<string>;
   Item, Name: string;
   P, I: Integer;
   V: Double;
+  SL: TStringList;
 begin
   (Sender as TTimer).Enabled := False;
+  if GetEnvironmentVariable('GRANULAR_SCREWCHECK') <> '' then
+  begin
+    SL := TStringList.Create;
+    try
+      ScrewCheck(Self, SL);
+      SL.SaveToFile(GetEnvironmentVariable('GRANULAR_SCREWCHECK'), TEncoding.UTF8);
+    finally
+      SL.Free;
+    end;
+  end;
   if GTestSetupDone then
     Exit;
   GTestSetupDone := True;
@@ -3736,7 +4236,7 @@ begin
   FLoadList := TLoadList.Create(Self, FEngine);
   FLoadList.Parent := PL;
   FLoadList.AlignWithMargins := True;
-  FLoadList.Margins.SetBounds(8, 24, 8, 8);
+  FLoadList.Margins.SetBounds(8, 24, 8, 14);   // unten Platz fuer die Schrauben
   FLoadList.Align := alClient;
   FLoadList.Font.Assign(Font);
   PR := MakePanel(Area, alClient, Tr('Rechenzeit (gemessen)'));
@@ -3869,7 +4369,7 @@ begin
   begin
     B := TButton.Create(Self);
     B.Parent := Top;
-    B.SetBounds(8 + I * 82, 82, 78, 25);
+    B.SetBounds(14 + I * 82, 82, 76, 23);   // Ecke frei fuer die Schraube
     B.Caption := NAMES[I];
     B.Tag := I;
     B.TabStop := False;
@@ -4703,7 +5203,7 @@ begin
     AddParam(PM, Ord(MACROS[I]), 8, Y, 110, 56);
     L := TLabel.Create(Self);
     L.Parent := PM;
-    L.SetBounds(118, Y + 24, 380, 14);
+    L.SetBounds(118, Y + 23, 380, 14);   // 1 px hoeher: die letzte Zeile stoesst sonst an den Rand
     L.Caption := HINTS[I];
     L.Font.Color := $00909090;
     L.Transparent := True;
@@ -5816,6 +6316,7 @@ begin
     else if B.Check <> nil then
     begin
       B.Check.Checked := Norm >= 0.5;
+      FLedsDirty := True;
       if B.OnOffCaption then
         B.NameLabel.Caption := System.StrUtils.IfThen(Norm >= 0.5, Tr('an'), Tr('aus'));
     end;
@@ -5854,6 +6355,20 @@ begin
   end;
 end;
 
+{ alle Betriebslampen pruefen (neu gezeichnet wird nur, was sich geaendert hat) }
+procedure UpdateLeds(Root: TWinControl);
+var
+  I: Integer;
+begin
+  for I := 0 to Root.ControlCount - 1 do
+    if Root.Controls[I] is TWinControl then
+    begin
+      if Root.Controls[I] is TGroupPanel then
+        TGroupPanel(Root.Controls[I]).UpdateLed;
+      UpdateLeds(TWinControl(Root.Controls[I]));
+    end;
+end;
+
 procedure TGranularEditor.UpdateFromEngine;
 var
   I: Integer;
@@ -5871,6 +6386,11 @@ begin
     UpdateMatrixPageCaptions;
   UpdateZoneUi;
   FCommitted := TakeSnapshot;
+  if FLedsDirty then
+  begin
+    FLedsDirty := False;
+    UpdateLeds(Self);
+  end;
 end;
 
 { Huellkurven-Grafik: Punkte mit der Maus ziehen wie die Regler daneben }
@@ -5947,6 +6467,98 @@ begin
   ParamChangedByUser(B.Index, (Sender as TComponent).Tag);
 end;
 
+{ Betriebslampen, die nicht an einem Ein-Schalter haengen: Bedingung je Bereich }
+procedure TGranularEditor.SetupLeds;
+
+  function Grp(C: TControl): TGroupPanel;
+  begin
+    if C is TGroupPanel then Result := TGroupPanel(C) else Result := nil;
+  end;
+
+  function FindGrp(Root: TWinControl; const Title: string): TGroupPanel;
+  var
+    I, J: Integer;
+  begin
+    Result := nil;
+    for I := 0 to Root.ControlCount - 1 do
+      if Root.Controls[I] is TWinControl then
+      begin
+        if Root.Controls[I] is TGroupPanel then
+          for J := 0 to TGroupPanel(Root.Controls[I]).ControlCount - 1 do
+            if (TGroupPanel(Root.Controls[I]).Controls[J] is TLabel) and
+              (TLabel(TGroupPanel(Root.Controls[I]).Controls[J]).Caption = Title) then
+              Exit(TGroupPanel(Root.Controls[I]));
+        Result := FindGrp(TWinControl(Root.Controls[I]), Title);
+        if Result <> nil then
+          Exit;
+      end;
+  end;
+
+var
+  G: TGroupPanel;
+begin
+  // Makros (Schnell): sobald einer nicht auf 50 % steht
+  G := FindGrp(Self, Tr('Makros  (50 % = Preset unverändert)'));
+  if G <> nil then
+    G.LedFunc := function: Boolean
+      var
+        Id: TGranularParamId;
+      begin
+        Result := False;
+        for Id := gpMacroTexture to gpMacroEnv do
+          if Abs(FEngine.GetParamById(Id) - 0.5) > 0.005 then
+            Exit(True);
+      end;
+  // Grain-Reiter: alle drei Bereiche leuchten, wenn die Grains an sind
+  for G in [Grp(FCols[0]), Grp(FCols[1]), Grp(FCols[2])] do
+    if G <> nil then
+      G.LedFunc := function: Boolean
+        begin
+          Result := FEngine.GetParamById(gpGrainOn) >= 0.5;
+        end;
+  // Zonen: sobald eine Zone ein Sample hat
+  G := FindGrp(Self, Tr('Zonen: weitere Samples je Tastenbereich'));
+  if G <> nil then
+    G.LedFunc := function: Boolean
+      var
+        Z: Integer;
+      begin
+        Result := False;
+        for Z := 1 to ZONE_COUNT do
+          if FEngine.ZoneSample(Z) <> nil then
+            Exit(True);
+      end;
+  // freie Makros: sobald einer ein Ziel in der Matrix hat
+  G := FindGrp(Self, Tr('Freie Makros'));
+  if G <> nil then
+    G.LedFunc := function: Boolean
+      var
+        K, S2: Integer;
+      begin
+        Result := False;
+        for S2 := 0 to MOD_SLOTS - 1 do
+          if ParamStep(SlotDestIndex(S2), FEngine.GetParam(SlotDestIndex(S2))) > 0 then
+            for K := 0 to UMAC_COUNT - 1 do
+              if ParamStep(SlotSourceIndex(S2), FEngine.GetParam(SlotSourceIndex(S2))) = Ord(UMAC_SRC[K]) then
+                Exit(True);
+      end;
+  // Saettigung > 0
+  G := FindGrp(Self, Tr('Sättigung, Stereo, Ausgang'));
+  if G <> nil then
+    G.LedFunc := function: Boolean
+      begin
+        Result := ParamToPlain(gpDrive, FEngine.GetParamById(gpDrive)) > 0.05;
+      end;
+  // Harmonie: Tonleiter gewaehlt
+  G := FindGrp(Self, Tr('Harmonie'));
+  if G <> nil then
+    G.LedFunc := function: Boolean
+      begin
+        Result := ParamStep(Ord(gpScale), FEngine.GetParamById(gpScale)) > 0;
+      end;
+  UpdateLeds(Self);
+end;
+
 procedure TGranularEditor.ComboChange(Sender: TObject);
 var
   B: TParamBinding;
@@ -5974,6 +6586,7 @@ begin
     Exit;
   B := FBindings[(Sender as TComponent).Tag];
   FEngine.SetParam(B.Index, IfThen(B.Check.Checked, 1.0, 0.0));
+  UpdateLeds(Self);
   if B.OnOffCaption then
     B.NameLabel.Caption := System.StrUtils.IfThen(B.Check.Checked, 'an', 'aus');
   ParamChangedByUser(B.Index, (Sender as TComponent).Tag);
@@ -6396,8 +7009,23 @@ begin
     Result := S;
 end;
 
+{ Lampen des sichtbaren Reiters: Helligkeit nachfuehren }
+procedure SagLeds(Root: TWinControl; Br: Single);
+var
+  I: Integer;
+begin
+  for I := 0 to Root.ControlCount - 1 do
+    if Root.Controls[I] is TWinControl then
+    begin
+      if Root.Controls[I] is TGroupPanel then
+        TGroupPanel(Root.Controls[I]).SagLed(Br);
+      SagLeds(TWinControl(Root.Controls[I]), Br);
+    end;
+end;
+
 procedure TGranularEditor.TimerTick(Sender: TObject);
 var
+  LedPk: Single;
   Tmp: Boolean;
   PC, GC, I, O: Integer;
   LimDb: Single;
@@ -6406,6 +7034,18 @@ var
   AnimInfo, SmpA, SmpB, SmpInfo, SmpFull: string;
   MorphB: Single;
 begin
+  // Netzteil am Limit: lauter Ausgang laesst die Lampen leicht einbrechen (schnell rein, langsam erholen),
+  // dazu ein ganz leichtes Flackern
+  LedPk := EnsureRange((FEngine.OutputPeak - 0.12) / 0.45, 0, 1);
+  if LedPk > FLedSag then
+    FLedSag := FLedSag + (LedPk - FLedSag) * 0.5
+  else
+    FLedSag := FLedSag + (LedPk - FLedSag) * 0.08;
+  if (FPages <> nil) and (FPages.ActivePage <> nil) then
+  begin
+    UpdateLeds(FPages.ActivePage);
+    SagLeds(FPages.ActivePage, 1 - 0.42 * FLedSag - 0.08 * FLedSag * Random);
+  end;
   FEngine.ResPrepare;                          // Resampling eingeschaltet: Puffer anlegen (nicht im Audio-Thread)
   if FAnimPaused then
     Exit;                                      // minimiert/unsichtbar: nichts zeichnen

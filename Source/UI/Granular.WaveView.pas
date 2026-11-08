@@ -89,7 +89,43 @@ type
     property OnPositionChange: TNotifyEvent read FOnPositionChange write FOnPositionChange;
   end;
 
+{ eine Spalte Wellenform: Spanne Lo..Hi um die Mittellinie YC (Amp = Pixel fuer Pegel 1), Kanten anteilig
+  (kantengeglaettet), innen ein Verlauf - zur Mitte dunkler, zu den Spitzen heller }
+procedure DrawWaveColumn(B: TBitmap32; X: Integer; YC, Amp, Hi, Lo: Single; Col: TColor32);
+
 implementation
+
+procedure DrawWaveColumn(B: TBitmap32; X: Integer; YC, Amp, Hi, Lo: Single; Col: TColor32);
+var
+  Top, Bot, Cov, Dist, F, Ext: Single;
+  Y, Y0, Y1: Integer;
+  R, G, Bl: Integer;
+begin
+  // senkrechte Spalten: harte Kanten (Glaettung braucht es nur bei Schraegen), innen der Verlauf
+  Top := Round(YC - Hi * Amp);
+  Bot := Round(YC - Lo * Amp) + 1;
+  if Bot - Top < 1 then
+  begin
+    Top := (Top + Bot) / 2 - 0.5;
+    Bot := Top + 1;
+  end;
+  Ext := Max(Max(YC - Top, Bot - YC), 1);
+  Y0 := Floor(Top);
+  Y1 := Ceil(Bot) - 1;
+  for Y := Max(Y0, 0) to Min(Y1, B.Height - 1) do
+  begin
+    Cov := Min(Y + 1, Bot) - Max(Y, Top);
+    if Cov <= 0.01 then
+      Continue;
+    Dist := Abs(Y + 0.5 - YC) / Ext;            // 0 = Mitte, 1 = Spitze
+    F := 0.62 + 0.5 * Dist;                     // Verlauf
+    R := Min(255, Round(((Col shr 16) and $FF) * F));
+    G := Min(255, Round(((Col shr 8) and $FF) * F));
+    Bl := Min(255, Round((Col and $FF) * F));
+    B.SetPixelTS(X, Y, (TColor32(Round(Min(Cov, 1) * 255)) shl 24) or (TColor32(R) shl 16) or
+      (TColor32(G) shl 8) or TColor32(Bl));
+  end;
+end;
 
 const
   EDGE_TOLERANCE = 5;
@@ -346,14 +382,12 @@ begin
           if FMin[Ch, Bk] < Lo then Lo := FMin[Ch, Bk];
           if FMax[Ch, Bk] > Hi then Hi := FMax[Ch, Bk];
         end;
-        Y0 := YC - Round(Hi * H2);
-        Y1 := YC - Round(Lo * H2);
         InSel := (X >= XS) and (X <= XE);
         InPre := HasPre and (X >= XA) and (X < XS);
-        if InSel then Col := Color32(120, 200, 140)
-        else if InPre then Col := Color32(190, 160, 90)
-        else Col := Color32(70, 100, 80);
-        B.VertLineS(X, Y0, Y1, Col);
+        if InSel then Col := Color32(196, 142, 64)      // Bernstein wie Huellkurven und Lampen
+        else if InPre then Col := Color32(168, 100, 58)
+        else Col := Color32(96, 78, 52);
+        DrawWaveColumn(B, X, YC, H2, Hi, Lo, Col);
       end;
     end;
     B.HorzLineS(0, H div 2, W - 1, Color32(60, 60, 70));
@@ -415,8 +449,9 @@ begin
         Alpha := 220 - (I * 200) div MAX_LIVE;
         X := NormToX(FGrains[I]);
         // kurze Leuchtmarken oben und unten statt einer halbtransparenten Linie ueber die ganze Hoehe
-        B.FillRectTS(X - 1, 1, X + 2, 12, Color32(90, 200, 255, Alpha));
-        B.FillRectTS(X - 1, H - 12, X + 2, H - 1, Color32(90, 200, 255, Alpha div 2));
+        // deckend und schmal (scharf): aeltere Grains dunkler statt durchsichtig
+        B.FillRectS(X, 1, X + 2, 12, Color32(18 + 72 * Alpha div 220, 24 + 176 * Alpha div 220, 36 + 219 * Alpha div 220));
+        B.FillRectS(X, H - 12, X + 2, H - 1, Color32(18 + 36 * Alpha div 220, 24 + 88 * Alpha div 220, 36 + 110 * Alpha div 220));
       end;
     // Stimmen-Abspielkoepfe
     for I := 0 to FPlayheadCount - 1 do

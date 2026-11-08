@@ -25,7 +25,8 @@ uses
   Winapi.Windows, Winapi.Messages, Winapi.MMSystem, System.SysUtils, System.Classes, System.Math, System.Generics.Collections,
   Vcl.Controls, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Graphics, Vcl.Forms, Vcl.Dialogs,
   Granular.Fader,   // nach Vcl.StdCtrls: Knoepfe im Look des Plugins
-  Granular.Sample, Granular.SampleEdit, Granular.AudioDecode, Granular.WasapiRec, Granular.IconButton;
+  Granular.Sample, Granular.SampleEdit, Granular.AudioDecode, Granular.WasapiRec, Granular.IconButton,
+  GR32, Granular.WaveView;
 
 type
   TWaveBox = class(TCustomControl)
@@ -124,7 +125,7 @@ const
   BG_MAIN  = $00383230;   // wie im Plugin-Fenster (BGR)
   BG_DARK  = $002A2624;
   COL_NAME = $00DCDCDC;
-  COL_WAVE = $0080C878;
+  COL_WAVE = $00408EC4;   // Bernstein (BGR) wie Huellkurven und Lampen
   COL_SEL  = $00604A30;
   UNDO_MAX = 10;
   RULER_H = 18;           // Hoehe bei 100 % (waechst mit der Fenstergroesse)           // Hoehe der Zeitleiste unter der Wellenform
@@ -486,6 +487,7 @@ var
   W, H, X, I, F0, F1, Ch, Chs, Mid, Half, X0, X1: Integer;
   Lo, Hi, V: Single;
   Src: TArray<Single>;
+  WB: TBitmap32;
 begin
   C := FWave.Canvas;
   W := FWave.Width;
@@ -506,15 +508,18 @@ begin
     end;
   end;
   if FData.Channels > 1 then Chs := 2 else Chs := 1;
-  C.Pen.Color := COL_WAVE;
+  // Wellenform in ein Zwischenbild (Untergrund mit Lineal/Auswahl uebernommen), geglaettet mit Verlauf
+  WB := TBitmap32.Create;
+  try
+  WB.SetSize(W, H);
+  BitBlt(WB.Canvas.Handle, 0, 0, W, H, C.Handle, 0, 0, SRCCOPY);
+  WB.ResetAlpha;
   for Ch := 0 to Chs - 1 do
   begin
     if Ch = 0 then Src := FData.L else Src := FData.R;
     Half := H div (2 * Chs);
     Mid := Half + Ch * 2 * Half;
-    C.Pen.Color := $00505050;
-    C.MoveTo(0, Mid); C.LineTo(W, Mid);
-    C.Pen.Color := COL_WAVE;
+    WB.HorzLineS(0, Mid, W - 1, $FF505050);
     for X := 0 to W - 1 do
     begin
       F0 := FViewA + Int64(X) * (FViewB - FViewA) div W;
@@ -527,9 +532,13 @@ begin
         if V < Lo then Lo := V;
         if V > Hi then Hi := V;
       end;
-      C.MoveTo(X, Mid - Round(Hi * (Half - 2)));
-      C.LineTo(X, Mid - Round(Lo * (Half - 2)) + 1);
+      DrawWaveColumn(WB, X, Mid, Half - 2, Hi, Lo, Color32(COL_WAVE and $FF, (COL_WAVE shr 8) and $FF,
+        (COL_WAVE shr 16) and $FF));
     end;
+  end;
+  BitBlt(C.Handle, 0, 0, W, H, WB.Canvas.Handle, 0, 0, SRCCOPY);
+  finally
+    WB.Free;
   end;
   if FPlaying then
   begin
