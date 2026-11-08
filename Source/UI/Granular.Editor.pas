@@ -4737,7 +4737,7 @@ begin
       '"Auf Pitch legen" stellt Form Frei, Neustart bei Note an und einen Matrix-Slot LFO -> Pitch ' +
       '(Menge 50 %, Faktor x1) ein: jede Stufe trifft genau ihren Halbton, jede Note spielt die Folge von vorn. ' +
       'Rate/Sync gilt für einen ganzen Durchlauf. Klaviatur links: welche Note eine Stufe spielt (Bezugston = gespielte Taste). ' +
-      'Glättung: weiche Übergänge, die gelbe Linie zeigt den echten Verlauf. Leiste „Gleiten“ unten: Klick lässt eine Stufe ' +
+      'Glättung: weiche Übergänge, die helle Linie zeigt den echten Verlauf. Leiste „Gleiten“ unten: Klick lässt eine Stufe ' +
       'vom vorigen Ton herübergleiten (wie Slide am Sequencer). Änderungen wirken sofort.');
 
     FFreeView[K] := TFreeLfoView.Create(Frm, FEngine, K);
@@ -4835,7 +4835,7 @@ begin
   FWaveSmooth[O].Position := Round(FEngine.OscDraw[O].Smooth * 100);
   FWaveSmooth[O].OnChange := WaveSmoothChange;
   FWaveSmooth[O].Hint := Tr('Glättung: rundet die Obertöne der Zeichnung ab. 0 % = genau die gezeichnete Form, ' +
-    '100 % = fast ein Sinus. Die gelbe Linie zeigt, was der Oszillator spielt.');
+    '100 % = fast ein Sinus. Die helle Linie zeigt, was der Oszillator spielt.');
   FWaveSmooth[O].ShowHint := True;
   FWaveSmoothLbl[O] := TLabel.Create(Frm);
   FWaveSmoothLbl[O].Parent := P;
@@ -4863,7 +4863,7 @@ begin
   L.Font.Color := $00A0A0A0;
   L.Transparent := True;
   L.Caption :=
-    Tr('Ziehen zeichnet eine Periode der Welle, Rechtsklick setzt 0. Blau = deine Zeichnung, gelb = was der ' +
+    Tr('Ziehen zeichnet eine Periode der Welle, Rechtsklick setzt 0. Bernstein = deine Zeichnung, hell = was der ' +
     'Oszillator spielt: bandbegrenzt (keine Spiegelfrequenzen, auch in hohen Lagen) und mit Glättung. ' +
     'Sync, Unison, Hüllkurve und Filter wirken wie bei den anderen Wellen; wird mit dem Preset gespeichert.');
 
