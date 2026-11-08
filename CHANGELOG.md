@@ -6,6 +6,14 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.24 – 08.11.2026
+
+### Geändert
+- **Welle zeichnen** und **freier LFO / Step-Sequencer** im Bernstein-Farbschema; die Linie, die zeigt, was gespielt wird, ist jetzt hell.
+- Doku-Bilder (deutsch und englisch) im neuen Look; neues Skript `Tools/gui_shots.ps1` für GUI-Check und Doku-Bilder in einem Durchgang.
+
+---
+
 ## Version 2.23 – 08.11.2026
 
 ### Neu
