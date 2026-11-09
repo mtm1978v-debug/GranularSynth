@@ -60,12 +60,18 @@ function BuildInfo(E: TGranularEngine): TArray<TInfoRow>;
 
 implementation
 
+uses
+  Winapi.UxTheme;
+
 const
   COL_BG = $00302A28;
   COL_BG2 = $00383230;
   COL_AREA = $005AD2FF;
   COL_TEXT = $00E6E6E6;
   COL_HEAD = $00201A18;
+  // Info-Fenster als Geraete-Display (die Hilfe behaelt ihren Stil): warmes Schwarz, Bernstein-Schrift
+  INF_FRAME = $00141210;  INF_BG = $00100C0A;  INF_BG2 = $00140F0C;  INF_LINE = $000A0806;
+  INF_HEAD = $001A140F;   INF_TXT = $0064B4E6; INF_HI = $005AD2FF;
 
 type
   THelpForm = class(TForm)
@@ -668,7 +674,7 @@ begin
   Position := poScreenCenter;
   ClientWidth := 860;
   ClientHeight := 720;
-  Color := COL_BG;
+  Color := INF_FRAME;
   KeyPreview := True;
   OnKeyDown := FormKeyDown;
   OnResize := FormResize;
@@ -684,7 +690,7 @@ begin
   FMoodLbl.Align := alBottom;
   FMoodLbl.AlignWithMargins := True;
   FMoodLbl.Margins.SetBounds(8, 4, 8, 0);
-  FMoodLbl.Font.Color := COL_TEXT;
+  FMoodLbl.Font.Color := INF_TXT;
   FMoodLbl.Caption := Tr('Stimmung: -');
   L.Font.Color := COL_AREA;
   L.Font.Style := [fsBold];
@@ -694,10 +700,10 @@ begin
   FLog.Height := 150;
   FLog.ReadOnly := True;
   FLog.ScrollBars := ssVertical;
-  FLog.Color := COL_HEAD;
+  FLog.Color := INF_BG;
   FLog.Font.Name := 'Consolas';
   FLog.Font.Size := 9;
-  FLog.Font.Color := COL_TEXT;
+  FLog.Font.Color := INF_TXT;
   FLog.BorderStyle := bsNone;
   FLog.WordWrap := False;
   L.Top := FLog.Top - 1;   // Ueberschrift ueber dem Protokoll
@@ -715,8 +721,9 @@ begin
   FGrid.FixedCols := 0;
   FGrid.FixedRows := 1;
   FGrid.DefaultDrawing := False;
-  FGrid.Options := [goVertLine, goHorzLine];
-  FGrid.Color := COL_BG;
+  FGrid.Options := [];            // keine hellen Windows-Gitterlinien: eigene dunkle Fugen
+  FGrid.GridLineWidth := 0;
+  FGrid.Color := INF_BG;
   FGrid.DrawingStyle := gdsClassic;
   FGrid.StyleElements := [];
   FGrid.Font.Name := 'Segoe UI';
@@ -754,6 +761,9 @@ end;
 
 procedure TInfoForm.FormShow(Sender: TObject);
 begin
+  // dunkle Bildlaufleisten (Windows 10/11, Dark-Mode-Thema), passend zur Display-Optik
+  SetWindowTheme(FLog.Handle, 'DarkMode_Explorer', nil);
+  SetWindowTheme(FGrid.Handle, 'DarkMode_Explorer', nil);
   FEngine.ReadTriggerLog(FLogPos);   // Altes verwerfen
   FEngine.TriggerLog := True;
 end;
@@ -888,23 +898,35 @@ procedure TInfoForm.GridDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRe
 var
   C: TCanvas;
   R: TRect;
+  Y: Integer;
 begin
   C := FGrid.Canvas;
+  // Display: dunkles Glas mit feinen Rasterzeilen, Bernstein-Schrift
   if ARow = 0 then
-    C.Brush.Color := COL_HEAD
+    C.Brush.Color := INF_HEAD
   else if Odd(ARow) then
-    C.Brush.Color := COL_BG
+    C.Brush.Color := INF_BG
   else
-    C.Brush.Color := COL_BG2;
+    C.Brush.Color := INF_BG2;
   C.FillRect(Rect);
+  C.Pen.Color := INF_LINE;
+  Y := Rect.Top + 2;
+  while Y < Rect.Bottom do
+  begin
+    C.MoveTo(Rect.Left, Y); C.LineTo(Rect.Right, Y);
+    Inc(Y, 3);
+  end;
+  C.Pen.Color := $00241C16;                       // Zellgrenze: dunkle Fuge
+  C.MoveTo(Rect.Left, Rect.Bottom - 1); C.LineTo(Rect.Right - 1, Rect.Bottom - 1); C.LineTo(Rect.Right - 1, Rect.Top - 1);
   C.Font := FGrid.Font;
+  C.Brush.Style := bsClear;
   if (ARow = 0) or (ACol = 0) then
   begin
-    C.Font.Color := COL_AREA;
+    C.Font.Color := INF_HI;
     C.Font.Style := [fsBold];
   end
   else
-    C.Font.Color := COL_TEXT;
+    C.Font.Color := INF_TXT;
   R := Rect;
   InflateRect(R, -6, -5);
   DrawText(C.Handle, PChar(FGrid.Cells[ACol, ARow]), -1, R, DT_WORDBREAK or DT_NOPREFIX);

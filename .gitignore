@@ -36,3 +36,4 @@ Hoerprobe Wavetable/
 # lokaler Code-Index (CodeGraph), nicht ins Repo
 .codegraph/
 codegraph.json
+HostIcon.res

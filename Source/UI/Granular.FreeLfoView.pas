@@ -930,6 +930,8 @@ var
   W, H, I, X0, X1: Integer;
   On, Active: Boolean;
   C: TColor32;
+  Y: Integer;
+  T: Single;
 begin
   Buffer.BeginUpdate;
   try
@@ -952,7 +954,22 @@ begin
       else if On then C := $FF3A3022
       else if Active then C := $FF2A2E34
       else C := $FF1E2024;
-      B.FillRectS(X0, 2, X1, H - 2, C);
+      if On then
+      begin
+        // Taste mit Glanz: oben hell, nach unten in dunkles Orange; obere Kante als Lichtreflex
+        for Y := 2 to H - 3 do
+        begin
+          T := (Y - 2) / Max(1, H - 5);
+          if Active then
+            B.HorzLineS(X0, Y, X1 - 1, Color32(Round(236 - 120 * T), Round(180 - 108 * T), Round(96 - 70 * T)))
+          else
+            B.HorzLineS(X0, Y, X1 - 1, Color32(Round(92 - 50 * T), Round(70 - 40 * T), Round(40 - 24 * T)));
+        end;
+        if Active then
+          B.HorzLineTS(X0, 2, X1 - 1, $70FFF4E0);
+      end
+      else
+        B.FillRectS(X0, 2, X1, H - 2, C);
       if I mod 4 = 0 then
         B.VertLineS(X0 - 1, 0, H - 1, COL_BEAT);
       if I = FShown then

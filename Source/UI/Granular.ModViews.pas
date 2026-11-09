@@ -160,6 +160,18 @@ type
     property Output: Boolean read FOutput write FOutput;
   end;
 
+  { Limiter: wie viel dB er gerade wegnimmt - Segmentkette von rechts (0 dB) nach links (-12 dB), dazu der Wert }
+  TReductionView = class(TCustomPaintBox32)
+  private
+    FDb: Single;
+    FShown: Integer;
+  protected
+    procedure DoPaintBuffer; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure SetDb(Db: Single);
+  end;
+
 implementation
 
 { TMixMeter }
@@ -1007,8 +1019,8 @@ begin
     X1 := 2 + Round((I + 1) * (W - 4) / SEG) - 1;
     F := (I + 0.5) / SEG;
     if F >= 0.95 then C := $FFE04030
-    else if F >= 0.75 then C := $FFE0A040
-    else C := $FF60C060;
+    else if F >= 0.75 then C := $FFFFC060
+    else C := $FFD08A38;                              // Bernstein wie das ganze Geraet
     if F > L then
       C := (C and $00FFFFFF) or $38000000;          // unbeleuchtet: schwach
     B.FillRectTS(X0, 3, X1, H - 3, C);
@@ -1021,8 +1033,69 @@ var
 begin
   TW := B.TextWidth(T);
   Y := (B.Height - 12) div 2;
-  B.FillRectTS(B.Width - TW - 6, 2, B.Width - 2, B.Height - 2, $D0202020);
+  B.FillRectTS(B.Width - TW - 6, 2, B.Width - 2, B.Height - 2, $F0141210);
   B.Textout(B.Width - TW - 4, Y, T);
+end;
+
+{ ---------------- TReductionView ---------------- }
+
+constructor TReductionView.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FShown := -1;
+end;
+
+procedure TReductionView.SetDb(Db: Single);
+var
+  K: Integer;
+begin
+  FDb := Db;
+  K := Round(Min(0, Db) * 10);
+  if K <> FShown then
+  begin
+    FShown := K;
+    Invalidate;
+  end;
+end;
+
+procedure TReductionView.DoPaintBuffer;
+const
+  SEG = 16; RANGE = 12.0;
+var
+  B: TBitmap32;
+  I, X0, X1, W, H: Integer;
+  F, Red: Double;
+  C: TColor32;
+  T: string;
+begin
+  Buffer.BeginUpdate;
+  try
+    B := Buffer;
+    W := B.Width;
+    H := B.Height;
+    B.Clear($FF16181C);
+    Red := EnsureRange(-FDb / RANGE, 0, 1);
+    for I := 0 to SEG - 1 do
+    begin
+      // von rechts nach links: je mehr Reduktion, desto weiter nach links
+      X1 := W - 3 - Round(I * (W - 4) / SEG);
+      X0 := W - 3 - Round((I + 1) * (W - 4) / SEG) + 1;
+      F := (I + 0.5) / SEG;
+      if F >= 0.75 then C := $FFE04030 else if F >= 0.4 then C := $FFFFB050 else C := $FFD08A38;
+      if F > Red then
+        C := (C and $00FFFFFF) or $38000000;
+      B.FillRectTS(X0, 3, X1, H - 3, C);
+    end;
+    B.Font.Name := 'Tahoma';
+    B.Font.Size := UiPt(7);
+    B.Font.Color := $00E6EEF2;   // hell: lesbar neben den Bernstein-Segmenten
+    if FDb < -0.1 then T := Format(Tr('Reduktion %.1f dB'), [FDb]) else T := Tr('keine Reduktion');
+    B.FillRectTS(2, 2, B.TextWidth(T) + 8, H - 2, $F0141210);
+    B.Textout(5, (H - 12) div 2, T);
+  finally
+    Buffer.EndUpdate;
+  end;
+  inherited;
 end;
 
 procedure TLevelView.DoPaintBuffer;
@@ -1042,7 +1115,7 @@ begin
   DrawSegments(B, L, FOutput);
   B.Font.Name := 'Tahoma';
   B.Font.Size := UiPt(7);
-  B.Font.Color := $FFB0B0B0;
+  B.Font.Color := $00E6EEF2;   // hell: lesbar neben den Bernstein-Segmenten
   if FOutput then
   begin
     X2 := 1 + Round(ParamToPlain(gpOutTrigLevel, FEngine.GetParam(Ord(gpOutTrigLevel))) / 100 * (W - 2));

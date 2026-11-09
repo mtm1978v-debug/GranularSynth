@@ -42,6 +42,8 @@ type
     { BufferCount x BufferFrames = Latenz; mehr Puffer = robuster gegen kurze Last (z.B. Dateidialoge) }
     constructor Create(SampleRate, BufferFrames, BufferCount: Integer; Render: TRenderEvent);
     destructor Destroy; override;
+  public
+    Muted: Boolean;   // -quiet: rechnet weiter (Anzeigen laufen), gibt aber Stille aus
   end;
 
 implementation
@@ -117,6 +119,11 @@ begin
   try
     FRender(@FL[0], @FR[0], FFrames);
   except
+    FillChar(FL[0], FFrames * SizeOf(Single), 0);
+    FillChar(FR[0], FFrames * SizeOf(Single), 0);
+  end;
+  if Muted then
+  begin
     FillChar(FL[0], FFrames * SizeOf(Single), 0);
     FillChar(FR[0], FFrames * SizeOf(Single), 0);
   end;

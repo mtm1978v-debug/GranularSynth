@@ -106,7 +106,7 @@ type
     FInfoForm: TInfoForm;
     FVaryChecks: array[TVarySection] of TCheckBox;   // an = Bereich wird beim Variieren gewuerfelt
     FUndoButton, FABButton: TButton;
-    FLimiterLabel: TLabel;
+    FLimiterLabel: TReductionView;   // Limiter: Reduktion als Segmentkette
     FUndo, FRedo: TArray<TArray<Single>>;
     FRedoButton: TButton;
     FCommitted: TArray<Single>;  // Stand vor der laufenden Reglerbewegung (Grundlage fuer Rueckgaengig)
@@ -5218,12 +5218,10 @@ begin
   // Variieren
   AddParam(PV, Ord(gpQuality), 8, 26, 100, 0, 100);
   AddParam(PV, Ord(gpLimiter), 8, 26 + ROW_H, 100, 0, 0);
-  FLimiterLabel := TLabel.Create(Self);
+  FLimiterLabel := TReductionView.Create(Self);
   FLimiterLabel.Parent := PV;
-  FLimiterLabel.SetBounds(240, 26 + ROW_H + 5, 200, 16);
+  FLimiterLabel.SetBounds(240, 26 + ROW_H + 2, 200, 20);
   AddParam(PV, Ord(gpMaster), 240, 26, 60, 60, 0, Tr('Master'), 140);
-  FLimiterLabel.Font.Color := COL_VAL;
-  FLimiterLabel.Transparent := True;
 
   L := TLabel.Create(Self);
   L.Parent := PV;
@@ -7260,10 +7258,7 @@ begin
   if FPages.ActivePage = FTabQuick then
   begin
     LimDb := FEngine.TakeLimiterReduction;
-    if LimDb < -0.1 then
-      FLimiterLabel.Caption := Format(Tr('Reduktion %.1f dB'), [LimDb])
-    else
-      FLimiterLabel.Caption := Tr('keine Reduktion');
+    FLimiterLabel.SetDb(LimDb);
   end;
   if LiveFrame then
     for I := 0 to High(FBindings) do

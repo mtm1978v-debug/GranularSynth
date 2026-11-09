@@ -15,7 +15,7 @@ unit MainForm;
     - Klaviatur (Maus + PC-Tastatur), Autoplay, Host-Tempo (Zeitinfo fuer Tempo-Sync)
     - Sidechain: Aufnahmegeraet -> Plugin-Eingaenge 1/2
     - Zustand je Plugin in %APPDATA%\GranularSynth\vst\ (automatisch), "Zuruecksetzen" loescht ihn
-  Testschalter: -bench  -autoplay  -nosave  <Plugin.dll> }
+  Testschalter: -bench  -autoplay  -nosave  -quiet (stumm, Fenster im Hintergrund)  <Plugin.dll> }
 
 interface
 
@@ -105,6 +105,7 @@ type
     procedure UnloadPlugin(SaveState: Boolean);
     procedure SavePluginState;
     procedure ShowPluginEditor;
+    procedure QuietTimer(Sender: TObject);
     procedure AdjustWindowSize;
     procedure PluginAreaResize(Sender: TObject);
     procedure PluginSizeRequest(Sender: TObject; Width, Height: Integer);
@@ -601,6 +602,14 @@ begin
       MessageDlg(E.Message, mtWarning, [mbOK], 0);
   end;
 
+  if FindCmdLineSwitch('quiet') and (FPlayer <> nil) then
+    FPlayer.Muted := True;
+  if FindCmdLineSwitch('quiet') then
+    with TTimer.Create(Self) do            // -quiet: nach dem Anzeigen ganz nach unten, ohne Fokus
+    begin
+      Interval := 200;
+      OnTimer := QuietTimer;
+    end;
   if FindCmdLineSwitch('autoplay') then
     AutoButtonClick(nil);
   StartLog('FormCreate fertig');
@@ -702,6 +711,12 @@ begin
   FPluginLabel.Caption := Tr('(kein Plugin)');
   FEditorW := 0;
   FEditorH := 0;
+end;
+
+procedure TfrmMain.QuietTimer(Sender: TObject);
+begin
+  TTimer(Sender).Enabled := False;
+  SetWindowPos(Handle, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
 end;
 
 procedure TfrmMain.ShowPluginEditor;

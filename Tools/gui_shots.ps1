@@ -27,9 +27,9 @@ $ae = [char]0xE4; $oe = [char]0xF6
 $env:GRANULAR_PARAMS = "Grains an=1;Spray=20;Filter an=1;Cutoff=1800;Resonanz=45;EQ an=1;EQ B${ae}sse=5;EQ H${oe}hen=4;Kompressor an=1;S${ae}ttigung=30"
 
 function SetLang($l) { foreach ($p in 'Win64', 'Win32') { [IO.File]::WriteAllText("$root\bin\$p\Sprache.txt", $l, (New-Object Text.UTF8Encoding $true)) } }
-function Shot([string]$Out, [string]$Title = '') {
-  [GS]::SetCursorPos(0, 0) | Out-Null   # Maus weg: sonst wird ein Tooltip fotografiert
-  $p = Start-Process "$bin\GranularHost.exe" -ArgumentList "-autoplay", "$bin\GranularSynth.dll" -PassThru
+function Shot([string]$Out, [string]$Title = 'GranularHost') {
+  # Maus bleibt beim Nutzer: das Fenster liegt ganz unten, ein Tooltip kann nicht entstehen
+  $p = Start-Process "$bin\GranularHost.exe" -ArgumentList "-autoplay", "-quiet", "$bin\GranularSynth.dll" -PassThru
   Start-Sleep -Seconds 18
   $p.Refresh(); $h = $p.MainWindowHandle
   if ($Title -ne '') {

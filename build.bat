@@ -19,5 +19,10 @@ if "%FASTMM_DIR%"=="" echo Hinweis: FASTMM_DIR nicht gesetzt - Speichermanager =
 call "C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\rsvars.bat"
 rem Versionsinfo (Explorer: Eigenschaften > Details) fuer DLL und Host aus Version.rc (Tools\bump_version.py)
 brcc32 -fo"%~dp0Version.res" "%~dp0Version.rc" >nul || exit /b 1
+rem Programmsymbol des Hosts (Tools\make_host_icon.py)
+rem cgrc statt brcc32: brcc32 kann keine 256er-Icons (PNG im Icon)
+pushd "%~dp0"
+cgrc -foHostIcon.res HostIcon.rc >nul
+popd
 if /I not "%WHAT%"=="Vst" msbuild "%~dp0GranularHost.dproj" /t:Build /p:Config=%CFG% /p:Platform=%PLT% /v:minimal || exit /b 1
 if /I not "%WHAT%"=="Host" msbuild "%~dp0GranularSynth.dproj" /t:Build /p:Config=%CFG% /p:Platform=%PLT% /v:minimal || exit /b 1

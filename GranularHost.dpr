@@ -14,6 +14,8 @@ program GranularHost;
 
 uses
   {$IFDEF USE_FASTMM5} FastMM5, {$ENDIF}   // schneller Speichermanager (optional, FASTMM_DIR) - muss zuerst stehen
+  Winapi.Windows,
+  System.SysUtils,
   Vcl.Forms,
   Granular.Params in 'Source\Engine\Granular.Params.pas',
   Granular.Sample in 'Source\Engine\Granular.Sample.pas',
@@ -41,12 +43,16 @@ uses
   MainForm in 'Source\Host\MainForm.pas' {frmMain};
 
 {$R *.res}
+{$R HostIcon.res}  // Programmsymbol (HostIcon.rc -> Source\Host\GranularHost.ico)
 {$R Version.res}   // Versionsinfo (Version.rc, von Tools/bump_version.py erzeugt, build.bat uebersetzt)
 
 begin
   {$IFDEF DEBUG}
   ReportMemoryLeaksOnShutdown := True;
   {$ENDIF}
+  // -quiet: dieser Prozess darf sich nicht in den Vordergrund schieben (auch nicht ueber SetFocus im Editor)
+  if FindCmdLineSwitch('quiet') then
+    LockSetForegroundWindow(LSFW_LOCK);
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.Title := 'GranularHost';

@@ -54,6 +54,7 @@ type
     FValue, FShown, FPeak: Double;   // Rechenzeit % (Ziel / angezeigt, gedaempft), laengster Aufruf %
     FTheory: Double;                  // theoretische Last % (Marke am Rand)
     FBuf: TBitmap32;                  // Graphics32: kantengeglaettete Boegen, Striche, Nadel
+    FFace: TBitmap32;                 // vorgerechnetes Zifferblatt (Einfassung, Verlauf, Zonen, Skala, Glas)
   protected
     procedure Paint; override;
   public
@@ -73,6 +74,9 @@ const
   COL_AMBER = $0040A8E0;
   COL_A = $0060C080;       // gruen (Klang A)
   COL_B = $00D0A060;       // blaeulich (Klang B)
+  // Rechenblock-Liste als Hardware-Display: warmes Schwarz, bernsteinfarbene Segmente
+  LCD_BG = $00100C0A;   LCD_LINE = $000B0907;   LCD_TXT = $0064B4E6;   LCD_DIM = $00305A78;
+  LCD_SEG_A = $0040A8F0; LCD_SEG_B = $003C88C8; LCD_SEG_OFF = $00141E28;
 
 { ---------------- TLoadList ---------------- }
 
@@ -236,17 +240,21 @@ var
   T: Double;
   ROW, X_NAME, X_A, X_B, BAR_W: Integer;   // wachsen mit der Fenstergroesse (Schrift waechst mit)
 
+  // Balken als LED-Segmente (wie eine Pegelkette auf einem Geraete-Display)
   procedure Bar(X, Y: Integer; Frac: Double; On_: Boolean; Col: TColor);
+  var
+    K, N, Lit, SW: Integer;
   begin
-    C.Brush.Color := $00403A38;
-    C.FillRect(Rect(X, Y + 5, X + BAR_W, Y + 15));
-    if On_ then
+    SW := Max(3, UiPt(4));
+    N := BAR_W div SW;
+    if On_ then Lit := Max(1, Round(N * Frac)) else Lit := 0;
+    for K := 0 to N - 1 do
     begin
-      C.Brush.Color := Col;
-      C.FillRect(Rect(X, Y + 5, X + Max(2, Round(BAR_W * Frac)), Y + 15));
+      if K < Lit then C.Brush.Color := Col else C.Brush.Color := LCD_SEG_OFF;
+      C.FillRect(Rect(X + K * SW, Y + 5, X + K * SW + SW - 1, Y + 15));
     end;
     C.Brush.Style := bsClear;
-    if On_ then C.Font.Color := COL_TEXT else C.Font.Color := COL_DIM;
+    if On_ then C.Font.Color := LCD_TXT else C.Font.Color := LCD_DIM;
     if On_ then
       C.TextOut(X + BAR_W + 6, Y + 2, Format(Tr('%.0f %%'), [Frac * 30]))
     else
@@ -259,8 +267,19 @@ begin
   if (FBuf.Width <> Width) or (FBuf.Height <> Height) then
     FBuf.SetSize(Width, Height);
   C := FBuf.Canvas;
+  // Display: Einfassung (Fase), dunkles Glas mit leichtem Verlauf und feinen Rasterzeilen
   C.Brush.Color := BG;
   C.FillRect(Rect(0, 0, Width, Height));
+  C.Brush.Color := $00151210; C.FillRect(Rect(0, 0, Width, Height));
+  C.Pen.Color := $000A0908; C.MoveTo(0, Height - 1); C.LineTo(0, 0); C.LineTo(Width - 1, 0);
+  C.Pen.Color := $00585452; C.LineTo(Width - 1, Height - 1); C.LineTo(0, Height - 1);
+  for Y := 2 to Height - 3 do
+  begin
+    T := Y / Max(1, Height);
+    C.Pen.Color := RGB(Round(16 + 10 * (1 - T)), Round(13 + 8 * (1 - T)), Round(11 + 6 * (1 - T)));
+    if Y mod 3 = 0 then C.Pen.Color := LCD_LINE;      // Rasterzeilen
+    C.MoveTo(2, Y); C.LineTo(Width - 2, Y);
+  end;
   C.Font.Assign(Font);
   C.Brush.Style := bsClear;
   C.Font.Color := COL_AMBER;
@@ -277,12 +296,12 @@ begin
   begin
     Y := UiPt(28) + I * ROW;
     C.Brush.Style := bsClear;
-    C.Font.Color := COL_TEXT;
+    C.Font.Color := LCD_TXT;
     C.TextOut(X_NAME, Y + 2, FItems[I].Name);
     C.Brush.Style := bsSolid;
     // Balkenlaenge: Gewicht relativ zum groessten Block (Grains = 30)
-    Bar(X_A, Y, FItems[I].Weight / 30, FItems[I].OnA, COL_A);
-    Bar(X_B, Y, FItems[I].Weight / 30, FItems[I].OnB, COL_B);
+    Bar(X_A, Y, FItems[I].Weight / 30, FItems[I].OnA, LCD_SEG_A);
+    Bar(X_B, Y, FItems[I].Weight / 30, FItems[I].OnB, LCD_SEG_B);
   end;
   Y := UiPt(28) + Length(FItems) * ROW + UiPt(8);
   T := TheoryPercent;
@@ -291,7 +310,7 @@ begin
   C.Font.Style := [fsBold];
   C.TextOut(X_NAME, Y, Format(Tr('Theoretische Last: %.0f %% der Volllast (alles an, A + B, 32 Stimmen)'), [T]));
   C.Font.Style := [];
-  C.Font.Color := COL_DIM;
+  C.Font.Color := LCD_DIM;
   C.TextOut(X_NAME, Y + 20, Tr('Prozentangabe je Block: Anteil an einem voll belegten Klang (Messwerte des Prüfstands).'));
   Canvas.Draw(0, 0, FBuf);
 end;
@@ -302,12 +321,14 @@ constructor TLoadGauge.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FBuf := TBitmap32.Create;
+  FFace := TBitmap32.Create;
   ControlStyle := ControlStyle + [csOpaque];
 end;
 
 destructor TLoadGauge.Destroy;
 begin
   FBuf.Free;
+  FFace.Free;
   inherited;
 end;
 
@@ -339,6 +360,9 @@ var
   V: Double;
   S: string;
   P: TFloatPoint;
+  Swap: TBitmap32;
+  F, Hw: Double;
+  PX0, PX1, PY0, PY1: Integer;
 
   function PtAt(Pct, Rad: Double): TFloatPoint;
   var
@@ -375,23 +399,68 @@ var
   end;
 
 begin
-  if (FBuf.Width <> Width) or (FBuf.Height <> Height) then
-    FBuf.SetSize(Width, Height);
-  FBuf.Clear(Color32(BG));
   Cx := Width / 2;
   // Bogen ueber 240 Grad: reicht R * sin(30) = R/2 unter die Mitte, darunter Wert und Beschriftung (60 px)
-  R := Min(Width / 2 - 10, (Height - 20 - 64) / 1.5);
-  Cy := 20 + R;
-  // Zonen: gruen bis 50 %, gelb bis 80 %, rot darueber
-  ArcZone(0, 50, $0050A050, 6);
-  ArcZone(50, 80, $0030C0D0, 6);
-  ArcZone(80, 100, $004040D0, 6);
-  // Skalenstriche
-  for I := 0 to 10 do
-    if I mod 5 = 0 then
-      Line(PtAt(I * 10, R - 12), PtAt(I * 10, R - 24), $00C0C0C0, 2, False)
-    else
-      Line(PtAt(I * 10, R - 12), PtAt(I * 10, R - 20), $00A0A0A0, 1.2, False);
+  // Platte fuellt das Feld; der Kreis samt Einfassung liegt komplett auf der Platte (angeschraubt = innen)
+  R := Max(20, Min(Width / 2, Height / 2) - 22);   // so gross wie moeglich, rund (kein Ei)
+  Cy := Height / 2;
+  if (FFace.Width <> Width) or (FFace.Height <> Height) then
+  begin
+    // Zifferblatt einmal je Groesse: Metalleinfassung, Verlauf, Zonen mit Schein, Skala, Glasreflex
+    FFace.SetSize(Width, Height);
+    Swap := FBuf; FBuf := FFace;          // Hilfsroutinen zeichnen in FBuf
+    FBuf.Clear(Color32(BG));
+    // rechteckige Platte (Verlauf oben hell -> unten dunkel, Fase) mit vier Schrauben
+    // Platte fuellt das ganze Feld (kleiner Rand), der Tacho ist darin eingelassen
+    PX0 := 3; PX1 := Width - 4;
+    PY0 := 3; PY1 := Height - 4;
+    for I := PY0 to PY1 do
+    begin
+      F := (I - PY0) / Max(1, PY1 - PY0);
+      FBuf.HorzLineS(PX0, I, PX1, Color32(Round(62 - 26 * F), Round(60 - 25 * F), Round(58 - 24 * F)));
+    end;
+    FBuf.HorzLineS(PX0, PY0, PX1, Color32(96, 92, 88));  FBuf.VertLineS(PX0, PY0, PY1, Color32(84, 80, 76));
+    FBuf.HorzLineS(PX0, PY1, PX1, Color32(16, 15, 14));  FBuf.VertLineS(PX1, PY0, PY1, Color32(20, 19, 18));
+    for I := 0 to 3 do
+    begin
+      if I mod 2 = 0 then F := PX0 + 9 else F := PX1 - 9;
+      if I < 2 then P := FloatPoint(F, PY0 + 9) else P := FloatPoint(F, PY1 - 9);
+      PolygonFS(FBuf, Circle(P.X, P.Y, 4, 24), Color32(21, 18, 16));
+      PolygonFS(FBuf, Circle(P.X, P.Y, 3.2, 24), Color32(76, 82, 90));
+      Line(FloatPoint(P.X - 2.2, P.Y + 2.2), FloatPoint(P.X + 2.2, P.Y - 2.2), $001A1C20, 1.2, False);
+    end;
+    for I := 0 to 7 do                     // Einfassung: aussen dunkel, Lichtkante, innen dunkel
+      PolygonFS(FBuf, Circle(Cx, Cy - 0.6 * (7 - I) / 7, R + 7 - I, 96),
+        Color32(Round(30 + 52 * Sin(Pi * I / 7)), Round(29 + 50 * Sin(Pi * I / 7)), Round(28 + 46 * Sin(Pi * I / 7))));
+    for I := 0 to 39 do                    // Zifferblatt: Rand dunkel, zur Mitte leicht heller
+    begin
+      F := I / 39;
+      PolygonFS(FBuf, Circle(Cx, Cy, R * (1 - F * 0.98), 96),
+        Color32(Round(18 + 22 * F), Round(19 + 22 * F), Round(22 + 24 * F)));
+    end;
+    // Zonen: gruen bis 50 %, gelb bis 80 %, rot darueber - mit weichem Schein darunter
+    ArcZone(0, 50, $0050A050, 6);
+    ArcZone(50, 80, $0030C0D0, 6);
+    ArcZone(80, 100, $004040D0, 6);
+    // Skalenstriche
+    for I := 0 to 10 do
+      if I mod 5 = 0 then
+        Line(PtAt(I * 10, R - 12), PtAt(I * 10, R - 24), $00C0C0C0, 2, False)
+      else
+        Line(PtAt(I * 10, R - 12), PtAt(I * 10, R - 20), $00A0A0A0, 1.2, False);
+    // Schimmer: oben ein Hauch Licht, fliessend nach unten auslaufend (zeilenweise im Kreis, kein Rand)
+    for I := Round(Cy - R) to Round(Cy) do
+    begin
+      F := (I - (Cy - R)) / R;                       // 0 oben .. 1 Mitte
+      Hw := Sqrt(Max(0, Sqr(R - 1) - Sqr(I - Cy)));
+      if Hw > 1 then
+        FBuf.HorzLineTS(Round(Cx - Hw), I, Round(Cx + Hw), Color32(255, 240, 220, Round(22 * Sqr(1 - F))));
+    end;
+    FBuf := Swap;
+  end;
+  if (FBuf.Width <> Width) or (FBuf.Height <> Height) then
+    FBuf.SetSize(Width, Height);
+  FFace.DrawTo(FBuf, 0, 0);
   // Marke: laengster Aufruf (Spitze) in Bernstein
   if FPeak > 0 then
     Line(PtAt(FPeak, R - 1), PtAt(FPeak, R - 15), COL_AMBER, 3, True);

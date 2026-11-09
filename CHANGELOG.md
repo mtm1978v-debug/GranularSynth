@@ -6,6 +6,16 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.25 – 09.11.2026
+
+### Neu
+- **GranularHost hat ein eigenes Programmsymbol** (Display mit bernsteinfarbenen Grains), erzeugt von `Tools/make_host_icon.py`.
+- Host-Schalter `-quiet`: Ton stumm, Fenster öffnet sich im Hintergrund ohne Fokus. `Tools/gui_shots.ps1` nutzt ihn, so stören die Fotoläufe nicht beim Arbeiten.
+
+### Geändert
+- Schrittmuster-Tasten glänzend; Lastanzeige auf verschraubter Platte, Rechenblock-Liste als Display; Info-Fenster im Display-Stil mit dunklen Bildlaufleisten.
+- Limiter-Reduktion als Segmentanzeige, Pegelketten in Bernstein, Werte darin gut lesbar.
+
 ## Version 2.24 – 08.11.2026
 
 ### Geändert
