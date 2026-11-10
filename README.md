@@ -64,6 +64,8 @@ Die Reiter folgen dem Weg des Signals. Klick auf ein Bild zeigt es groß.
 Entfernen lässt sich GranularSynth über *Windows-Einstellungen › Apps*.
 Mehr dazu steht in [LIESMICH.txt](LIESMICH.txt), die Änderungen je Version stehen in [CHANGELOG.md](CHANGELOG.md).
 
+**Linux (ungetestet):** GranularSynth ist ein Windows-Plugin. Unter Linux lässt es sich voraussichtlich mit [VST Environment (vstenv)](https://github.com/dguedry/vstenv) nutzen – das richtet Wine und yabridge ein und macht Windows-Plugins für REAPER, Bitwig, Ardour & Co. sichtbar. Dort nur die **64-Bit**-Fassung wählen (VST3 oder VST2); `Setup.exe` lässt sich direkt darüber installieren. Erfahrungsberichte gern als Issue.
+
 ## Selbst bauen
 
 Voraussetzungen:
