@@ -2260,6 +2260,7 @@ var
   Mid, Amp, Wave, Spread, Turb, XX, BL, OX, OY, PXF, Ease, Fade: Single;
   C: TColor32;
   Bits: PColor32Array;
+  HC: Integer;
 begin
   Buffer.BeginUpdate;   // Aenderungsmeldungen je Zeichenaufruf unterdruecken (sehr teuer)
   try
@@ -2291,6 +2292,7 @@ begin
   Spread := H * (0.13 + 0.10 * FLevel);
   Turb := 0.6 + 4.0 * FLevel;
   Bits := B.Bits;
+  HC := H - 3;                               // 2 px Abstand zur Begrenzungslinie
   for I := 0 to High(FGrains) do
     with FGrains[I] do
     begin
@@ -2339,18 +2341,27 @@ begin
         Alpha := Round(Alpha * Fade * Fade);
         if Alpha < 3 then Continue;
       end;
+      // Sterne bleiben im schwarzen Bereich: zu den Raendern weich ausblenden, vor der
+      // Begrenzungslinie unten (H - 1) hart abschneiden (HC = nutzbare Hoehe)
+      Fade := Min(Min(PY - 1, HC - 2 - PY), Min(PX - 3, W - 4 - PX)) / 6;   // auch links/rechts kleiner Rand
+      if Fade < 1 then
+      begin
+        if Fade <= 0 then Continue;
+        Alpha := Round(Alpha * Fade);
+        if Alpha < 3 then Continue;
+      end;
       C := GrainColor(EnsureRange(PXF / W, 0, 1), 255);
       if Glow then
         for Dy := -2 to 2 do
           for Dx := -2 to 2 do
-            AddPixel(Bits, W, H, PX + Dx, PY + Dy, C, Alpha div 7);
-      AddPixel(Bits, W, H, PX, PY, C, Alpha);
+            AddPixel(Bits, W, HC, PX + Dx, PY + Dy, C, Alpha div 7);
+      AddPixel(Bits, W, HC, PX, PY, C, Alpha);
       if Size > 1 then
       begin
-        AddPixel(Bits, W, H, PX - 1, PY, C, Alpha div 2);
-        AddPixel(Bits, W, H, PX + 1, PY, C, Alpha div 2);
-        AddPixel(Bits, W, H, PX, PY - 1, C, Alpha div 2);
-        AddPixel(Bits, W, H, PX, PY + 1, C, Alpha div 2);
+        AddPixel(Bits, W, HC, PX - 1, PY, C, Alpha div 2);
+        AddPixel(Bits, W, HC, PX + 1, PY, C, Alpha div 2);
+        AddPixel(Bits, W, HC, PX, PY - 1, C, Alpha div 2);
+        AddPixel(Bits, W, HC, PX, PY + 1, C, Alpha div 2);
       end;
     end;
 

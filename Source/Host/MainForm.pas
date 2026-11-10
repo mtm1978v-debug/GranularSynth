@@ -177,14 +177,14 @@ begin
     SL.Add('B-Sample: ' + SP);
     for I := 0 to PARAM_COUNT - 1 do
       if Abs(EA.GetParam(I) - EB.GetParam(I)) > 1E-6 then
-        SL.Add(Format('%d %s: %s -> %s', [I, GetParamInfo(I).Name, ParamDisplay(I, EA.GetParam(I)),
+        SL.Add(Format('%d %s: %s → %s', [I, GetParamInfo(I).Name, ParamDisplay(I, EA.GetParam(I)),
           ParamDisplay(I, EB.GetParam(I))]));
     if EB.MorphLayer <> nil then
     begin
       SL.Add('--- B: Morph-Ziel gegenueber Klang A von B, Sample ' + EB.MorphSampleRef);
       for I := 0 to PARAM_COUNT - 1 do
         if Abs(EB.GetParam(I) - EB.MorphLayer.GetParam(I)) > 1E-6 then
-          SL.Add(Format('%d %s: %s -> %s', [I, GetParamInfo(I).Name, ParamDisplay(I, EB.GetParam(I)),
+          SL.Add(Format('%d %s: %s → %s', [I, GetParamInfo(I).Name, ParamDisplay(I, EB.GetParam(I)),
             ParamDisplay(I, EB.MorphLayer.GetParam(I))]));
     end;
     Result := SL.Text;
@@ -327,7 +327,7 @@ begin
   FTopBar.BevelOuter := bvNone;
   FTopBar.ParentBackground := False;
   FTopBar.Color := BG_DARK;
-  FLoadButton := MakeButton(FTopBar, Tr('VST laden...'), 8, 96, LoadClick);
+  FLoadButton := MakeButton(FTopBar, Tr('VST laden…'), 8, 96, LoadClick);
   FResetButton := MakeButton(FTopBar, Tr('Zurücksetzen'), 108, 96, ResetClick);
   FResetButton.Hint := Tr('Gespeicherte Einstellungen dieses Plugins löschen und neu laden');
   FResetButton.ShowHint := True;
@@ -395,7 +395,7 @@ begin
   EnableComboFit(FAutoCombo);
   FAutoCombo.Style := csDropDownList;
   FAutoCombo.SetBounds(112, 8, 176, 21);
-  MakeButton(FBottomBar, Tr('MIDI ...'), 292, 54, MidiExportClick).Hint :=
+  MakeButton(FBottomBar, Tr('MIDI …'), 292, 54, MidiExportClick).Hint :=
     Tr('Gewähltes Stück als MIDI-Datei speichern (bei "Zufall": alle passenden Stücke in einen Ordner)');
   FAutoCombo.TabStop := False;
   FAutoCombo.DropDownCount := 20;
@@ -593,7 +593,7 @@ begin
       end;
     end
   else
-    FHintLabel.Caption := Tr('Kein Plugin geladen. "VST laden..." wählen (z.B. GranularSynth.dll).');
+    FHintLabel.Caption := Tr('Kein Plugin geladen. "VST laden…" wählen (z.B. GranularSynth.dll).');
 
   try
     FPlayer := TWaveOutPlayer.Create(FSampleRate, FBlockFrames, FBlockCount, Render);

@@ -6,6 +6,30 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.26 – 10.11.2026
+
+### Neu
+- **Echo / Hall mit Diagramm**: Echo zeigt die Wiederholungen als abklingende Balken (Ping-Pong abwechselnd links/rechts, Dämpfung färbt spätere dunkler), Hall die Nachhallkurve mit Vorverzögerung; gestrichelt klingen die Höhen ab. Gewölbte Balken mit Glanzstreifen, Nachhallkurve mit Lichthof, Glasglanz wie die anderen Anzeigen. Neu gezeichnet nur bei Reglerwechsel.
+
+### Geändert
+- Alle Diagramme (Wellenform, Hüllkurven, LFOs, Filter/EQ, Spektrum, Monitor, Echo/Hall, Pegel) dunkeln leicht mit ab, sobald der Begrenzer eingreift (CLIP-Leuchte an); neu gezeichnet nur bei Stufenwechsel.
+- Reiter Leistung: Rechenblock-Display und Zifferblatt des Tachos dunkeln bei lautem Ausgang leicht ab wie die Bereichs-Lampen (nur bei offenem Reiter, nur bei Stufenwechsel neu gezeichnet).
+- Tacho im Reiter Leistung: Platte eingelassen statt aufgesetzt, neutral graphit statt bräunlichem Metall.
+- Reiter Schnell: Wirkung der Makros links und rechts unter den Reglerenden, dazwischen ein großer Pfeil.
+- Texte der Oberfläche und Hilfe mit echten Unicode-Zeichen statt ASCII-Nachbau: → ↔ ≤ ≥ × und … statt -> <-> <= >= x und ...
+- Wirklampen der Modulationsmatrix rund und zurückhaltend wie die gelben Bereichs-Lampen (graue Fassung, gedämpfte Farbe, Glanzpunkt, weicher Schein).
+- Bend-/Mod-Rad im Geräte-Look (Bernstein-Füllung, glänzender Griff, Beschriftung oben statt vom Griff verdeckt); CLIP-Anzeige im Ruhezustand neutral statt dunkelrot; Reiter Timing mit eigenem Erklärbereich.
+- LFO-Anzeigen mit Schimmer, Bernstein-Verlauf unter der Kurve und Glanzkante (vorgezeichnet, kostet keine Rechenzeit je Bild).
+- Hilfe und Changelog im Display-Stil wie das Info-Fenster (warmes Schwarz, Bernstein-Schrift, dunkle Bildlaufleiste).
+- LFO-Anzeigen in Bernstein; Morph-LFO-Auswahl breit genug für „Aus (nur Regler)“; dritte Spalte im Reiter LFO reicht bis zum rechten Rand.
+
+### Behoben
+- Keine gepunkteten Fokusrahmen mehr an Reglern, Schaltern und Reitern (Fokus bleibt, wird nur nicht angezeigt).
+- Abgeschnittene Inhalte an den unteren Bereichsrändern: Makros (Knopf „Makros auf 50 %“ war verdeckt) und Hilfetext im Reiter Schnell, „Anlauf-Start“ (Grain), „Farbe Release“ (Osz), Schwellen-Tor-Text (Extras), Fußzeile der Rechenblock-Liste (Leistung).
+- Infozeilen der Wellenform (Grain) auf dunklem Kästchen, nicht mehr von den Grain-Marken überdeckt.
+- Statuszeile: passt der Samplename nicht mehr hinein, entfällt er (statt nur „S…“); er steht im Tooltip.
+- Englische Oberfläche: In der Rechenblock-Liste (Reiter Leistung) und bei Schaltern im Mischpult stand „aus“/„an“ statt „off“/„on“.
+
 ## Version 2.25 – 09.11.2026
 
 ### Neu

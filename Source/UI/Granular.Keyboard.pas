@@ -380,35 +380,68 @@ begin
   if FSpringBack and (FValue <> 0) then FTimer.Enabled := True;
 end;
 
+function RgbCol(R, G, B: Integer): TColor; inline;
+begin
+  Result := TColor(R or (G shl 8) or (B shl 16));
+end;
+
 procedure TWheelView.Paint;
+// Geraete-Look wie Klaviatur und Schrittmuster: eingelassener Schlitz, Bernstein-Fuellung mit Verlauf,
+// glaenzender Griff. Beschriftung oben (der Griff liegt bei Mod = 0 ganz unten und verdeckte sie).
+// Zeichnet nur bei Wertaenderung (wenige hundert Pixel, GDI-Linien).
 var
   R: TRect;
-  T, Y, Mid: Integer;
+  T, Y, Mid, YY, Y0, Y1, TopY: Integer;
+  F: Double;
 begin
   R := ClientRect;
-  Canvas.Brush.Color := $00302820;
-  Canvas.Pen.Color := $00605850;
-  Canvas.Rectangle(R);
+  // Rahmen: Fase (oben/links dunkel, unten/rechts hell = eingelassen)
+  Canvas.Brush.Color := $00141210;
+  Canvas.FillRect(R);
+  Canvas.Pen.Color := $00080706; Canvas.MoveTo(R.Left, R.Bottom - 1); Canvas.LineTo(R.Left, R.Top); Canvas.LineTo(R.Right - 1, R.Top);
+  Canvas.Pen.Color := $00585452; Canvas.LineTo(R.Right - 1, R.Bottom - 1); Canvas.LineTo(R.Left, R.Bottom - 1);
+  TopY := R.Top + UiPt(14);                          // Platz fuer die Beschriftung
+  // Schlitz: dunkles Glas mit leichtem Verlauf
+  for YY := TopY to R.Bottom - 3 do
+  begin
+    F := (YY - TopY) / Max(1, R.Bottom - 3 - TopY);
+    Canvas.Pen.Color := RgbCol(Round(30 - 14 * F), Round(26 - 12 * F), Round(23 - 11 * F));
+    Canvas.MoveTo(R.Left + 2, YY); Canvas.LineTo(R.Right - 2, YY);
+  end;
   if FSpringBack then T := Round((FValue + 1) / 2 * 1000) else T := Round(FValue * 1000);
-  Y := R.Bottom - 4 - Round(T / 1000 * (R.Height - 8));
-  Mid := (R.Top + R.Bottom) div 2;
-  // Fuellung von der Ruhelage bis zum Wert
-  Canvas.Brush.Color := $00B08040;
+  Y := R.Bottom - 6 - Round(T / 1000 * (R.Bottom - 6 - TopY - 4));
+  Mid := (TopY + R.Bottom - 3) div 2;
+  // Fuellung von der Ruhelage bis zum Wert: Bernstein, zur Mitte hin heller (Wolbung)
   if FSpringBack then
   begin
-    if Y < Mid then Canvas.FillRect(Rect(R.Left + 3, Y, R.Right - 3, Mid))
-    else Canvas.FillRect(Rect(R.Left + 3, Mid, R.Right - 3, Y));
-    Canvas.Pen.Color := $00807870;
-    Canvas.MoveTo(R.Left + 1, Mid); Canvas.LineTo(R.Right - 1, Mid);
+    Y0 := Min(Y, Mid); Y1 := Max(Y, Mid);
   end
   else
-    Canvas.FillRect(Rect(R.Left + 3, Y, R.Right - 3, R.Bottom - 3));
-  Canvas.Brush.Color := $00E0D8D0;
-  Canvas.FillRect(Rect(R.Left + 2, Y - 2, R.Right - 2, Y + 2));
+  begin
+    Y0 := Y; Y1 := R.Bottom - 3;
+  end;
+  if Y1 > Y0 then
+    for YY := R.Left + 3 to R.Right - 4 do
+    begin
+      F := 1 - Abs((YY - (R.Left + R.Right) / 2) / Max(1, (R.Right - R.Left) / 2));   // 1 = Mitte
+      Canvas.Pen.Color := RgbCol(Round(150 + 90 * F), Round(95 + 85 * F), Round(30 + 50 * F));
+      Canvas.MoveTo(YY, Y0); Canvas.LineTo(YY, Y1);
+    end;
+  if FSpringBack then
+  begin
+    Canvas.Pen.Color := $00605850;
+    Canvas.MoveTo(R.Left + 2, Mid); Canvas.LineTo(R.Right - 2, Mid);
+  end;
+  // Griff: hell, oben Glanzkante, unten Schatten
+  Canvas.Brush.Color := $00C8DCEC;
+  Canvas.FillRect(Rect(R.Left + 2, Y - 3, R.Right - 2, Y + 3));
+  Canvas.Pen.Color := $00F4FAFF; Canvas.MoveTo(R.Left + 2, Y - 3); Canvas.LineTo(R.Right - 2, Y - 3);
+  Canvas.Pen.Color := $00505860; Canvas.MoveTo(R.Left + 2, Y + 3); Canvas.LineTo(R.Right - 2, Y + 3);
+  // Beschriftung oben
   Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := $00C0B8B0;
+  Canvas.Font.Color := $0064B4E6;                    // Bernstein wie die Displays
   Canvas.Font.Size := UiPt(7);
-  Canvas.TextOut((R.Width - Canvas.TextWidth(FCaption)) div 2, R.Bottom - 14, FCaption);
+  Canvas.TextOut((R.Width - Canvas.TextWidth(FCaption)) div 2, R.Top + 2, FCaption);
   Canvas.Brush.Style := bsSolid;
 end;
 

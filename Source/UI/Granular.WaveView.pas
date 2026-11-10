@@ -53,6 +53,7 @@ type
     FOnPositionChange: TNotifyEvent;
     FStatic: TBitmap32;       // Hintergrund + Wellenform + Marker, nur bei Bedarf neu
     FStaticValid: Boolean;
+    FInfoR, FSelR: TRect;     // Infokaestchen unten (frei von Grain-Marken)
     procedure InvalidateStatic;
     procedure SetPreStartFromX(X: Integer);
     procedure MoveStartLine(X: Integer);
@@ -94,6 +95,9 @@ type
 procedure DrawWaveColumn(B: TBitmap32; X: Integer; YC, Amp, Hi, Lo: Single; Col: TColor32);
 
 implementation
+
+uses
+  Granular.ModViews;
 
 procedure DrawWaveColumn(B: TBitmap32; X: Integer; YC, Amp, Hi, Lo: Single; Col: TColor32);
 var
@@ -139,7 +143,7 @@ begin
   FSelStart := 0;
   FPreStart := -1;
   FSelEnd := 1;
-  FInfo := Tr('Keine Sounddatei geladen - "WAV laden..." benutzen');
+  FInfo := Tr('Keine Sounddatei geladen - "WAV laden…" benutzen');
 end;
 
 destructor TWaveView.Destroy;
@@ -340,6 +344,7 @@ var
   InSel: Boolean;
   Alpha: Integer;
   Col: TColor32;
+  T: string;
 begin
   W := B.Width;
   H := B.Height;
@@ -416,11 +421,19 @@ begin
   B.Font.Name := 'Tahoma';
   B.Font.Size := UiPt(8);
   B.Font.Color := $C8C8C8;
+  // Infozeilen auf dunklem Kaestchen: die Grain-Marken unten zeichnen nicht darueber (DoPaintBuffer)
+  FInfoR := Rect(10, H - 18, 18 + B.TextWidth(FInfo), H - 1);
+  B.FillRectTS(FInfoR, $E8100C0A);
   B.Textout(14, H - 16, FInfo);
   N := FSelEnd - FSelStart;
+  FSelR := Rect(0, 0, 0, 0);
   if FHasData then
-    B.Textout(W - 220, H - 16, Format(Tr('Auswahl %.1f%% - %.1f%% (%.1f%%)'),
-      [FSelStart * 100, FSelEnd * 100, N * 100]));
+  begin
+    T := Format(Tr('Auswahl %.1f%% - %.1f%% (%.1f%%)'), [FSelStart * 100, FSelEnd * 100, N * 100]);
+    FSelR := Rect(W - 8 - B.TextWidth(T) - 8, H - 18, W - 4, H - 1);
+    B.FillRectTS(FSelR, $E8100C0A);
+    B.Textout(FSelR.Left + 4, H - 16, T);
+  end;
 end;
 
 procedure TWaveView.DoPaintBuffer;
@@ -459,10 +472,16 @@ begin
       X := NormToX(FPlayheads[I]);
       B.VertLineS(X, 0, H - 1, Color32(255, 90, 90));
     end;
+    // Infokaestchen wieder freistellen (aus dem vorgezeichneten Bild)
+    if not FInfoR.IsEmpty then
+      B.Draw(FInfoR.Left, FInfoR.Top, FInfoR, FStatic);
+    if not FSelR.IsEmpty then
+      B.Draw(FSelR.Left, FSelR.Top, FSelR, FStatic);
   end;
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 

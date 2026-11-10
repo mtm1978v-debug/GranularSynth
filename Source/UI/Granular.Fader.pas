@@ -390,7 +390,7 @@ begin
       SetPixel(DC, Px, Py, C);
     end;
 end;
-
+
 { dasselbe, aber im Speicher gerechnet: Untergrund einmal holen, Pixel im Speicher-DC, einmal zurueck
   (GetPixel/SetPixel direkt auf dem Bildschirm waren beim Reiterwechsel deutlich spuerbar) }
 procedure Ellipse0(DC: HDC; X, Y, Rad: Integer; Fill, Edge: TColor);

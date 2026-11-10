@@ -95,6 +95,9 @@ type
 
 implementation
 
+uses
+  Granular.ModViews;
+
 { Displayglas: dezenter senkrechter Verlauf (oben etwas heller als Base), einmal je Rasterbild }
 procedure GlassBg(B: TBitmap32; Base: TColor32; Lift: Integer);
 var
@@ -419,6 +422,7 @@ begin
   finally
     B.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -507,6 +511,7 @@ begin
   finally
     B.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -740,6 +745,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 

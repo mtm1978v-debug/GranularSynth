@@ -18,7 +18,7 @@ unit Granular.AutoPlay;
     C#5-2   Note C#5, Dauer 2 Einheiten      R-4   Pause 4 Einheiten
     T-12    alle folgenden Noten transponieren (Halbtoene)
     V40     Dynamik der folgenden Noten 40 %  L1 / L0  gebunden / leicht abgesetzt
-  Akkordspur: 'Am:6 G:6 F#m:4 ...' -> Bass (Grundton Oktave 2) + Terz + Quinte (Oktave 4). }
+  Akkordspur: 'Am:6 G:6 F#m:4 …' -> Bass (Grundton Oktave 2) + Terz + Quinte (Oktave 4). }
 
 interface
 
@@ -235,7 +235,7 @@ begin
   AddSong('Abendlicht (Duett)', 92, 2, [AB_LEAD + AB_LEAD, AB_BASS + AB_BASS]);
   // Gefuehls-Wechsel (eigene Kompositionen): wilde/traurige Teile wechseln mit zaertlichen
   // (leise, gebunden, Dur, hoch) - dabei erkennt die Stimmungsanalyse den Wechsel (Herzchen)
-  AddSong('Herzklopfen (wild -> zart, Wechsel)', 108, 4,
+  AddSong('Herzklopfen (wild → zart, Wechsel)', 108, 4,
     [ 'V95 L0 A4-1 C5-1 E5-1 A5-1 G5-1 E5-1 C5-1 A4-1 B4-1 D5-1 F5-1 B5-1 A5-1 F5-1 D5-1 B4-1 | C5-1 E5-1 ' +
       'A5-1 C6-1 B5-1 A5-1 E5-1 C5-1 D5-2 F5-2 G#5-2 B5-2 | A5-2 G5-1 F5-1 E5-2 D5-1 C5-1 B4-2 C5-1 D5-1 ' +
       'E5-2 G#4-2 | A4-1 E5-1 A5-1 E5-1 C6-1 A5-1 E5-1 C5-1 A4-2 R-2 E4-2 R-2 | V95 L0 A4-1 C5-1 E5-1 A5-1 ' +
@@ -266,7 +266,7 @@ begin
       'R-6 A#3-2 R-6 | D#4-2 R-6 A#3-2 R-6 | D#4-2 R-6 A#3-2 R-6 | V28 L1 G4-16 | A4-16 | F4-16 | B4-16 | ' +
       'C5-16 | A4-16 | F4-16 | G4-16 | V28 L1 G4-16 | A4-16 | F4-16 | B4-16 | C5-16 | A4-16 | F4-16 | ' +
       'G4-16 | ' ]);
-  AddSong('Regentag, dann Sonne (traurig -> zärtlich)', 84, 4,
+  AddSong('Regentag, dann Sonne (traurig → zärtlich)', 84, 4,
     [ 'V45 L1 D4-8 F4-4 E4-4 | D4-12 C4-4 | A#3-8 A3-8 | G3-16 | A3-8 C4-4 A#3-4 | A3-12 G3-4 | F3-8 E3-8 ' +
       '| D3-16 | V34 L1 A5-8 C6-8 | D6-12 C6-4 | A#5-8 A5-8 | G5-16 | A5-8 F5-8 | C6-12 A#5-4 | A5-8 G5-8 ' +
       '| F5-16 | V45 L1 D4-8 F4-4 E4-4 | D4-12 C4-4 | A#3-8 A3-8 | G3-16 | A3-8 C4-4 A#3-4 | A3-12 G3-4 | ' +
@@ -278,7 +278,7 @@ begin
       'V30 L1 F3-16 | D3-16 | A#2-16 | C#3-16 | C3-16 | E3-16 | G2-16 | F2-16 | V26 L1 C5-16 | D5-16 | ' +
       'A#4-16 | E5-16 | A4-16 | F4-16 | E4-16 | A4-16 | V30 L1 F3-16 | D3-16 | A#2-16 | C#3-16 | C3-16 | ' +
       'E3-16 | G2-16 | F2-16 | V26 L1 C5-16 | D5-16 | A#4-16 | E5-16 | A4-16 | F4-16 | E4-16 | A4-16 | ' ]);
-  AddSong('Sturm und Stille (angespannt -> zart)', 120, 4,
+  AddSong('Sturm und Stille (angespannt → zart)', 120, 4,
     [ 'V100 L0 E4-1 A#4-1 E5-1 A#4-1 F4-1 B4-1 F5-1 B4-1 E4-1 A#4-1 E5-1 A#4-1 D#4-1 A4-1 D#5-1 A4-1 | ' +
       'E4-1 A#4-1 E5-1 A#4-1 F4-1 B4-1 F5-1 B4-1 E4-1 A#4-1 E5-1 A#4-1 D#4-1 A4-1 D#5-1 A4-1 | E4-1 A#4-1 ' +
       'E5-1 A#4-1 F4-1 B4-1 F5-1 B4-1 E4-1 A#4-1 E5-1 A#4-1 D#4-1 A4-1 D#5-1 A4-1 | E4-1 A#4-1 E5-1 A#4-1 ' +

@@ -38,6 +38,9 @@ type
     FLayerB: Boolean;
     FBuf: TBitmap;
     FSig: string;           // Zustand der letzten Zeichnung (nur bei Aenderung neu zeichnen)
+    FDrawnSig: string;      // Stand im Zwischenbild (Text/Balken nur bei Aenderung neu rechnen)
+    FDrawnW, FDrawnH: Integer;
+    FDim: Integer;          // Abdunkelung 0..255 (Netzteil sackt bei lautem Ausgang ab)
     procedure Build;
   protected
     procedure Paint; override;
@@ -45,6 +48,7 @@ type
     constructor Create(AOwner: TComponent; AEngine: TGranularEngine); reintroduce;
     destructor Destroy; override;
     procedure Tick;          // Zustand aus der Engine lesen, bei Aenderung neu zeichnen
+    procedure SetSag(Br: Single);   // Helligkeit 0,5..1 wie die Bereichs-Lampen; zeichnet nur bei Stufenwechsel
     function TheoryPercent: Double;
     property Font;
   end;
@@ -55,6 +59,7 @@ type
     FTheory: Double;                  // theoretische Last % (Marke am Rand)
     FBuf: TBitmap32;                  // Graphics32: kantengeglaettete Boegen, Striche, Nadel
     FFace: TBitmap32;                 // vorgerechnetes Zifferblatt (Einfassung, Verlauf, Zonen, Skala, Glas)
+    FDim: Integer;                    // Abdunkelung 0..255 (wie TLoadList)
   protected
     procedure Paint; override;
   public
@@ -62,6 +67,7 @@ type
     destructor Destroy; override;
     procedure SetValues(Load, Peak, Theory: Double);
     procedure Tick;          // Nadel weich nachfuehren
+    procedure SetSag(Br: Single);
     property Font;
   end;
 
@@ -233,6 +239,46 @@ begin
   end;
 end;
 
+{ Helligkeit -> Abdunkelung in 12 Stufen (wie TGroupPanel.SagLed); True = Stufe hat sich geaendert }
+function SagStep(Br: Single; var Dim: Integer): Boolean;
+var
+  D: Integer;
+begin
+  D := Round(EnsureRange(Round((1 - Br) / 0.5 * 11), 0, 11) * 0.5 / 11 * 200);   // hoechstens ~ -40 %
+  Result := D <> Dim;
+  Dim := D;
+end;
+
+{ Schwarz mit fester Deckkraft ueber ein Rechteck legen (ein AlphaBlend-Aufruf, kein Pixelzugriff) }
+procedure DimRect(DC: HDC; X, Y, W, H, Alpha: Integer);
+var
+  Bm: TBitmap;
+  Bf: TBlendFunction;
+begin
+  if Alpha <= 0 then Exit;
+  Bm := TBitmap.Create;
+  try
+    Bm.SetSize(1, 1);
+    Bm.Canvas.Pixels[0, 0] := clBlack;
+    Bf.BlendOp := AC_SRC_OVER; Bf.BlendFlags := 0; Bf.SourceConstantAlpha := Alpha; Bf.AlphaFormat := 0;
+    Winapi.Windows.AlphaBlend(DC, X, Y, W, H, Bm.Canvas.Handle, 0, 0, 1, 1, Bf);
+  finally
+    Bm.Free;
+  end;
+end;
+
+procedure TLoadList.SetSag(Br: Single);
+begin
+  if SagStep(Br, FDim) then
+    Invalidate;
+end;
+
+procedure TLoadGauge.SetSag(Br: Single);
+begin
+  if SagStep(Br, FDim) then
+    Invalidate;
+end;
+
 procedure TLoadList.Paint;
 var
   C: TCanvas;
@@ -258,12 +304,19 @@ var
     if On_ then
       C.TextOut(X + BAR_W + 6, Y + 2, Format(Tr('%.0f %%'), [Frac * 30]))
     else
-      C.TextOut(X + BAR_W + 6, Y + 2, 'aus');
+      C.TextOut(X + BAR_W + 6, Y + 2, Tr('aus'));
     C.Brush.Style := bsSolid;
   end;
 
 begin
-  ROW := UiPt(22); X_NAME := UiPt(8); X_A := UiPt(250); X_B := UiPt(410); BAR_W := UiPt(120);
+  ROW := UiPt(21); X_NAME := UiPt(8); X_A := UiPt(250); X_B := UiPt(410); BAR_W := UiPt(120);
+  if (FDrawnSig = FSig) and (FDrawnW = Width) and (FDrawnH = Height) then
+  begin
+    Canvas.Draw(0, 0, FBuf);                          // nur Helligkeit geaendert: Zwischenbild + Abdunkeln
+    DimRect(Canvas.Handle, 2, 2, Width - 4, Height - 4, FDim);   // nur die Anzeige, nicht die Fase
+    Exit;
+  end;
+  FDrawnSig := FSig; FDrawnW := Width; FDrawnH := Height;
   if (FBuf.Width <> Width) or (FBuf.Height <> Height) then
     FBuf.SetSize(Width, Height);
   C := FBuf.Canvas;
@@ -311,8 +364,9 @@ begin
   C.TextOut(X_NAME, Y, Format(Tr('Theoretische Last: %.0f %% der Volllast (alles an, A + B, 32 Stimmen)'), [T]));
   C.Font.Style := [];
   C.Font.Color := LCD_DIM;
-  C.TextOut(X_NAME, Y + 20, Tr('Prozentangabe je Block: Anteil an einem voll belegten Klang (Messwerte des Prüfstands).'));
+  C.TextOut(X_NAME, Y + 18, Tr('Prozentangabe je Block: Anteil an einem voll belegten Klang (Messwerte des Prüfstands).'));
   Canvas.Draw(0, 0, FBuf);
+  DimRect(Canvas.Handle, 2, 2, Width - 4, Height - 4, FDim);   // nur die Anzeige, nicht die Fase
 end;
 
 { ---------------- TLoadGauge ---------------- }
@@ -417,10 +471,13 @@ begin
     for I := PY0 to PY1 do
     begin
       F := (I - PY0) / Max(1, PY1 - PY0);
-      FBuf.HorzLineS(PX0, I, PX1, Color32(Round(62 - 26 * F), Round(60 - 25 * F), Round(58 - 24 * F)));
+      // eingelassen: oben im Schatten der Kante dunkler, nach unten neutral grau (kein Braunton)
+      FBuf.HorzLineS(PX0, I, PX1, Color32(Round(26 + 12 * F), Round(27 + 12 * F), Round(30 + 12 * F)));
     end;
-    FBuf.HorzLineS(PX0, PY0, PX1, Color32(96, 92, 88));  FBuf.VertLineS(PX0, PY0, PY1, Color32(84, 80, 76));
-    FBuf.HorzLineS(PX0, PY1, PX1, Color32(16, 15, 14));  FBuf.VertLineS(PX1, PY0, PY1, Color32(20, 19, 18));
+    // Fase einer Vertiefung: oben/links Schatten, unten/rechts Lichtkante
+    FBuf.HorzLineS(PX0, PY0, PX1, Color32(12, 12, 14));      FBuf.VertLineS(PX0, PY0, PY1, Color32(14, 14, 16));
+    FBuf.HorzLineS(PX0 + 1, PY0 + 1, PX1, Color32(20, 20, 23)); FBuf.VertLineS(PX0 + 1, PY0 + 1, PY1, Color32(21, 21, 24));
+    FBuf.HorzLineS(PX0, PY1, PX1, Color32(70, 71, 76));      FBuf.VertLineS(PX1, PY0, PY1, Color32(62, 63, 68));
     for I := 0 to 3 do
     begin
       if I mod 2 = 0 then F := PX0 + 9 else F := PX1 - 9;
@@ -431,7 +488,7 @@ begin
     end;
     for I := 0 to 7 do                     // Einfassung: aussen dunkel, Lichtkante, innen dunkel
       PolygonFS(FBuf, Circle(Cx, Cy - 0.6 * (7 - I) / 7, R + 7 - I, 96),
-        Color32(Round(30 + 52 * Sin(Pi * I / 7)), Round(29 + 50 * Sin(Pi * I / 7)), Round(28 + 46 * Sin(Pi * I / 7))));
+        Color32(Round(24 + 34 * Sin(Pi * I / 7)), Round(25 + 34 * Sin(Pi * I / 7)), Round(28 + 36 * Sin(Pi * I / 7))));   // Graphit, gedaempft
     for I := 0 to 39 do                    // Zifferblatt: Rand dunkel, zur Mitte leicht heller
     begin
       F := I / 39;
@@ -494,6 +551,9 @@ begin
   C.Font.Color := COL_DIM;
   S := Tr('Rechenzeit (Anteil eines Kerns)');
   C.TextOut(Round(Cx) - C.TextWidth(S) div 2, Round(Cy + R / 2) + 16, S);
+  // nur das Zifferblatt dunkelt ab (Beleuchtung); Platte und Einfassung sind Befestigung und bleiben
+  if FDim > 0 then
+    PolygonFS(FBuf, Circle(Cx, Cy, R, 96), TColor32(FDim) shl 24);
   FBuf.DrawTo(Canvas.Handle, 0, 0);
 end;
 

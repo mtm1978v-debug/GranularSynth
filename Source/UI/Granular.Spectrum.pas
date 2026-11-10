@@ -77,6 +77,9 @@ type
 
 implementation
 
+uses
+  Granular.ModViews;
+
 const
   F_MIN = 20.0;
   F_MAX = 20000.0;
@@ -411,6 +414,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 

@@ -201,8 +201,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 25;
-  APP_VERSION = '2.25';
+  APP_VERSION_MINOR = 26;
+  APP_VERSION = '2.26';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -251,7 +251,7 @@ const
   OSC_MODEL_NAMES: array[0..1] of string = ('Wavetable (sauber)', 'Klassisch (bis 2.9)');
   RES_SYNC_NAMES: array[0..4] of string = ('Frei', '1/4', '1/2', '1 Takt', '2 Takte');
   RES_SYNC_BEATS: array[1..4] of Double = (1, 2, 4, 8);
-  ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 -> 2)', 'Parallel (1 + 2)');
+  ROUTING_NAMES: array[0..1] of string = ('In Reihe (1 → 2)', 'Parallel (1 + 2)');
   AUTOPITCH_NAMES: array[0..2] of string = ('Aus', 'Frei', 'Halbtöne');
   SCALE_KEY_NAMES: array[0..1] of string = ('alle Tasten (Einrasten)', 'weiße Tasten = Tonleiter');
   DRIVE_TYPE_NAMES: array[0..3] of string = ('Warm', 'Röhre', 'Hart', 'Faltung');

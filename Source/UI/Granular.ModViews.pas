@@ -39,11 +39,34 @@ type
     procedure Feed(Peak: Single);
   end;
 
+  { Anzeigen dunkeln bei lautem Ausgang mit den Lampen ab: 0..255 Deckkraft Schwarz, gesetzt vom Editor
+    (nur bei Stufenwechsel; die Anzeigen des offenen Reiters werden dann einmal neu gezeichnet) }
+var
+  GDisplayDim: Integer = 0;
+
+procedure DimDisplay(B: TBitmap32);
+
+type
   TEngineView = class(TCustomPaintBox32)
   protected
     FEngine: TGranularEngine;
   public
     constructor Create(AOwner: TComponent; AEngine: TGranularEngine); reintroduce;
+  end;
+
+  { Echo / Hall als kleines Diagramm unter den Reglern: Echo = Wiederholungen als abklingende Balken
+    (Ping-Pong abwechselnd oben/unten), Hall = Nachhallkurve (Vorverzoegerung, Abklingen, Hoehen gestrichelt).
+    Sparsam: nur neu gezeichnet, wenn sich ein Regler aendert (CheckKey aus dem Editor-Timer). }
+  TFxKind = (fxEcho, fxHall);
+  TFxCurveView = class(TEngineView)
+  private
+    FKind: TFxKind;
+    FKey: Double;
+  protected
+    procedure DoPaintBuffer; override;
+  public
+    property Kind: TFxKind read FKind write FKind;
+    procedure CheckKey;
   end;
 
   TEnvKind = (ekAmp, ekFilter, ekOsc, ekOscFm, ekMod);
@@ -92,11 +115,16 @@ type
   { Eine LFO-Periode; roter Punkt = aktuelle Phase }
   TLfoView = class(TEngineView)
   private
+    FGrad: TArray<TColor32>;   // Flaechenverlauf je Zeile
+    FStatic: TBitmap32;        // Hintergrund + Flaeche + Kurve, nur neu bei anderer Form/Groesse/freier Form
+    FKeyW, FKeyH, FKeyShape: Integer;
+    FKeySum: Double;           // Pruefsumme der freien Form (aendert sie sich, wird neu gezeichnet)
     FLfo: Integer;
     FPhaseRate: Double;      // Perioden je Sekunde (aus der wirksamen Rate)
   protected
     procedure DoPaintBuffer; override;
   public
+    destructor Destroy; override;
     property Lfo: Integer read FLfo write FLfo;
   end;
 
@@ -127,6 +155,7 @@ type
   protected
     procedure DoPaintBuffer; override;
   public
+    property Glow: Single read FGlow;   // 1 = Clipper/Limiter greift gerade ein, klingt aus
     procedure UpdateClip;
     { True = MIDI-Leuchte (gelb), sonst CLIP (rot) }
     property Midi: Boolean read FMidi write FMidi;
@@ -278,11 +307,206 @@ const
   COL_MARK  = $FFFF5A5A;
   COL_TEXT  = $C8C8C8;
 
+procedure DimDisplay(B: TBitmap32);
+begin
+  if GDisplayDim > 0 then
+    B.FillRectTS(0, 0, B.Width, B.Height, TColor32(GDisplayDim) shl 24);   // ein Blend-Durchgang (SSE)
+end;
+
 constructor TEngineView.Create(AOwner: TComponent; AEngine: TGranularEngine);
 begin
   inherited Create(AOwner);
   BufferOversize := 0;   // Puffer = Controlgroesse (Standard waere +40 px)
   FEngine := AEngine;
+end;
+
+{ TFxCurveView }
+
+procedure TFxCurveView.CheckKey;
+const
+  ECHO_IDS: array[0..6] of TGranularParamId = (gpEchoOn, gpEchoTime, gpEchoFeedback, gpEchoDamp, gpEchoPingPong, gpEchoMix, gpEchoSync);
+  HALL_IDS: array[0..5] of TGranularParamId = (gpRevOn, gpRevSize, gpRevDecay, gpRevDamp, gpRevPreDelay, gpRevMix);
+var
+  K: Double;
+  I: Integer;
+begin
+  K := 0;
+  if FKind = fxEcho then
+    for I := 0 to High(ECHO_IDS) do K := K + (I + 1.37) * FEngine.EffParam[Ord(ECHO_IDS[I])]
+  else
+    for I := 0 to High(HALL_IDS) do K := K + (I + 1.37) * FEngine.EffParam[Ord(HALL_IDS[I])];
+  if K <> FKey then
+  begin
+    FKey := K;
+    ForceFullInvalidate;   // Puffer neu zeichnen (Invalidate allein zeigt nur den alten Puffer)
+  end;
+end;
+
+procedure TFxCurveView.DoPaintBuffer;
+
+  function Plain(Id: TGranularParamId): Double;
+  begin
+    Result := ParamToPlain(Id, FEngine.EffParam[Ord(Id)]);
+  end;
+
+  { Balken mit Glanz: quer gewoelbt (links Lichtkante, Mitte hell, rechts Schatten), zur Spitze heller }
+  procedure GlossBar(Bm: TBitmap32; X0, Y0, X1, Y1: Integer; C: TColor32; TipTop: Boolean);
+  var
+    XX, YY, R0, G0, B0, Rr, Gg, Bb: Integer;
+    Fx, Fy, F: Double;
+  begin
+    if (X1 <= X0) or (Y1 <= Y0) then Exit;
+    R0 := (C shr 16) and $FF; G0 := (C shr 8) and $FF; B0 := C and $FF;
+    for YY := Y0 to Y1 - 1 do
+    begin
+      if TipTop then Fy := 1 - (YY - Y0) / Max(1, Y1 - Y0) else Fy := (YY - Y0) / Max(1, Y1 - Y0);
+      for XX := X0 to X1 - 1 do
+      begin
+        Fx := (XX - X0 + 0.5) / (X1 - X0);                       // 0..1 quer
+        F := 0.62 + 0.38 * Sin(Pi * Min(1, Fx * 1.25)) + 0.12 * Fy;  // Woelbung, Licht leicht links
+        Rr := Min(255, Round(R0 * F)); Gg := Min(255, Round(G0 * F)); Bb := Min(255, Round(B0 * F));
+        Bm.PixelS[XX, YY] := Color32(Rr, Gg, Bb);
+      end;
+    end;
+    Bm.VertLineTS(X0 + Max(1, (X1 - X0) div 4), Y0 + 1, Y1 - 2, $38FFFFFF);   // Glanzstreifen
+    if TipTop then Bm.HorzLineTS(X0, Y0, X1 - 1, $70FFFFFF)
+    else Bm.HorzLineTS(X0, Y1 - 1, X1 - 1, $40FFFFFF);
+  end;
+
+var
+  B: TBitmap32;
+  W, H, X, Y, K, Mid, Base, N, BW: Integer;
+  P, T, Span, Lvl, Fb, Damp, Mix, Dec, Pre, Hi, YF, YPrev, YHPrev: Double;
+  On, Ping: Boolean;
+  C: TColor32;
+  Txt: string;
+begin
+  Buffer.BeginUpdate;
+  try
+  B := Buffer;
+  W := B.Width;
+  H := B.Height;
+  if (W < 20) or (H < 20) then
+  begin
+    B.Clear(COL_BG);
+    inherited;
+    Exit;
+  end;
+  // Hintergrund wie die anderen Anzeigen: Schimmer oben, Glanzkante
+  for Y := 0 to H - 1 do
+  begin
+    P := 1 - Y / (H - 1);
+    B.HorzLineS(0, Y, W - 1, Color32(Round(8 + 18 * P), Round(9 + 18 * P), Round(11 + 21 * P)));
+  end;
+  B.HorzLineTS(0, 0, W - 1, $28FFF0DC);
+  B.HorzLineTS(0, 1, W - 1, $10FFF0DC);
+  B.Font.Name := 'Tahoma';
+  B.Font.Size := UiPt(7);
+  B.Font.Color := $00909090;
+  if FKind = fxEcho then
+  begin
+    On := FEngine.EffParam[Ord(gpEchoOn)] >= 0.5;
+    T := Max(10, Plain(gpEchoTime));                 // ms (bei Sync die Zeit des Reglers als Naeherung)
+    Fb := EnsureRange(Plain(gpEchoFeedback) / 100, 0, 0.98);
+    Damp := EnsureRange(Plain(gpEchoDamp) / 100, 0, 1);
+    Mix := EnsureRange(Plain(gpEchoMix) / 100, 0, 1);
+    Ping := FEngine.EffParam[Ord(gpEchoPingPong)] >= 0.5;
+    // so viele Wiederholungen, bis sie unter -40 dB fallen (hoechstens 16)
+    N := 1;
+    Lvl := Mix;
+    while (N < 16) and (Lvl * Fb > 0.01) do
+    begin
+      Lvl := Lvl * Fb;
+      Inc(N);
+    end;
+    Span := T * (N + 1);
+    if Ping then Mid := H div 2 else Mid := H - 12;
+    Base := Mid;
+    B.HorzLineS(4, Base, W - 5, COL_GRID);
+    // trockener Anschlag bei 0
+    X := 8;
+    BW := Max(4, Min(14, (W - 20) div (N + 2) div 2));  // Balkenbreite
+    GlossBar(B, X, Base - (Mid - 8), X + BW, Base, $FF5A5652, True);   // trockener Klang (grau, voll)
+    Lvl := 1;                                           // Form zeigen: erste Wiederholung = volle Hoehe
+    for K := 1 to N do
+    begin
+      X := 8 + Round((W - 30) * (K * T) / Span);
+      Y := Max(1, Round((Mid - 8) * Lvl * (0.55 + 0.45 * Mix)));
+      // Daempfung: spaetere Wiederholungen dunkler (weniger Hoehen)
+      P := Power(1 - 0.6 * Damp, K - 1);
+      C := Color32(Round(240 * (0.45 + 0.55 * P)), Round(180 * (0.35 + 0.65 * P)), Round(80 * P));
+      if not On then C := Color32(70, 66, 62);
+      if Ping and not Odd(K) then
+        GlossBar(B, X, Base + 1, X + BW, Base + 1 + Y, C, False)      // rechts: nach unten
+      else
+        GlossBar(B, X, Base - Y, X + BW, Base, C, True);              // links / mono: nach oben
+      Lvl := Lvl * Fb;
+    end;
+    if Ping then
+    begin
+      B.Textout(W - 16, 3, 'L');
+      B.Textout(W - 16, H - 15, 'R');
+    end;
+    Txt := Format(Tr('%d Wiederholungen'), [N]);
+  end
+  else
+  begin
+    On := FEngine.EffParam[Ord(gpRevOn)] >= 0.5;
+    Dec := Max(0.1, Plain(gpRevDecay));               // s (-60 dB)
+    Pre := Plain(gpRevPreDelay) / 1000;               // s
+    Damp := EnsureRange(Plain(gpRevDamp) / 100, 0, 1);
+    Mix := EnsureRange(Plain(gpRevMix) / 100, 0.05, 1);
+    Span := Pre + Dec * 0.9 + 0.05;                  // Anzeige gestaucht (Wurzel): Ausklingen ueber die ganze Breite
+    Base := H - 10;
+    B.HorzLineS(4, Base, W - 5, COL_GRID);
+    // trockener Anschlag
+    GlossBar(B, 8, 6, 12, Base, $FF6E6A66, True);
+    YPrev := Base;
+    YHPrev := Base;
+    for X := 12 to W - 6 do
+    begin
+      T := (X - 12) / (W - 18) * Span;                 // s
+      if T < Pre then
+        Lvl := 0
+      else
+        Lvl := Power(10, -3 * (T - Pre) / Dec);         // -60 dB bei Nachhallzeit
+      // Einschwingen der ersten Reflexionen (wenige ms)
+      if T >= Pre then
+        Lvl := Lvl * Min(1, (T - Pre) / 0.02 + 0.2);
+      YF := Base - (Base - 8) * Sqrt(Lvl) * (0.7 + 0.3 * Mix);
+      if On then C := COL_ENV else C := $FF5A5652;
+      for Y := Max(0, Ceil(YF)) to Base - 1 do
+        B.SetPixelTS(X, Y, (C and $00FFFFFF) or (TColor32(Round(18 + 60 * (Base - Y) / Max(1, Base - 8))) shl 24));
+      if On then
+      begin
+        B.LineXS(Fixed(X - 1), Fixed(YPrev - 1.5), Fixed(X), Fixed(YF - 1.5), $30FFC060);   // Lichthof
+        B.LineXS(Fixed(X - 1), Fixed(YPrev - 0.7), Fixed(X), Fixed(YF - 0.7), $50FFE8B0);   // Glanz
+      end;
+      B.LineXS(Fixed(X - 1), Fixed(YPrev), Fixed(X), Fixed(YF), C);
+      YPrev := YF;
+      // Hoehen klingen mit Daempfung schneller ab (gestrichelte, hellere Linie)
+      if T >= Pre then
+        Hi := Power(10, -3 * (T - Pre) / Max(0.05, Dec * (1 - 0.8 * Damp))) * Min(1, (T - Pre) / 0.02 + 0.2)
+      else
+        Hi := 0;
+      YF := Base - (Base - 8) * Sqrt(Hi) * (0.7 + 0.3 * Mix);
+      if On and (X mod 4 < 2) then
+        B.LineXS(Fixed(X - 1), Fixed(YHPrev), Fixed(X), Fixed(YF), $C8FFF0C8);
+      YHPrev := YF;
+    end;
+    Txt := Format(Tr('Nachhall %.1f s'), [Dec]);
+  end;
+  // Glasglanz: oberes Drittel ein Hauch heller, nach unten auslaufend
+  for Y := 2 to H div 3 do
+    B.HorzLineTS(1, Y, W - 2, TColor32(Round(16 * (1 - Y / (H / 3)))) shl 24 or $00FFF0DC);
+  if not On then Txt := Tr('aus');
+  B.Font.Color := $00B0B0B0;
+  B.Textout(W - B.TextWidth(Txt) - 26, 4, Txt);
+  finally
+    Buffer.EndUpdate;
+  end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
+  inherited;
 end;
 
 { TEnvelopeView }
@@ -478,6 +702,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -587,13 +812,19 @@ end;
 
 { TLfoView }
 
+destructor TLfoView.Destroy;
+begin
+  FStatic.Free;
+  inherited;
+end;
+
 procedure TLfoView.DoPaintBuffer;
 const
   TRAIL_STEPS = 80;
 var
   YF, YFPrev: Single;
   B: TBitmap32;
-  W, H, X, Y, XPrev, YPrev, Shape, Mid, Amp, K, A, TX, TY, Steps: Integer;
+  W, H, X, Y, Shape, Mid, Amp, K, A, TX, TY, Steps: Integer;
   Span, P, Hz: Double;
   RateId, SyncId: TGranularParamId;
   Hold: Single;
@@ -601,6 +832,7 @@ var
   Ph, V: Double;
   ShapeId: TGranularParamId;
   EIdx: Integer;
+  Sum: Double;
 begin
   Buffer.BeginUpdate;   // Aenderungsmeldungen je Zeichenaufruf unterdruecken (sehr teuer)
   try
@@ -642,27 +874,52 @@ begin
   end;
   Mid := H div 2;
   Amp := H div 2 - 5;
-  B.HorzLineS(0, Mid, W - 1, COL_GRID);
-
-  YFPrev := Mid;
-  XPrev := 0;
-  YPrev := Mid;
-  for X := 0 to W - 1 do
+  // edel wie die Huellkurven: Hintergrund mit Schimmer (oben ein Hauch heller), Flaeche zwischen
+  // Mittellinie und Kurve als Bernstein-Verlauf (zur Kurve hin kraeftiger), oben Glanzkante.
+  // Sparsam: alles Ruhende wird nur bei Aenderung vorgezeichnet, je Bild nur kopiert (Speicherkopie).
+  Sum := 0;
+  if Shape = LFO_SHAPE_FREE then
+    for K := 0 to 31 do
+      Sum := Sum + (K + 1) * FreeLfoValue(FEngine.FreeLfo[EIdx]^, K / 31);
+  if (FStatic = nil) or (FKeyW <> W) or (FKeyH <> H) or (FKeyShape <> Shape) or (Sum <> FKeySum) then
   begin
-    Ph := X / (W - 1);
-    // S&H wird mit einem festen Treppenmuster angedeutet
-    if Shape = LFO_SHAPE_FREE then
-      V := FreeLfoValue(FEngine.FreeLfo[EIdx]^, Ph)
-    else
-      V := LfoShapeValue(Shape, Ph, Sin(Floor(Ph * 6) * 2.3) * 0.9);
-    YF := Mid - V * Amp;
-    Y := Round(YF);
-    if X > 0 then
-      AASpan(B, X, YFPrev, YF, COL_CURVE);
-    XPrev := X;
-    YPrev := Y;
-    YFPrev := YF;
+    if FStatic = nil then
+      FStatic := TBitmap32.Create;
+    FStatic.SetSize(W, H);
+    FKeyW := W; FKeyH := H; FKeyShape := Shape; FKeySum := Sum;
+    SetLength(FGrad, H);
+    for K := 0 to H - 1 do
+    begin
+      P := 1 - K / Max(1, H - 1);                             // 1 = oben, 0 = unten
+      FStatic.HorzLineS(0, K, W - 1, Color32(Round(8 + 18 * P), Round(9 + 18 * P), Round(11 + 21 * P)));
+      P := Min(1, Abs(K - Mid) / Max(1, Amp));                // Abstand zur Mitte
+      FGrad[K] := (COL_ENV and $00FFFFFF) or (TColor32(Round(14 + 70 * P)) shl 24);
+    end;
+    FStatic.HorzLineTS(0, 0, W - 1, $28FFF0DC);              // Glanzkante oben (wie Glas)
+    FStatic.HorzLineTS(0, 1, W - 1, $10FFF0DC);
+    FStatic.HorzLineS(0, Mid, W - 1, COL_GRID);
+    YFPrev := Mid;
+    for X := 0 to W - 1 do
+    begin
+      Ph := X / (W - 1);
+      // S&H wird mit einem festen Treppenmuster angedeutet
+      if Shape = LFO_SHAPE_FREE then
+        V := FreeLfoValue(FEngine.FreeLfo[EIdx]^, Ph)
+      else
+        V := LfoShapeValue(Shape, Ph, Sin(Floor(Ph * 6) * 2.3) * 0.9);
+      YF := Mid - V * Amp;
+      Y := Round(YF);
+      // Flaeche von der Mitte bis zur Kurve
+      if Y < Mid then
+        for K := Max(0, Y) to Mid - 1 do FStatic.SetPixelTS(X, K, FGrad[K])
+      else
+        for K := Mid + 1 to Min(H - 1, Y) do FStatic.SetPixelTS(X, K, FGrad[K]);
+      if X > 0 then
+        AASpan(FStatic, X, YFPrev, YF, COL_ENV);
+      YFPrev := YF;
+    end;
   end;
+  FStatic.DrawTo(B, 0, 0);
 
   X := Round(FEngine.LfoPhase[EIdx] * (W - 1));
   Y := Mid - Round(FEngine.LfoValue[EIdx] * Amp);
@@ -705,6 +962,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -838,6 +1096,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -885,7 +1144,8 @@ begin
     end
     else
     begin
-      B.FillRectS(1, 1, W - 1, H - 1, Color32(60 + A * 195 div 255, 20 + A * 40 div 255, 20 + A * 30 div 255));
+      // aus: neutral dunkel wie die anderen Aus-Zustaende (vorher dunkelrot, wirkte schon aktiv)
+      B.FillRectS(1, 1, W - 1, H - 1, Color32(40 + A * 215 div 255, 37 + A * 23 div 255, 35 + A * 15 div 255));
       if A > 0 then
         B.FillRectTS(0, 0, W, H, Color32(255, 120, 100, A div 3));
     end;
@@ -894,7 +1154,8 @@ begin
     B.Font.Style := [];
     if FMidi and (A > 120) then B.Font.Color := $00202020
     else if A > 120 then B.Font.Color := $00FFFFFF
-    else B.Font.Color := $00A0A0C0;
+    else if FMidi then B.Font.Color := $00A0A0C0
+    else B.Font.Color := $00808080;
     if FMidi then
       B.Textout((W - B.TextWidth('MIDI')) div 2, (H - B.TextHeight('MIDI')) div 2, 'MIDI')
     else
@@ -945,7 +1206,8 @@ end;
 procedure TSlotLed.DoPaintBuffer;
 var
   B: TBitmap32;
-  W, H, CX, CY, R, I, A, Src: Integer;
+  W, H, X, Y, A, CR, CG, CB, Src: Integer;
+  Rf, Lit, DX, DY, D, Cov, F, Br: Double;
   C: TColor32;
 begin
   Buffer.BeginUpdate;   // Aenderungsmeldungen je Zeichenaufruf unterdruecken (sehr teuer)
@@ -955,21 +1217,49 @@ begin
   H := B.Height;
 
   B.Clear(Color32(48, 50, 56));   // Panel-Hintergrund
-  CX := W div 2;
-  CY := H div 2;
   Src := ParamStep(SlotSourceIndex(FSlot), FEngine.GetParam(SlotSourceIndex(FSlot)));
   if Src > 0 then
     C := SlotLedColor(TModSource(Src)) and $00FFFFFF
   else
     C := $00505050;
-  // weicher Lichthof: konzentrische Quadrate mit abnehmender Deckkraft, darueber der Kern
-  R := Min(W, H) div 2;
-  for I := R downto 1 do
-  begin
-    A := FShown * (R - I + 1) div (R * 3);
-    B.FillRectTS(CX - I, CY - I, CX + I, CY + I, TColor32(EnsureRange(A, 0, 255)) shl 24 or C);
-  end;
-  B.FillRectTS(CX - 2, CY - 2, CX + 2, CY + 2, TColor32(EnsureRange(FShown, 30, 255)) shl 24 or C);
+  // runde LED zurueckhaltend wie die gelben Bereichs-Lampen: graue Fassung, gedaempfte Farbe
+  // (Kuppel: Mitte hell, Rand dunkler, Licht von oben links), weich auslaufender Schein.
+  // Pro Pixel kantengeglaettet (16x16, nur bei Helligkeitsaenderung).
+  Rf := Min(W, H) / 2 - 3.5;                          // Kuppel; Rest = Fassung + Schein
+  Lit := FShown / 255;
+  for Y := 0 to H - 1 do
+    for X := 0 to W - 1 do
+    begin
+      DX := X + 0.5 - W / 2;
+      DY := Y + 0.5 - H / 2;
+      D := Sqrt(DX * DX + DY * DY);
+      // Schein: ganz leicht, weich auslaufend
+      if D > Rf then
+      begin
+        F := 0.30 * Lit * Sqr(Max(0, 1 - (D - Rf) / 4));
+        A := Round(255 * F);
+        if A > 0 then B.SetPixelT(X, Y, TColor32(A) shl 24 or C);
+      end;
+      // Fassung: duenner grauer Ring, kaum dunkler als die Platte
+      Cov := EnsureRange(Rf + 1.5 - D, 0, 1);
+      if (Cov > 0) and (D > Rf - 0.5) then
+        B.SetPixelT(X, Y, TColor32(Round(Cov * 170)) shl 24 or $00303236);
+      // Kuppel
+      Cov := EnsureRange(Rf - D, 0, 1);
+      if Cov > 0 then
+      begin
+        F := EnsureRange(Sqrt(Sqr(DX + 0.6) + Sqr(DY + 0.6)) / Rf, 0, 1);   // 0 = Mitte
+        Br := 0.30 + 0.55 * Lit;                                              // gedaempft
+        // aus: warmes Grau wie die Bereichs-Lampen; an: Quellenfarbe, mit Grau gemischt
+        CR := Round((100 - 26 * F) * (1 - Lit * 0.8) + ((C shr 16) and $FF) * Br * (1 - 0.3 * F) * Lit * 0.8);
+        CG := Round((96 - 25 * F) * (1 - Lit * 0.8) + ((C shr 8) and $FF) * Br * (1 - 0.3 * F) * Lit * 0.8);
+        CB := Round((90 - 23 * F) * (1 - Lit * 0.8) + (C and $FF) * Br * (1 - 0.3 * F) * Lit * 0.8);
+        // Glanzpunkt oben links
+        F := EnsureRange(1 - Sqrt(Sqr(DX + Rf * 0.45) + Sqr(DY + Rf * 0.45)) / (Rf * 0.55), 0, 1) * 0.45;
+        CR := Round(CR + (255 - CR) * F); CG := Round(CG + (255 - CG) * F); CB := Round(CB + (255 - CB) * F);
+        B.SetPixelT(X, Y, TColor32(Round(Cov * 255)) shl 24 or TColor32(Color32(CR, CG, CB) and $00FFFFFF));
+      end;
+    end;
   finally
     Buffer.EndUpdate;
   end;
@@ -1095,6 +1385,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -1129,6 +1420,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 

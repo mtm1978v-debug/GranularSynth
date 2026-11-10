@@ -169,7 +169,7 @@ begin
   try
     Lines.Text := Md;
     Out := '{\rtf1\ansi\deff0{\fonttbl{\f0 Segoe UI;}}' +
-      '{\colortbl;\red220\green220\blue220;\red224\green168\blue64;\red150\green150\blue150;}' +
+      '{\colortbl;\red232\green196\blue136;\red255\green210\blue90;\red120\green96\blue64;}' +
       '\f0\fs19\cf1 ';
     Bold := False;
     Ital := False;
@@ -244,6 +244,24 @@ begin
   end;
 end;
 
+{ Hilfe im Display-Stil wie das Info-Fenster: die Farbtabelle der RTF-Datei wird beim Laden ersetzt
+  (gleiche Reihenfolge in allen Sprachen: Text, Ueberschrift, Akzent, Hinweis, grau, 3 Tabellengruende) }
+function DisplayColors(const Rtf: string): string;
+const
+  TBL = '{\colortbl;\red232\green196\blue136;\red255\green210\blue90;\red255\green168\blue64;' +
+    '\red240\green200\blue120;\red150\green122\blue84;\red34\green26\blue18;\red20\green15\blue11;\red27\green21\blue15;}';
+var
+  I, J: Integer;
+begin
+  Result := Rtf;
+  I := Pos('{\colortbl', Result);
+  if I = 0 then
+    Exit;
+  J := Pos('}', Result, I);
+  if J > 0 then
+    Result := Copy(Result, 1, I - 1) + TBL + Copy(Result, J + 1, MaxInt);
+end;
+
 procedure THelpForm.ShowDoc(Changelog: Boolean);
 var
   Md: string;
@@ -270,7 +288,7 @@ begin
     else if FileExists(FHelpFile) then
     begin
       // Hilfe ist ANSI-RTF; Schriftgroessen an die Fenstergroesse anpassen
-      St := TStringStream.Create(ScaleRtf(TFile.ReadAllText(FHelpFile, TEncoding.ANSI)), TEncoding.ANSI);
+      St := TStringStream.Create(ScaleRtf(DisplayColors(TFile.ReadAllText(FHelpFile, TEncoding.ANSI))), TEncoding.ANSI);
       try
         FEd.PlainText := False;
         FEd.Lines.LoadFromStream(St);
@@ -313,7 +331,7 @@ begin
   HelpForm.Position := poScreenCenter;
   HelpForm.ClientWidth := 720;
   HelpForm.ClientHeight := 640;
-  HelpForm.Color := COL_BG;
+  HelpForm.Color := INF_FRAME;
   HelpForm.KeyPreview := True;
   HelpForm.OnKeyDown := HelpForm.FormKeyDown;
   // Umschalter oben: Hilfe / Changelog
@@ -323,7 +341,7 @@ begin
   Bar.Height := 34;
   Bar.BevelOuter := bvNone;
   Bar.ParentBackground := False;
-  Bar.Color := COL_BG;
+  Bar.Color := INF_FRAME;
   HelpForm.FBtnHelp := TButton.Create(HelpForm);
   HelpForm.FBtnHelp.Parent := Bar;
   HelpForm.FBtnHelp.SetBounds(12, 6, 110, 24);
@@ -344,9 +362,10 @@ begin
   Ed.BorderStyle := bsNone;
   Ed.ReadOnly := True;
   Ed.ScrollBars := ssVertical;
-  Ed.Color := COL_BG;
+  Ed.Color := INF_BG;
   Ed.PlainText := False;
   HelpForm.FEd := Ed;
+  SetWindowTheme(Ed.Handle, 'DarkMode_Explorer', nil);   // dunkle Bildlaufleiste wie im Info-Fenster
   HelpForm.FHelpFile := FileName;
   // CHANGELOG.md liegt im Plugin-Ordner, die Hilfe darunter im Ordner Hilfe
   HelpForm.FChangeFile := ExpandFileName(ExtractFilePath(FileName) + '..' + PathDelim + 'CHANGELOG.md');
@@ -495,7 +514,7 @@ var
             Steps := Steps + Sgn(Round(F.Step[I] * FREE_SEMIS)) + ' '
           else
             Steps := Steps + Format(Tr('%.0f%% '), [F.Step[I] * 100]);
-        if F.Steps > 16 then Steps := Steps + '...';
+        if F.Steps > 16 then Steps := Steps + '…';
         if F.Mode = 0 then
           Shp := Format(Tr('frei, %d Halbton-Stufen (%s)'), [F.Steps, Trim(Steps)])
         else
@@ -622,7 +641,7 @@ begin
       T := T + Format(Tr('; eigene Hüllkurve (%s / %s / %s / %s) verschiebt den Cutoff um %s'),
         [PV(gpFltAttack), PV(gpFltDecay), PV(gpFltSustain), PV(gpFltRelease), PV(gpFltEnvAmt)]);
     Add(Tr('6. Filter'), T + '.' + Nt);
-    Chain := Chain + Tr(' -> Filter');
+    Chain := Chain + Tr(' → Filter');
   end;
   if Active(gpEchoOn, Nt) then
   begin
@@ -635,7 +654,7 @@ begin
     if Abs(Plain(gpEchoPitch)) > 0.05 then
       T := T + Tr('; ECHO-TREPPE: jede Wiederholung um ') + PV(gpEchoPitch) + Tr(' versetzt');
     Add(Tr('7. Echo'), T + '.' + Nt);
-    Chain := Chain + Tr(' -> Echo');
+    Chain := Chain + Tr(' → Echo');
   end;
   if Active(gpRevOn, Nt) then
   begin
@@ -643,17 +662,17 @@ begin
       [PV(gpRevSize), PV(gpRevDecay), PV(gpRevDamp), PV(gpRevPreDelay), PV(gpRevMix)]);
     if IsOn(gpFreeze) then T := T + Tr('; FREEZE: der Raum hält den Klang fast unbegrenzt');
     Add(Tr('8. Hall'), T + '.' + Nt);
-    Chain := Chain + Tr(' -> Hall');
+    Chain := Chain + Tr(' → Hall');
   end;
   if Plain(gpDrive) > 0.5 then
   begin
     Add(Tr('9. Sättigung'), Tr('warme Übersteuerung ') + PV(gpDrive) + '.');
-    Chain := Chain + Tr(' -> Sättigung');
+    Chain := Chain + Tr(' → Sättigung');
   end;
   if IsOn(gpLimiter) then
-    Chain := Chain + Tr(' -> Limiter -> weicher Clipper -> Ausgang')
+    Chain := Chain + Tr(' → Limiter → weicher Clipper → Ausgang')
   else
-    Chain := Chain + Tr(' -> weicher Clipper -> Ausgang');
+    Chain := Chain + Tr(' → weicher Clipper → Ausgang');
   Add(Tr('Signalweg'), Chain + '.');
   Add(Tr('Programm'), Tr('GranularSynth ') + APP_VERSION + Tr(' - Copyright (C) 2026 Matthias Haberecht - freie Software unter der GNU GPL Version 3 oder neuer, ohne Gewaehrleistung (LICENSE.txt im Plugin-Ordner)'));
   Result := Rows;
@@ -827,10 +846,10 @@ begin
           S := S + Format(Tr('Ereignis: SC-Ton > Schwelle  erkannt %s, Schwelle %s'),
             [NoteStr(Round(Items[I].Val)), NoteStr(Round(Items[I].Val2))]);
         tlLfoStart:
-          S := S + Format(Tr('  -> Einmal-LFO %d startet (%s)'), [Items[I].Lfo + 1,
+          S := S + Format(Tr('  → Einmal-LFO %d startet (%s)'), [Items[I].Lfo + 1,
             LFO_TRIG_NAMES[EnsureRange(Items[I].Arg, 0, High(LFO_TRIG_NAMES))]]);
         tlLfoEnd:
-          S := S + Format(Tr('  -> LFO %d Einmal-Durchlauf beendet'), [Items[I].Lfo + 1]);
+          S := S + Format(Tr('  → LFO %d Einmal-Durchlauf beendet'), [Items[I].Lfo + 1]);
       else
         S := S + Tr('Ereignis: ') + KIND_TEXT[Items[I].Kind];
       end;

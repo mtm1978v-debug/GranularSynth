@@ -18,16 +18,19 @@ def esc(t):
         if o < 128:
             out.append(ch)
         else:
-            out.append("\\'%02x" % ch.encode('cp1252')[0])
+            try:
+                out.append("\\'%02x" % ch.encode('cp1252')[0])
+            except UnicodeEncodeError:   # Pfeile, ×, ≤ ...: RTF-Unicode
+                out.append("\\u%d?" % (o if o < 32768 else o - 65536))
     return ''.join(out)
 
 TABS = [
 ("Kopfleiste", [
- ("Audio laden...", "beliebige Audiodatei (WAV, MP3, FLAC ...) als Rohmaterial der Grains laden."),
+ ("Audio laden…", "beliebige Audiodatei (WAV, MP3, FLAC …) als Rohmaterial der Grains laden."),
  ("Alle Noten aus", "beendet sofort alle klingenden Noten (Notbremse)."),
  ("Okt - / Okt +", "verschiebt die PC-Tastatur und die Klaviatur um eine Oktave."),
  ("Preset w\u00e4hlen, < >", "Preset aus der Liste laden bzw. bl\u00e4ttern."),
- ("Speichern...", "aktuelle Einstellung als Preset speichern; eigene T\u00f6ne werden nach \u201eEigene Töne\u201c kopiert. Dateityp \u201emit eingebetteten Samples\u201c: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach \u201eEigene Töne\u201c ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste."),
+ ("Speichern…", "aktuelle Einstellung als Preset speichern; eigene T\u00f6ne werden nach \u201eEigene Töne\u201c kopiert. Dateityp \u201emit eingebetteten Samples\u201c: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach \u201eEigene Töne\u201c ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste."),
  ("CLIP / MIDI", "leuchten bei \u00dcbersteuerung bzw. bei jedem empfangenen MIDI-Ereignis."),
  ("Info", "Klartext, was beim Tastendruck passiert, dazu das Trigger-Protokoll (Noten, R\u00e4der, Ereignisse, Einmal-LFOs) live."),
  ("Hilfe", "dieses Fenster."),
@@ -66,7 +69,7 @@ TABS = [
  ("Lautst\u00e4rke", "Lautst\u00e4rke des Presets."),
  ("Fenster", "Form, mit der jedes Grain ein- und ausgeblendet wird (weich bis knackig)."),
  ("Key Tracking", "an = die Tonh\u00f6he folgt der Taste; aus = jede Taste spielt dieselbe Tonh\u00f6he (Fl\u00e4chen, Ger\u00e4usche)."),
- ("Auto-Stimmung", "erkennt beim Laden den Grundton eines Samples (z.B. \u201eC3 +31 Cent\u201c) und stimmt es so, dass die Taste C4 wirklich ein C spielt. Wirkt nur bei einem klaren Einzelton (Fl\u00f6te, Klavier-Ton, Cello ...), nicht bei Akkorden, Sprache oder Ger\u00e4uschen; braucht Key Tracking. Kommt die Tonh\u00f6he per Auto-Pitch vom Sidechain, hat diese Vorrang."),
+ ("Auto-Stimmung", "erkennt beim Laden den Grundton eines Samples (z.B. \u201eC3 +31 Cent\u201c) und stimmt es so, dass die Taste C4 wirklich ein C spielt. Wirkt nur bei einem klaren Einzelton (Fl\u00f6te, Klavier-Ton, Cello …), nicht bei Akkorden, Sprache oder Ger\u00e4uschen; braucht Key Tracking. Kommt die Tonh\u00f6he per Auto-Pitch vom Sidechain, hat diese Vorrang."),
 ]),
 ("Reiter Grain - H\u00fcllkurve", [
  ("Attack / Decay / Sustain / Release", "wie jede Note einschwillt, auf den Haltepegel abf\u00e4llt, gehalten wird und nach dem Loslassen ausklingt. Die Grafik zeigt die Kurve, der rote Punkt die gerade gespielte Note."),
@@ -83,9 +86,9 @@ TABS = [
 ("Reiter Osz 1 / Osz 2 / Osz 3", [
  ("Oszillator an", "drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte S\u00e4gez\u00e4hne + Sub-Sinus)."),
  ("Welle", "Sinus, Dreieck, S\u00e4ge, Rechteck, FM (zwei Sinus), Rauschen."),
- ("Gezeichnet / Zeichnen ...", "eigene Welle: Haken an = der Oszillator spielt statt \"Welle\" die gezeichnete Form. \"Zeichnen ...\" \u00f6ffnet die Zeichenfl\u00e4che: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, S\u00e4ge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Gl\u00e4ttung 0-100 % rundet die Obert\u00f6ne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, H\u00fcllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert."),
- ("folgt Pitch", "Haken an = alle drei Oszillatoren folgen dem Grain-Regler Pitch samt seiner Modulation (z.B. freier LFO -> Pitch als Step-Sequencer, Vibrato). Aus (Standard) = Pitch wirkt nur auf die Grains. \"Auf Pitch legen\" im Fenster der freien Form schaltet ihn mit ein."),
- ("Wavetable an / Laden ... / Position", "eine Wavetable-Datei laden (WAV, z.B. aus Serum oder Vital: 2048 Punkte je Frame; auch ein einzelner Zyklus). Bis zu 32 Frames, jeder bandbegrenzt wie die eingebauten Wellen. Haken an = der Oszillator spielt die Wavetable statt \"Welle\" und Zeichnung. Position f\u00e4hrt stufenlos durch die Frames und ist je Note modulierbar (z.B. Mod-H\u00fcllkurve oder LFO -> Position = wandernder Klang). Beispiele in Beispieltoene: WT_Saege_zu_Rechteck, WT_Formant_Vokale, WT_FM_Wachsend. Lern-Preset L44."),
+ ("Gezeichnet / Zeichnen …", "eigene Welle: Haken an = der Oszillator spielt statt \"Welle\" die gezeichnete Form. \"Zeichnen …\" \u00f6ffnet die Zeichenfl\u00e4che: eine Periode mit der Maus zeichnen (Rechtsklick = 0), Grundformen (Sinus, Dreieck, S\u00e4ge, Rechteck, Puls, Zufall, Umkehren) als Ausgangspunkt, Gl\u00e4ttung 0-100 % rundet die Obert\u00f6ne ab (100 % = fast Sinus). Gespielt wird bandbegrenzt - keine Spiegelfrequenzen, auch hoch oben; Sync, Unison, H\u00fcllkurve und Filter wirken wie gewohnt. Wird mit dem Preset gespeichert."),
+ ("folgt Pitch", "Haken an = alle drei Oszillatoren folgen dem Grain-Regler Pitch samt seiner Modulation (z.B. freier LFO → Pitch als Step-Sequencer, Vibrato). Aus (Standard) = Pitch wirkt nur auf die Grains. \"Auf Pitch legen\" im Fenster der freien Form schaltet ihn mit ein."),
+ ("Wavetable an / Laden … / Position", "eine Wavetable-Datei laden (WAV, z.B. aus Serum oder Vital: 2048 Punkte je Frame; auch ein einzelner Zyklus). Bis zu 32 Frames, jeder bandbegrenzt wie die eingebauten Wellen. Haken an = der Oszillator spielt die Wavetable statt \"Welle\" und Zeichnung. Position f\u00e4hrt stufenlos durch die Frames und ist je Note modulierbar (z.B. Mod-H\u00fcllkurve oder LFO → Position = wandernder Klang). Beispiele in Beispieltoene: WT_Saege_zu_Rechteck, WT_Formant_Vokale, WT_FM_Wachsend. Lern-Preset L44."),
  ("Sub / Sub-Lage / Rauschen (nur Osz 1)", "Sub = ein zus\u00e4tzlicher Ton eine oder zwei Oktaven unter Oszillator 1 (Sinus oder Rechteck), Rauschen = wei\u00dfes Rauschen dazu (Anschlag, Luft, Hats). Beide folgen Tonh\u00f6he, H\u00fcllkurve, Panorama und Filter von Oszillator 1; Pegel relativ zu dessen Pegel. Lern-Preset L45."),
  ("Sync (Obert\u00f6ne)", "Hard Sync: 0 = saubere Welle, h\u00f6her = immer mehr Obert\u00f6ne, schneidend (nicht bei Rauschen)."),
  ("Oktave / Feinstimmung / Pegel / Panorama", "Tonlage, Feinabstimmung in Cent, Lautst\u00e4rke (bis 200 %) und Position."),
@@ -104,7 +107,7 @@ TABS = [
 ]),
 ("Reiter Modulation", [
  ("Freie Makros", "rechts neben der Matrix: vier Regler Makro 1-4, jeder bewegt beliebig viele Ziele. Ziel zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro n (oder eine Matrix-Zeile mit Quelle \"Makro n\"); Menge, Faktor und Offset je Ziel. Kurve je Makro: Linear, Langsam ansteigend, Schnell ansteigend, S-Kurve. Unter jedem Makro stehen seine Ziele. Ideal für die DAW-Automation: eine Spur bewegt viele Regler. Lern-Presets L35-L37."),
- ("Modulationsmatrix", "32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; \"Modulieren mit\" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle -> Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede f\u00fcr sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'. Der Papierkorb am Zeilenende leert die Zeile (Strg+Z nimmt es zur\u00fcck)."),
+ ("Modulationsmatrix", "32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; \"Modulieren mit\" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle → Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede f\u00fcr sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann 'global: letzte Note'. Der Papierkorb am Zeilenende leert die Zeile (Strg+Z nimmt es zur\u00fcck)."),
  ("Glide / Zeit", "Portamento: T\u00f6ne gleiten ineinander (Aus / Immer / Nur legato), Zeit = Dauer des Gleitens."),
 ]),
 ("Reiter LFO 1-8 / Trigger", [
@@ -112,8 +115,8 @@ TABS = [
  ("Freie Form: Klaviatur, Gl\u00e4ttung", "im Fenster der freien Form (Klick auf die LFO-Grafik): im Modus Halbt\u00f6ne zeigt links eine Klaviatur, welche Note jede Stufe spielt (Bezugston = die Taste, die du spielst; jedes C mit Oktave), die Stufen tragen den Notennamen. Gl\u00e4ttung 0-100 %: 0 % = harte Stufen (jeder Ton steht), wenig = kurzes Gleiten von Ton zu Ton, 100 % = runde Kurve; die helle Linie zeigt den echten Verlauf. Leiste \u201eGleiten\u201c unter den Stufen: Klick l\u00e4sst eine einzelne Stufe vom vorigen Ton her\u00fcbergleiten (wie Slide am Step-Sequencer), die anderen springen weiter hart. Wird mit dem Preset gespeichert."),
  ("Einmal", "der LFO l\u00e4uft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz)."),
  ("Neustart", "frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), Sidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor \u00f6ffnet, Ruhe, Ausgang > Schwelle."),
- ("Partner", "welcher LFO mit seinem Einmal-Ende das Ereignis \"Ende Partner-LFO (Einmal)\" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 -> 2 -> 3 -> 4). Der Partner muss auf \"Einmal\" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt."),
- ("Stopp", "Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. \"nie\" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei \"frei\"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält \"Note aus\" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Hüllk.). \"nach Zeit\": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T ...; ein Notenwert gilt vor den ms)."),
+ ("Partner", "welcher LFO mit seinem Einmal-Ende das Ereignis \"Ende Partner-LFO (Einmal)\" auslöst - für Start und Stopp. Vorgabe: 1 und 2 bzw. 3 und 4 gegenseitig; beliebige Ketten möglich (z.B. 1 → 2 → 3 → 4). Der Partner muss auf \"Einmal\" stehen. Nur aktiv, wenn Start oder Stopp dieses Ereignis nutzt."),
+ ("Stopp", "Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. \"nie\" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei \"frei\"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält \"Note aus\" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Hüllk.). \"nach Zeit\": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T …; ein Notenwert gilt vor den ms)."),
  ("Ausgang > Schwelle", "Trigger auf den eigenen Ausgangspegel: \u00fcberschreitet er die Schwelle, startet ein LFO mit diesem Neustart. Ein so gestarteter LFO l\u00f6st sich nicht selbst erneut aus, solange er l\u00e4uft (keine R\u00fcckkopplung)."),
  ("Sidechain-Trigger: Pegel / Ton", "wann der Trigger ausl\u00f6st: Pegel \u00fcber der Schwelle und/oder Ton \u00fcber der Note; beide angehakt = beides n\u00f6tig."),
  ("Auto-Pitch", "die Tonh\u00f6he kommt vom Sidechain (gesungener Ton) statt von der Taste - stufenlos oder in Halbt\u00f6nen."),
@@ -133,15 +136,15 @@ TABS = [
  ("Echo: Zeit / Sync / R\u00fcckkopplung / D\u00e4mpfung / Mix", "Verz\u00f6gerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos."),
  ("Echo Pitch", "jede Wiederholung wird um diese Halbt\u00f6ne verschoben - steigende oder fallende Treppen."),
  ("Ping-Pong", "Echos springen zwischen links und rechts."),
- ("Hall: Raum, Gr\u00f6\u00dfe, Nachhall, D\u00e4mpfung, Vorverz\u00f6gerung, Breite, Mix", "Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton ...)."),
+ ("Hall: Raum, Gr\u00f6\u00dfe, Nachhall, D\u00e4mpfung, Vorverz\u00f6gerung, Breite, Mix", "Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton …)."),
  ("Bass-Schnitt / H\u00f6hen-Schnitt", "filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dr\u00f6hnen, H\u00f6hen-Schnitt f\u00fcr einen dunklen Raum."),
 ]),
 ("Reiter Summe", [
  ("EQ an, B\u00e4sse, H\u00f6hen", "Klangregelung am Ende der Kette."),
  ("S\u00e4ttigung / Art", "\u00dcbersteuerung der Summe. Art: Warm (weich, wie bisher), R\u00f6hre (asymmetrisch, gerade Obert\u00f6ne, voller), Hart (harter Clip, aggressiv), Faltung (Wavefolder: lauter Drive faltet die Welle zur\u00fcck - metallisch, sehr obertonreich)."),
- ("Kompressor: an, Menge, Tempo, Verh\u00e4ltnis, Schwelle, Knick", "Drei-Band-Kompressor nach dem EQ (Kette der Summe: Echo/Hall -> S\u00e4ttigung -> EQ -> Kompressor -> Stereo -> Limiter; Weichen bei 120 Hz und 2,5 kHz): leise Anteile werden angehoben, laute Spitzen gebremst - dichter, druckvoller Klang wie aus einem Multiband-Kompressor. Menge = wie stark insgesamt (auch wie viel leise Anteile angehoben werden), Tempo = wie schnell er reagiert (weniger = schneller, mehr Pumpen). Verh\u00e4ltnis = wie stark \u00fcber der Schwelle gebremst wird (4:1 = 4 dB mehr Eingang ergeben 1 dB mehr Ausgang), Schwelle = ab welchem Pegel, Knick = wie weich der Einsatz ist (0 dB = harter Knick, aggressiv; 12-24 dB = weich). Unter der Schwelle bleibt der Pegel 1:1; erst 24 dB darunter werden leise Anteile angehoben (OTT-Stil). Die Kennlinie darunter zeigt die Kurve live."),
+ ("Kompressor: an, Menge, Tempo, Verh\u00e4ltnis, Schwelle, Knick", "Drei-Band-Kompressor nach dem EQ (Kette der Summe: Echo/Hall → S\u00e4ttigung → EQ → Kompressor → Stereo → Limiter; Weichen bei 120 Hz und 2,5 kHz): leise Anteile werden angehoben, laute Spitzen gebremst - dichter, druckvoller Klang wie aus einem Multiband-Kompressor. Menge = wie stark insgesamt (auch wie viel leise Anteile angehoben werden), Tempo = wie schnell er reagiert (weniger = schneller, mehr Pumpen). Verh\u00e4ltnis = wie stark \u00fcber der Schwelle gebremst wird (4:1 = 4 dB mehr Eingang ergeben 1 dB mehr Ausgang), Schwelle = ab welchem Pegel, Knick = wie weich der Einsatz ist (0 dB = harter Knick, aggressiv; 12-24 dB = weich). Unter der Schwelle bleibt der Pegel 1:1; erst 24 dB darunter werden leise Anteile angehoben (OTT-Stil). Die Kennlinie darunter zeigt die Kurve live."),
  ("Band A / B", "zwei frei setzbare B\u00e4nder (Frequenz und Pegel), auch per Matrix steuerbar."),
- ("Kurve", "mit der Maus zeichnen, rechte Taste = 0 dB; Linear, W\u00e4rmer, Heller ... sind fertige Kurven."),
+ ("Kurve", "mit der Maus zeichnen, rechte Taste = 0 dB; Linear, W\u00e4rmer, Heller … sind fertige Kurven."),
  ("Leuchten", "der Hintergrund zeigt den Ausgang: blau/wei\u00df nach Pegel, blauer wo der EQ absenkt, r\u00f6ter wo er anhebt."),
  ("Stereobreite / Panorama", "Breite und Position der Summe im Stereobild."),
  ("Bass mono / mono bis", "legt alles unter der Frequenz (Standard 120 Hz) in die Mitte: der Bass bleibt im Club und auf Mono-Anlagen druckvoll und phasenfest, Breite und Raum dar\u00fcber bleiben erhalten. Kommt nach Stereobreite und Panorama, vor dem Limiter."),
@@ -156,7 +159,7 @@ TABS = [
  ("Morph, Morph-LFO", "blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik)."),
  ("Zwei Klänge (Morph-Art)", "an (Standard): A und B sind zwei vollstaendig getrennte Klänge - jeder mit eigenen Stimmen, Arpeggiator, LFOs, Matrix, Filtern und Effekten; Morph regelt nur, wie laut A und B sind. Aus: ein einziger Klang, dessen Reglerwerte stufenlos von A nach B wandern (Schalter springen bei 50 %). Aeltere Presets mit Ziel B laden mit 'aus'."),
  ("Ziel B merken / laden / l\u00f6schen", "aktuellen Klang oder ein anderes Preset als Ziel B festlegen."),
- ("A <-> B tauschen", "Bearbeitungstausch: A und B tauschen die Pl\u00e4tze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zur\u00fcck."),
+ ("A ↔ B tauschen", "Bearbeitungstausch: A und B tauschen die Pl\u00e4tze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zur\u00fcck."),
  ("Schwellen-Tor: Quelle, Schwelle, Ruhe-Dauer", "wird 1, sobald eine beliebige Quelle die Schwelle \u00fcberschreitet (Schalter/Trigger); Ruhe = Ereignis nach so langer Stille."),
 ]),
 ("Reiter Mischpult", [
@@ -169,7 +172,7 @@ TABS = [
  ("Rendern in H\u00f6chstqualit\u00e4t", "beim Export der DAW immer HQ und volle Stimmenzahl."),
  ("Oversampling 2x (bei HQ)", "Standard an: Bei HQ rechnen Oszillatoren und S\u00e4ttigung intern mit doppelter Abtastrate. Harte FM-, Sync- und Drive-Kl\u00e4nge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet bei oszillatorlastigen Kl\u00e4ngen bis etwa die doppelte Rechenzeit der Oszillatoren. Geh\u00f6rt zum Rechner, nicht zum Preset."),
  ("Oszillatoren: Wavetable / Klassisch", "Wavetable (Standard): Dreieck, S\u00e4ge und Rechteck kommen aus bandbegrenzten Tabellen (61 Stufen je Sechstel-Oktave) - praktisch ohne Spiegelfrequenzen (-84 dB statt -42 dB), volle H\u00f6hen bis 17 kHz auch im Bass, ohne Oversampling und daher nicht teurer. Klassisch: genau der Oszillator bis Version 2.9, f\u00fcr alte Projekte, die bitgleich klingen sollen. Geh\u00f6rt zum Rechner, nicht zum Preset."),
- ("Lastliste", "welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall ...)."),
+ ("Lastliste", "welche Klangbausteine im aktuellen Klang wie viel Rechenzeit kosten (Grains, HQ, Oszillatoren, Filter, Matrix, Echo, Hall …)."),
  ("Zeiger / Laufzeit", "geschätzte Gesamtlast und gemessene Rechenzeit im Host (Aufrufe/s, Anteil am Puffer, Spitzenwert)."),
 ]),]
 
@@ -205,7 +208,7 @@ PNAMES = {
  "Phaser: Tempo / Tiefe / R\u00fcckkopplung / Mix": "Phaser an, Phaser Tempo, Phaser Tiefe, Phaser Rückkopplung, Phaser Mix",
  "Bitcrusher: Bits / Abtastrate / Mix": "Bitcrusher an, Bitcrusher Bits, Bitcrusher Rate, Bitcrusher Mix",
  "Unison / Verstimmung / Breite": "Osz Unison, Osz Unison Verstimmung, Osz Unison Breite (Osz2, Osz3 entsprechend)",
- "Rendern in H\u00f6chstqualit\u00e4t": "Rendern in Höchstqualität", "Gezeichnet / Zeichnen ...": "Osz Gezeichnet (Osz2, Osz3 entsprechend)", "Wavetable an / Laden ... / Position": "Osz Wavetable an, Osz WT-Position (Osz2, Osz3 entsprechend)", "Sub / Sub-Lage / Rauschen (nur Osz 1)": "Sub Pegel, Sub Oktave, Sub Welle, Rauschen Pegel", "Reihenfolge der Effekte": "Effekt-Reihenfolge", "folgt Pitch": "Osz folgen Pitch", "Modulations-H\u00fcllkurven 1 / 2": "Mod-Hüllk. 1 Attack/Decay/Sustain/Release, Mod-Hüllk. 2 ...", "Oversampling 2x (bei HQ)": "Oversampling", "Oszillatoren: Wavetable / Klassisch": "Oszillator-Modell", "Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt": "Resampling, Resampling Anteil, Resampling Tempo, Resampling Sync",
+ "Rendern in H\u00f6chstqualit\u00e4t": "Rendern in Höchstqualität", "Gezeichnet / Zeichnen …": "Osz Gezeichnet (Osz2, Osz3 entsprechend)", "Wavetable an / Laden … / Position": "Osz Wavetable an, Osz WT-Position (Osz2, Osz3 entsprechend)", "Sub / Sub-Lage / Rauschen (nur Osz 1)": "Sub Pegel, Sub Oktave, Sub Welle, Rauschen Pegel", "Reihenfolge der Effekte": "Effekt-Reihenfolge", "folgt Pitch": "Osz folgen Pitch", "Modulations-H\u00fcllkurven 1 / 2": "Mod-Hüllk. 1 Attack/Decay/Sustain/Release, Mod-Hüllk. 2 …", "Oversampling 2x (bei HQ)": "Oversampling", "Oszillatoren: Wavetable / Klassisch": "Oszillator-Modell", "Feedback-Resampling: an / Anteil neu / Durchlauf / Im Takt": "Resampling, Resampling Anteil, Resampling Tempo, Resampling Sync",
  "Filter 2": "Filter2 an, Filter-Verschaltung, Filter2 Typ, Filter2 Cutoff, Filter2 Resonanz, Filter2 Kontur, Filter2 Hüllk.",
  "EQ an, B\u00e4sse, H\u00f6hen": "EQ an, EQ Bässe, EQ Höhen", "Band A / B": "EQ Band A Freq, EQ Band A Pegel, EQ Band B Freq, EQ Band B Pegel",
  "Arpeggiator": "Arp an, Arp Richtung, Arp Oktaven, Arp Notenwert, Arp Länge, Arp Swing, Arp Schritte",
@@ -219,7 +222,7 @@ PNAMES = {
  "FM-Klangfarbe": "FM-Hüllk. eigen, FM Attack, FM Decay, FM Sustain, FM Release (Osz2, Osz3 entsprechend)",
  "Lautst\u00e4rke-H\u00fcllkurve": "Osz Attack, Osz Decay, Osz Sustain, Osz Release (Osz2, Osz3 entsprechend)",
  "Eigener Filter": "Osz-Filter an, Osz-Filter Typ, Osz-Filter Cutoff, Osz-Filter Resonanz, Osz-Filter Kontur, Osz-Filter Hüllk. (Osz2-Filter, Osz3-Filter entsprechend)",
- "Fader": "dieselben Parameter wie in den Reitern (kein eigener Wert)", "Verz\u00f6gerung je Ereignis": "Verz. Note an, Verz. Note an Takt, Verz. Note aus ... Verz. Ausgang Takt", "Haken unter den Fadern": "Grains an, Osz an, Osz2 an, Osz3 an, Echo an, Hall an",
+ "Fader": "dieselben Parameter wie in den Reitern (kein eigener Wert)", "Verz\u00f6gerung je Ereignis": "Verz. Note an, Verz. Note an Takt, Verz. Note aus … Verz. Ausgang Takt", "Haken unter den Fadern": "Grains an, Osz an, Osz2 an, Osz3 an, Echo an, Hall an",
 }
 def vst(n):
     if n in NO:

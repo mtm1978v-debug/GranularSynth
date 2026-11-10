@@ -957,7 +957,7 @@ begin
   Item.flags := kIsSeparator;
   M.addItem(Item, nil);
   FillChar(Item, SizeOf(Item), 0);
-  StrToString128(Tr('GranularSynth: Modulieren, MIDI-Learn, Standardwert ...'), @Item.name[0]);
+  StrToString128(Tr('GranularSynth: Modulieren, MIDI-Learn, Standardwert …'), @Item.name[0]);
   Item.tag := TAG_OWN_MENU;
   M.addItem(Item, Target);
   Pt := FForm.ScreenToClient(ScreenPos);

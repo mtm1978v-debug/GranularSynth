@@ -132,6 +132,9 @@ type
 
 implementation
 
+uses
+  Granular.ModViews;
+
 const
   COL_BG      = $FF16181C;
   COL_LINE    = $FF24282E;
@@ -630,6 +633,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -819,6 +823,7 @@ begin
   finally
     B.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 
@@ -984,6 +989,7 @@ begin
   finally
     Buffer.EndUpdate;
   end;
+  DimDisplay(Buffer);   // Netzteil sackt bei lautem Ausgang ab: Anzeige dunkler
   inherited;
 end;
 

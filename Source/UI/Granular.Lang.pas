@@ -11,7 +11,7 @@ unit Granular.Lang;
 
 { Sprache der Oberflaeche. Quelltext und Presets bleiben deutsch; der deutsche Text ist zugleich der
   Schluessel fuer die Uebersetzung (wie gettext):
-    Tr('Speichern...')  ->  'Save...' (Englisch)  bzw. unveraendert (Deutsch)
+    Tr('Speichern…')  →  'Save…' (Englisch)  bzw. unveraendert (Deutsch)
   Sprachdateien: <Plugin-Ordner>\Sprachen\<Kuerzel>.txt, UTF-8, erste Zeile "#Name=English",
   danach je Zeile  Deutsch<TAB>Uebersetzung  (Zeilenumbruch im Text als \n). Eine neue Sprache =
   eine neue Datei, sie erscheint automatisch in der Auswahl (Reiter Extras).

@@ -215,8 +215,8 @@ begin
   Top.ParentBackground := False;
   Top.Color := BG_DARK;
   X := 8;
-  Btn(Top, Next(126), 7, 126, eiOpen, Tr('Datei laden...'), Tr('Eine Audiodatei zum Bearbeiten laden'), LoadClick);
-  Btn(Top, Next(150), 7, 150, eiSave, Tr('Speichern unter...'), Tr('Das bearbeitete Audio als WAV oder MP3 ' +
+  Btn(Top, Next(126), 7, 126, eiOpen, Tr('Datei laden…'), Tr('Eine Audiodatei zum Bearbeiten laden'), LoadClick);
+  Btn(Top, Next(150), 7, 150, eiSave, Tr('Speichern unter…'), Tr('Das bearbeitete Audio als WAV oder MP3 ' +
     '(320 kbit/s) speichern - das Format wählst du im Dialog'), SaveAsClick);
   FPlayBtn := Btn(Top, Next(112), 7, 112, eiPlay, Tr('Abspielen'), Tr('Markierung (ohne: ab Cursor) anhören - Leertaste'), PlayClick);
   Btn(Top, Next(136), 7, 136, eiSelAll, Tr('Alles markieren'), Tr('Ganzes Sample markieren (Strg+A)'), SelAllClick);
@@ -945,7 +945,7 @@ begin
   if FSources[FSrcCombo.ItemIndex].Loopback then
     FRecInfo.Caption := Tr('Aufnahme läuft (Klang von GranularSynth wird mit aufgenommen)')
   else
-    FRecInfo.Caption := Tr('Aufnahme läuft ...');
+    FRecInfo.Caption := Tr('Aufnahme läuft …');
   FTimer.Enabled := True;
 end;
 

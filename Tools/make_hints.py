@@ -33,7 +33,7 @@ def expand(spec):
     family = None
     for tok in [t.strip() for t in spec.split(',') if t.strip()]:
         if '...' in tok:
-            # "Verz. Note aus ... Verz. Ausgang Takt": alle mit demselben Wortanfang
+            # "Verz. Note aus … Verz. Ausgang Takt": alle mit demselben Wortanfang
             head = tok.split()[0]
             result += [n for n in names if n.startswith(head)]
             continue
