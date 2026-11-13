@@ -6,6 +6,19 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.30 – 13.11.2026
+
+### Geändert
+- **Presets ohne Übersteuerung:** 107 Presets sind leiser abgestimmt (je nach Preset 1,5 bis 18 dB), damit der Clipper bei kräftigem Spiel kaum noch eingreift und der Klang klarer bleibt. Die Preset-Erzeugung misst das jetzt automatisch (Prüfmodus `-cliptest`).
+
+### Behoben
+- **Makro „Hüllk.-Länge“** wirkt jetzt auch auf die Hüllkurven der Oszillatoren – bisher blieb es bei Presets ohne Grains (nur Oszillator) ohne hörbare Wirkung. Presets mit dem Makro auf 50 % klingen unverändert.
+
+### Hinweis
+- Mitgelieferte Presets klingen nach dem Laden leiser als bisher (Regler Lautstärke bzw. „Summe“ im Mischpult). In DAW-Projekten gespeicherte Klänge bleiben unverändert.
+
+---
+
 ## Version 2.29 – 13.11.2026
 
 ### Geändert

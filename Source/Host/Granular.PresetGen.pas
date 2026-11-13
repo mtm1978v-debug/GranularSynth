@@ -22,7 +22,7 @@ implementation
 
 uses
   System.SysUtils, System.Classes,
-  System.Math, Granular.Params, Granular.Eq, Granular.Sample, Granular.Engine, Granular.State, Granular.AudioDecode;
+  System.Math, Granular.Bench, Granular.Params, Granular.Eq, Granular.Sample, Granular.Engine, Granular.State, Granular.AudioDecode;
 
 type
   TPresetBuilder = class
@@ -32,12 +32,14 @@ type
     FCount: Integer;
     FSample: string;
     FSlot: Integer;
+    FTrimLog: TStringList;                 // Pegelabgleich: welche Presets um wie viel leiser
   public
     constructor Create(const Dir: string);
     destructor Destroy; override;
     procedure Start(const SampleFile: string);
     procedure StartBlank;
     procedure P(Id: TGranularParamId; Plain: Double);
+    procedure TrimLevel(const Name: string);
     procedure LfoFree(Lfo: Integer; Hz: Double; Shape: Integer);
     procedure LfoSync(Lfo: Integer; Division: Integer; Shape: Integer);
     procedure EchoSync(Division: Integer);
@@ -88,11 +90,13 @@ begin
   inherited Create;
   FDir := IncludeTrailingPathDelimiter(Dir);
   ForceDirectories(FDir);
+  FTrimLog := TStringList.Create;
 end;
 
 destructor TPresetBuilder.Destroy;
 begin
   FEngine.Free;
+  FTrimLog.Free;
   inherited;
 end;
 
@@ -458,7 +462,38 @@ begin
   finally
     Check.Free;
   end;
+  TrimLevel(Name);
   Inc(FCount);
+end;
+
+{ Pegelabgleich gegen Uebersteuerung: kraeftiger Akkord + Bass; clippt der Ausgang oder senkt der Limiter
+  mehr als 1,5 dB ab, wird die Preset-Lautstaerke in 1,5-dB-Schritten gesenkt (hoechstens 18 dB) und das
+  Preset neu gespeichert. Klangfarbe bleibt, nur der Pegel aendert sich. }
+procedure TPresetBuilder.TrimLevel(const Name: string);
+var
+  Fn, Proj: string;
+  Vol, V: Double;
+  Step, Clips: Integer;
+  Lim: Double;
+begin
+  Fn := FDir + Name + '.gspreset';
+  Proj := ExtractFilePath(ExcludeTrailingPathDelimiter(FDir));
+  Vol := ParamToPlain(Ord(gpVolume), FEngine.GetParam(Ord(gpVolume)));
+  V := Vol;
+  for Step := 0 to 12 do
+  begin
+    V := Vol - Step * 1.5;
+    if not MeasurePresetClip(Proj, Fn, V, Clips, Lim) then
+      Exit;
+    if (Clips = 0) and (Lim > -1.5) then
+      Break;
+  end;
+  if V < Vol - 0.01 then
+  begin
+    P(gpVolume, V);
+    SaveChunkToFile(FEngine, FSample, Fn);
+    FTrimLog.Add(Format('%-60s %5.1f dB', [Name, V - Vol]));
+  end;
 end;
 
 { ------------------------------------------------------------------------------ }
@@ -2813,7 +2848,8 @@ begin
       on E: Exception do
         Exit('FEHLER: ' + E.Message);
     end;
-    Result := Format('%d Presets nach %sPresets geschrieben und zurueckgelesen (alle Werte + Samplepfade OK), Demo_Klang.wav exportiert.', [B.Count, Base]);
+    Result := Format('%d Presets nach %sPresets geschrieben und zurueckgelesen (alle Werte + Samplepfade OK), Demo_Klang.wav exportiert.', [B.Count, Base]) +
+      sLineBreak + Format('Pegelabgleich (gegen Uebersteuerung): %d Presets leiser', [B.FTrimLog.Count]) + sLineBreak + B.FTrimLog.Text;
   finally
     B.Free;
   end;

@@ -17,6 +17,10 @@ interface
 
 function RunBenchmark: string;
 function RunTextBench: string;
+{ Uebersteuerung eines Presets: kraeftiger Akkord + Bass; Clipper-Eingriffe und tiefste Limiter-Absenkung (dB).
+  VolPlain < -100 = Lautstaerke aus dem Preset }
+function MeasurePresetClip(const Dir, FileName: string; VolPlain: Double; out Clips: Integer; out LimDb: Double): Boolean;
+function ClipReport: string;
 function RenderAB(const ProjectDir: string): string;
 
 implementation
@@ -4241,6 +4245,84 @@ begin
     Result := Format('%d Hoerproben in %s', [Lines.Count, OutDir]) + sLineBreak + Lines.Text;
   finally
     Lines.Free;
+  end;
+end;
+
+function MeasurePresetClip(const Dir, FileName: string; VolPlain: Double; out Clips: Integer; out LimDb: Double): Boolean;
+const
+  NOTES: array[0..4] of Integer = (36, 48, 55, 60, 64);   // Bass + Akkord, volle Anschlagstaerke
+var
+  E: TGranularEngine;
+  L, R: array[0..511] of Single;
+  B, K: Integer;
+  Path, Res: string;
+begin
+  Result := False;
+  Clips := 0;
+  LimDb := 0;
+  E := TGranularEngine.Create;
+  try
+    E.SetSampleRate(SR);
+    if not LoadChunkFromFile(E, FileName, Path) then
+      Exit;
+    Res := ResolveSamplePath(Path, Dir);
+    if FileExists(Res) then
+      E.LoadSample(LoadAudioFile(Res))
+    else
+      E.LoadSample(CreateDemoSample(SR));
+    LoadMorphSample(E, Dir);
+    LoadZoneSamples(E, Dir);
+    if VolPlain > -100 then
+      E.SetParamById(gpVolume, PlainToParam(Ord(gpVolume), VolPlain));
+    E.TakeClipCount;
+    E.TakeLimiterReduction;
+    for K := 0 to High(NOTES) do
+      E.NoteOn(NOTES[K], 1.0);
+    for B := 0 to 301 do                          // 3,5 s: 3 s halten, dann loslassen
+    begin
+      if B = 258 then
+        for K := 0 to High(NOTES) do
+          E.NoteOff(NOTES[K]);
+      E.Process(nil, nil, @L[0], @R[0], 512);
+    end;
+    Clips := E.TakeClipCount;
+    LimDb := E.TakeLimiterReduction;
+    Result := True;
+  finally
+    E.Free;
+  end;
+end;
+
+{ -cliptest: alle mitgelieferten Presets, die uebersteuernden zuerst }
+function ClipReport: string;
+var
+  Dir: string;
+  SR2: TSearchRec;
+  L: TStringList;
+  Clips, Bad: Integer;
+  Lim: Double;
+begin
+  Dir := IncludeTrailingPathDelimiter(ExpandFileName(ExtractFilePath(ParamStr(0)) + '..' + PathDelim + '..'));
+  L := TStringList.Create;
+  try
+    Bad := 0;
+    if FindFirst(Dir + 'Presets' + PathDelim + '*.gspreset', faAnyFile, SR2) = 0 then
+    try
+      repeat
+        if MeasurePresetClip(Dir, Dir + 'Presets' + PathDelim + SR2.Name, -999, Clips, Lim) then
+        begin
+          if (Clips > 0) or (Lim < -1) then Inc(Bad);
+          L.Add(Format('%8d  %6.1f dB  %s', [Clips, Lim, SR2.Name]));
+        end;
+      until FindNext(SR2) <> 0;
+    finally
+      FindClose(SR2);
+    end;
+    L.Sort;
+    Result := Format('Uebersteuerung: %d von %d Presets clippen oder Limiter > 1 dB (Clipper-Samples, Limiter, Name)',
+      [Bad, L.Count]) + sLineBreak + L.Text;
+  finally
+    L.Free;
   end;
 end;
 

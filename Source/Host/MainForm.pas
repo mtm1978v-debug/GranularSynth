@@ -524,6 +524,13 @@ begin
     Exit;
   end;
   // -benchtext: nur Uebersetzung + Textplatz (schnell, ohne Klang-Regression) - fuer reine GUI-Aenderungen
+  if FindCmdLineSwitch('cliptest') then
+  begin
+    TFile.WriteAllText(ExtractFilePath(ParamStr(0)) + 'cliptest.txt', ClipReport);
+    Application.ShowMainForm := False;
+    Application.Terminate;
+    Exit;
+  end;
   if FindCmdLineSwitch('benchtext') then
   begin
     TFile.WriteAllText(ExtractFilePath(ParamStr(0)) + 'bench_text.txt', RunTextBench);

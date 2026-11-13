@@ -6696,6 +6696,7 @@ procedure TGranularEngine.ApplyMacros;
 
 var
   D: Double;
+  O: Integer;
 begin
   // Textur: klein/dicht/koernig  <->  gross/weich/flaechig
   D := FEff[Ord(gpMacroTexture)] - 0.5;
@@ -6733,6 +6734,13 @@ begin
   Add(gpRelease, D * 0.6);
   Add(gpFltAttack, D * 0.4);
   Add(gpFltRelease, D * 0.4);
+  // auch die eigenen Huellkurven der Oszillatoren (sonst wirkt das Makro bei 'Grains aus' nicht)
+  for O := 0 to OSC_COUNT - 1 do
+  begin
+    Add(OSC_P[O].Attack, D * 0.6);
+    Add(OSC_P[O].Decay, D * 0.4);
+    Add(OSC_P[O].Release, D * 0.6);
+  end;
 end;
 
 { Spitzenlimiter, Stereo gekoppelt: sehr schneller Attack (~0,3 ms), weicher Release
