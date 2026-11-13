@@ -16,6 +16,7 @@ unit Granular.Bench;
 interface
 
 function RunBenchmark: string;
+function RunTextBench: string;
 function RenderAB(const ProjectDir: string): string;
 
 implementation
@@ -24,7 +25,7 @@ uses
   Granular.Lang,
   Winapi.Windows, Winapi.ActiveX, System.SysUtils, System.Classes, System.Math, System.StrUtils, System.IOUtils,
   System.Threading, System.Diagnostics,
-  GR32, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Pitch, Granular.Vst3, Granular.VstHost,
+  GR32, Granular.Fader, Granular.Params, Granular.Sample, Granular.Engine, Granular.DSP, Granular.GfxAsm, Granular.Reverb, Granular.Eq, Granular.AutoPlay, Granular.State, Granular.AudioDecode, Granular.Pitch, Granular.Vst3, Granular.VstHost,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.Graphics,
   Granular.Editor, Granular.InfoView, Granular.ArpMidi, Granular.SampleEdit{$IFDEF USE_FASTMM5}, FastMM5{$ENDIF};
 
@@ -2405,7 +2406,7 @@ begin
   try
     Frm.SetBounds(-4000, -4000, ED_W, ED_H);   // ausserhalb des Bildschirms; Groesse wie das Plugin-Fenster
     E.SetSampleRate(SR);
-    TGranularEditor.Create(Frm, Frm, E);
+    TGranularEditor.Create(Frm, Frm, E).LayoutForCheck;
     Frm.HandleNeeded;
     for I := 0 to Frm.ComponentCount - 1 do
       ;
@@ -2418,6 +2419,8 @@ begin
       if not C.Visible or (C.Parent = nil) then
         Continue;
       Bmp.Canvas.Font := TCtrlAccess(C).Font;
+      if (C is Granular.Fader.TButton) and Granular.Fader.TButton(C).IconOnly then
+        Continue;                                  // nur Symbol: die Beschriftung dient nur dem Tooltip
       if C is TButton then
       begin
         T := TButton(C).Caption;
@@ -4724,6 +4727,12 @@ begin
   except
   end;
   FreeAndNil(GLaps);
+end;
+
+{ nur die Oberflaechen-Pruefungen (Uebersetzung, Textplatz) - fuer reine GUI-Aenderungen }
+function RunTextBench: string;
+begin
+  Result := CheckLanguage + sLineBreak + CheckTextFit + sLineBreak;
 end;
 
 function RunBenchmark: string;

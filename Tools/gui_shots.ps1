@@ -30,7 +30,13 @@ function SetLang($l) { foreach ($p in 'Win64', 'Win32') { [IO.File]::WriteAllTex
 function Shot([string]$Out, [string]$Title = 'GranularHost') {
   # Maus bleibt beim Nutzer: das Fenster liegt ganz unten, ein Tooltip kann nicht entstehen
   $p = Start-Process "$bin\GranularHost.exe" -ArgumentList "-autoplay", "-quiet", "$bin\GranularSynth.dll" -PassThru
-  Start-Sleep -Seconds 18
+  # warten, bis das Fenster steht (Plugin geladen, Ereignisse laufen), dann kurz Noten spielen lassen
+  for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Milliseconds 300
+    $p.Refresh()
+    if ($p.MainWindowHandle -ne [IntPtr]::Zero -and $p.Responding) { break }
+  }
+  Start-Sleep -Seconds 4
   $p.Refresh(); $h = $p.MainWindowHandle
   if ($Title -ne '') {
     $script:found = [IntPtr]::Zero

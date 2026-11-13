@@ -6,6 +6,21 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.28 – 13.11.2026
+
+### Neu
+- **Erklärungen im Display** (Kopfleiste „Erklärungen“): Jeder Erklärtext steht in einem eingelassenen Bernstein-Display, das bei lautem Ausgang mit den anderen Anzeigen abdunkelt. Erklärungen an (Standard): alle Displays leuchten. Aus: die Displays sind matt; mit der Maus über einem Bereich blendet sein Text weich ein und dimmt mit der Zeit langsam ab, ein Klick ins Display hält ihn hell (nochmal klicken = abdimmen, beim Verlassen aus). Die Wahl wird gemerkt. Dazu: Displays sauber eingepasst (gleiche Ränder, in Reihen ausgerichtet, Flachbandkabel rechts), mehr Luft unter den Bereichstiteln.
+- **Wellenanzeige im Osz-Reiter:** zeigt eine Periode der Welle, wie der Oszillator sie gerade spielt (Welle, Zeichnung oder Wavetable-Position, dazu Sync und FM).
+- **Regler schneller bedienen:** Doppelklick setzt den Standardwert. Strg + Ziehen stellt zehnmal feiner ein, Strg + Mausrad in kleinsten Schritten. Die Wertanzeige wird beim Darüberfahren unterstrichen - ein Klick darauf öffnet das Eingabefeld.
+
+### Geändert
+- **Kopfleiste aufgeräumt:** „Alle Noten aus“ nur noch als Symbol, die Oktave kompakt als „− Okt 4 +“, breitere Presetliste. Stimmen und Grains stehen jetzt im Reiter Leistung, die Statuszeile zeigt nur noch das Sample und Meldungen.
+- **Modulationsmatrix kompakt:** Sie zeigt nur benutzte Zeilen und darunter eine freie Zeile zum Anlegen. Glide rückt nach.
+- **Schnellerer Reiterwechsel:** Bereiche werden nur noch angepasst, wenn sich die Fenstergröße geändert hat.
+- **Samples:** Die Erklärungen zu den Zonen stehen in einem gemeinsamen Display unter den Zonen-Zeilen.
+
+---
+
 ## Version 2.27 – 13.11.2026
 
 ### Neu

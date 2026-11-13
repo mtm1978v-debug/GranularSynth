@@ -723,6 +723,8 @@ type
     function WtFrameCount(O: Integer): Integer;
     { eine Periode des Frames bei Position Pos (0..1) fuer die Anzeige, N Punkte }
     procedure WtPreview(O: Integer; Pos: Double; var Dst: array of Single);
+    // eine Periode der Oszillator-Welle O fuer die Anzeige (nur GUI-Thread); Ergebnis: False = Rauschen
+    function OscPreview(O: Integer; var Dst: array of Single): Boolean;
     { Daten der Form 'Frei' je LFO; die Oberflaeche schreibt direkt hinein (einzelne Singles, lockfrei) }
     property FreeLfo[Index: Integer]: PFreeLfo read GetFreeLfo;
     { gezeichnete Oszillator-Welle O (0..2); nach Aenderungen OscDrawChanged aufrufen (nicht im Audio-Thread) }
@@ -1783,6 +1785,76 @@ begin
   L := WT_LEN[0];
   for I := 0 to High(Dst) do
     Dst[I] := P0[I * L div Length(Dst)] * (1 - Fr) + P1[I * L div Length(Dst)] * Fr;
+end;
+
+{ Anzeige: eine Periode, wie der Oszillator sie gerade spielt (Welle, Zeichnung oder Wavetable-Position,
+  dazu Sync und FM). Nur fuer die GUI - liest Tabellen, die der Audio-Thread nur lesend benutzt. }
+function TGranularEngine.OscPreview(O: Integer; var Dst: array of Single): Boolean;
+var
+  P: TOscParamIds;
+  Wave, I, L, N: Integer;
+  SyncR, Ratio, FmIdx, X: Double;
+  Tab: PFloatArr;
+  Wt: array of Single;
+  UseWt: Boolean;
+
+  // Wirkwert ohne den Merk-Puffer von Eff (der gehoert dem Audio-Thread)
+  function E(Id: TGranularParamId): Double;
+  begin
+    Result := ParamToPlain(Ord(Id), FEff[Ord(Id)]);
+  end;
+
+  function Shape(Ph: Double): Double;
+  begin
+    Ph := Ph - Floor(Ph);
+    if Wt <> nil then
+      Result := Wt[Min(Trunc(Ph * Length(Wt)), High(Wt))]
+    else if Tab <> nil then
+      Result := Tab[Min(Trunc(Ph * L), L - 1)]
+    else
+      Result := Sin(2 * Pi * Ph);
+  end;
+
+begin
+  O := EnsureRange(O, 0, OSC_COUNT - 1);
+  P := OSC_P[O];
+  N := Length(Dst);
+  Result := True;
+  Wave := EnsureRange(Round(E(P.Wave)), 0, 5);
+  Tab := nil;
+  Wt := nil;
+  L := WT_LEN[0];
+  UseWt := (E(P.WtOn) >= 0.5) and (FWtActive[O] <> nil) and (FWtActive[O].Count > 0);
+  if UseWt then
+  begin
+    SetLength(Wt, 512);
+    WtPreview(O, E(P.WtPos) / 100, Wt);
+    Wave := 0;
+  end
+  else if E(P.Draw) >= 0.5 then
+  begin
+    Tab := PFloatArr(FWtPtr[O]);
+    Wave := 0;
+  end
+  else if Wave = 5 then
+  begin
+    for I := 0 to N - 1 do
+      Dst[I] := ((Cardinal(I) * 2654435761) shr 8 and $FFFF) / 32768 - 1;   // fest, ohne globalen Zufall
+    Exit(False);
+  end
+  else if Wave in [1, 2, 3] then
+    Tab := PFloatArr(@GWtBuiltin[Wave - 1, 0]);
+  SyncR := 1 + E(P.Sync) / 100 * 7;
+  Ratio := E(P.FmRatio);
+  FmIdx := E(P.FmAmt) / 100 * 6 / (2 * Pi);
+  for I := 0 to N - 1 do
+  begin
+    X := I / N;
+    if Wave = 4 then
+      Dst[I] := Sin(2 * Pi * (X * SyncR + FmIdx * Sin(2 * Pi * Ratio * X)))
+    else
+      Dst[I] := Shape(X * SyncR);
+  end;
 end;
 
 { Tabellen der gezeichneten Welle O neu: in den freien Puffer (beim ersten Mal angelegt - nie im

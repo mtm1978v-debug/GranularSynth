@@ -28,13 +28,14 @@ TABS = [
 ("Kopfleiste", [
  ("Audio laden…", "beliebige Audiodatei (WAV, MP3, FLAC …) als Rohmaterial der Grains laden."),
  ("Alle Noten aus", "beendet sofort alle klingenden Noten (Notbremse)."),
- ("Okt - / Okt +", "verschiebt die PC-Tastatur und die Klaviatur um eine Oktave."),
+ ("Okt - / Okt +", "verschiebt die PC-Tastatur und die Klaviatur um eine Oktave; dazwischen steht die aktuelle Oktave."),
  ("Preset w\u00e4hlen, < >", "Preset aus der Liste laden bzw. bl\u00e4ttern."),
  ("Speichern…", "aktuelle Einstellung als Preset speichern; eigene T\u00f6ne werden nach \u201eEigene Töne\u201c kopiert. Dateityp \u201emit eingebetteten Samples\u201c: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach \u201eEigene Töne\u201c ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste."),
  ("CLIP / MIDI", "leuchten bei \u00dcbersteuerung bzw. bei jedem empfangenen MIDI-Ereignis."),
  ("Info", "Klartext, was beim Tastendruck passiert, dazu das Trigger-Protokoll (Noten, R\u00e4der, Ereignisse, Einmal-LFOs) live."),
+ ("Erklärungen", "schaltet die Erklär-Displays in den Reitern ein (Standard) oder aus. Aus: Maus über einen Bereich zeigt dessen Text leicht, ein Klick ins Display hält ihn fest."),
  ("Hilfe", "dieses Fenster."),
- ("Statuszeile", "Oktave, klingende Stimmen, aktive Grains und das aktive Sample (bei Morph: A und B mit ihrem Anteil)."),
+ ("Statuszeile", "das aktive Sample (bei Morph: A und B mit ihrem Anteil) und kurze Meldungen. Klingende Stimmen und aktive Grains stehen im Reiter Leistung."),
  ("Autoplay, Haken \u201ealle\u201c", "nur im Test-Host: spielt St\u00fccke ab; die Liste zeigt die zum Preset passenden, mit \u201ealle\u201c jedes St\u00fcck (z.B. eine Fl\u00e4che mit flotter Musik)."),
  ("Bend / Mod", "neben der Klaviatur: Tonh\u00f6he biegen (federt in 0,1 s zur\u00fcck) und Modrad (bleibt stehen)."),
 ]),
@@ -178,7 +179,7 @@ TABS = [
 ]),]
 
 NO = {"Sprache / Language", "Freie Form: Klaviatur, Gl\u00e4ttung", "Zonen 1-3", "Aufnahme", "Kategorie / Stern", "Wiederholen", "Lastliste", "Zeiger / Laufzeit", "Audio laden...", "Alle Noten aus", "Okt - / Okt +", "Preset w\u00e4hlen, < >", "Speichern...", "CLIP / MIDI",
-      "Info", "Hilfe", "Statuszeile", "Autoplay, Haken \u201ealle\u201c", "Variieren / St\u00e4rke / Variieren in", "A/B", "Spektrum", "Kurve", "Leuchten",
+      "Info", "Erklärungen", "Hilfe", "Statuszeile", "Autoplay, Haken \u201ealle\u201c", "Variieren / St\u00e4rke / Variieren in", "A/B", "Spektrum", "Kurve", "Leuchten",
       "Ziel B merken / laden / l\u00f6schen", "A <-> B tauschen"}
 PART = {"Bend / Mod": "MIDI", "Latch": "Arp Latch", "Arpeggiator": "ja (Muster: nein)", "LFO 1 bis 8: Rate, Form, Sync": "ja (freie Form: nein)",
         "Morph, Morph-LFO": "ja (freie Form: nein)", "Zwei Klänge (Morph-Art)": "ja", "Modulationsmatrix": "ja (alle Zeilen)",

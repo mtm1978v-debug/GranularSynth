@@ -167,6 +167,7 @@ type
     FWaveForm: array[0..OSC_COUNT - 1] of TForm;
     FAudioForm: array[0..ZONE_COUNT] of TForm;   // Sample-Editor je Hauptsample (0) / Zone, nicht modal
     FWaveView: array[0..OSC_COUNT - 1] of TOscWaveView;
+    FOscPreview: array[0..OSC_COUNT - 1] of TOscPreviewView;   // Osz-Reiter: Welle, wie sie gerade klingt
     FWaveSmooth: array[0..OSC_COUNT - 1] of TTrackBar;
     FWaveSmoothLbl: array[0..OSC_COUNT - 1] of TLabel;
     FWaveUse: array[0..OSC_COUNT - 1] of TCheckBox;
@@ -204,6 +205,25 @@ type
     FLevelView, FOutLevelView: TLevelView;
     FTrigPanel: TPanel;
     FFxInPanel: TPanel;                  // Reiter Echo / Hall: 'Eingang → Echo/Hall' (nur FX-Variante sichtbar)
+    // Erklaertexte: standardmaessig aus (Tooltip am Bereichstitel mit ⓘ), Schalter in der Kopfleiste
+    FInfoItems: array of record Lbl: TLabel; Screen: TCustomControl; end;   // Erklaertext im eigenen Display
+    FShowInfo: Boolean;
+    FInfoBtn: TButton;
+    FOctLabel: TLabel;
+    FVoiceCount: Integer;
+    FScaleF: Double;                     // aktuelle Fensterskalierung (1 = 100 %)
+    FTitleGapDone: Boolean;
+    FInAlignRows: Boolean;
+    FInRelayout: Boolean;
+    FTabTimeDone: Boolean;
+    FInfoLastTick: Int64;            // Erklaer-Displays: Zeitpunkt der letzten Nachfuehrung
+    FTp: array[0..4] of Int64;       // Messung Reiterwechsel: Zeitpunkte der Teilschritte            // RelayoutAll laeuft: Reihen erst am Ende ausrichten
+    // Matrix: nur benutzte Zeilen + eine freie (kompakt untereinander)
+    FSlotRowY: array[0..MOD_SLOTS - 1] of Integer;
+    FSlotMove: array[0..MOD_SLOTS - 1] of TArray<TControl>;
+    FMatUsedMask: Int64;
+    FGlideCtrls: TArray<TControl>;
+    FGlideY: Integer;
     FEchoView, FHallView: TFxCurveView;   // Reiter Echo / Hall: Diagramme (nur bei Reglerwechsel neu)
     FInLevels: TLabel;        // Mischpult: Pegel der vier VST-Eingaenge
     FProcStat: TLabel;        // Reiter Leistung: Laufzeit-Statistik des Plugins
@@ -355,6 +375,17 @@ type
     procedure MorphFreeClick(Sender: TObject);
     procedure FreeGateClick(Sender: TObject);
     procedure InfoClick(Sender: TObject);
+    procedure Explain(L: TLabel);
+    procedure BuildInfoScreens;
+    procedure InfoScreenClick(Sender: TObject);
+    procedure UpdateInfoHover;
+    procedure AlignInfoRows;
+    procedure AddTitleGaps;
+    procedure MeasureTabSwitch;
+    function OnActivePage(C: TControl): Boolean;
+    procedure ApplyInfoMode;
+    procedure InfoToggleClick(Sender: TObject);
+    procedure RelayoutMatrix(Force: Boolean);
     procedure HelpClick(Sender: TObject);
     procedure LangComboChange(Sender: TObject);
     procedure ScaleComboChange(Sender: TObject);
@@ -402,6 +433,9 @@ type
     procedure SyncControlsFromEngine;
 
     procedure TrackChange(Sender: TObject);
+    procedure TrackReset(Sender: TObject);
+    procedure ValueLabelEnter(Sender: TObject);
+    procedure ValueLabelLeave(Sender: TObject);
     procedure ComboChange(Sender: TObject);
     procedure SetupLeds;
     procedure WaveItemIcon(Sender: TObject; Index: Integer; Cv: TCanvas; const R: TRect; Col: TColor);
@@ -431,6 +465,7 @@ type
     procedure WheelChange(Sender: TObject);
     procedure SetOnSidechainSwitch(const Value: TSidechainSwitchEvent);
   public
+    procedure LayoutForCheck;   // Pruefstand: endgueltiges Einpassen (Displays) wie im Fenster
     { gesetzt vom Plugin (VST2/VST3): Reglerbewegungen an die DAW melden }
     property OnParamEdit: TParamEditEvent read FOnParamEdit write FOnParamEdit;
     property OnHostMenu: THostMenuEvent read FOnHostMenu write FOnHostMenu;
@@ -499,7 +534,7 @@ type
 implementation
 
 uses
-  GR32_Image;
+  GR32_Image, System.Generics.Collections;
 
 const
   MAT_ROWS = 8;        // Matrix-Zeilen je Seite im Reiter Modulation
@@ -538,6 +573,8 @@ begin
   inherited Create(AOwner);
   FEngine := AEngine;
   FOctave := 4;
+  FScaleF := 1;
+  FShowInfo := True;
   for I := 0 to High(FKeyNote) do
     FKeyNote[I] := -1;
   for I := 0 to PARAM_COUNT - 1 do
@@ -1003,6 +1040,41 @@ begin
     end;
 end;
 
+{ Flachbandkabel am rechten Rand eines Displays: kommt hinter dem Glas hervor, laeuft 2 px breit nach unten
+  und verschwindet in einem kleinen Schlitz der Platte - gedeckte Farben, nur Andeutung. }
+procedure DrawDisplayCable(Cv: TCanvas; const R: TRect; Px: Integer);
+var
+  X, Y0, Y1, I: Integer;
+begin
+  if R.Height < 30 * Px then
+    Exit;
+  X := R.Right + Px;                                  // dicht am Rahmen
+  Y0 := R.Top + R.Height * 55 div 100;
+  Y1 := R.Bottom - 2 * Px;
+  with Cv do
+  begin
+    // Schatten auf der Platte
+    Pen.Color := $001A1715;
+    MoveTo(X + 2 * Px, Y0 + Px); LineTo(X + 2 * Px, Y1 + Px);
+    // Band: Lichtkante + Kern (zwei Leiter, bronzefarben gedaempft)
+    for I := 0 to Px - 1 do
+    begin
+      Pen.Color := $004A5562;
+      MoveTo(X + I, Y0); LineTo(X + I, Y1);
+      Pen.Color := $002E3946;
+      MoveTo(X + Px + I, Y0); LineTo(X + Px + I, Y1);
+    end;
+    // Austritt am Glas: kurzer dunkler Steg
+    Pen.Color := $000E0C0B;
+    MoveTo(R.Right, Y0 - Px); LineTo(X + 2 * Px, Y0 - Px);
+    // Schlitz in der Platte, in dem das Band verschwindet
+    Brush.Color := $000D0B0A;
+    FillRect(Rect(X - Px, Y1, X + 3 * Px, Y1 + 2 * Px));
+    Pen.Color := $00504842;
+    MoveTo(X - Px, Y1 + 2 * Px); LineTo(X + 3 * Px, Y1 + 2 * Px);
+  end;
+end;
+
 procedure TGroupPanel.Paint;
 var
   R: TRect;
@@ -1039,6 +1111,10 @@ begin
     DrawScrew(Cv, R.Right - 1 - D, R.Bottom - 1 - D, Sr);
   end;
   Canvas.Draw(0, 0, FCache);
+  // Erklaer-Displays: rechts das feine Flachbandkabel, mit dem das Display von hinten angeschlossen ist
+  for Y := 0 to ControlCount - 1 do
+    if Controls[Y].Visible and (Controls[Y].ClassName = 'TInfoScreen') then
+      DrawDisplayCable(Canvas, Controls[Y].BoundsRect, ScaleValue(1));
   // Betriebslampe: eingelassene LED oben rechts, etwas Abstand zur Schraube
   if (LedCheck <> nil) or (LedMaster <> nil) or Assigned(LedFunc) then
   begin
@@ -1112,6 +1188,182 @@ begin
     BitBlt(DC, X0, Y0, 2 * E + 1, 2 * E + 1, LedImage(True, K).Canvas.Handle, 0, 0, SRCCOPY);
   finally
     ReleaseDC(Handle, DC);
+  end;
+end;
+
+type
+  { eingelassenes Display fuer einen Erklaertext (Bernstein wie die anderen Anzeigen). Helligkeit 0..1 wird
+    weich nachgefuehrt (Step aus dem Editor-Timer); bei lautem Ausgang dunkelt es mit den Anzeigen ab. }
+  TInfoScreen = class(TCustomControl)
+  public
+    Pinned: Boolean;
+    Bright: Single;        // Blend-Phase 0..1 (linear in der Zeit)
+    Shown: Single;         // sichtbare Helligkeit 0..1 (Phase durch die Roehrenkurve)
+    Rising: Boolean;
+    HoverT: Single;        // so lange steht die Maus schon im Bereich (s)
+    FGlass: TColor;
+    MinW: Integer;         // einzeilige Texte: Mindestbreite (Text + Rand)
+    FitW, FitH: Integer;   // Bereichsgroesse beim letzten Einpassen (sonst nichts zu tun)
+    BaseSize: Integer;     // Schriftgroesse des Textes (ohne Verkleinerung)
+    constructor Create(AOwner: TComponent); override;
+    procedure FitText;
+    function TextHeight(W: Integer): Integer;
+    procedure Step(Target, Dt, Sag: Single; Lbl: TLabel);
+  protected
+    procedure Paint; override;
+  end;
+
+function MixCol(A, B: TColor; T: Single): TColor;
+var
+  K: Integer;
+begin
+  K := Round(EnsureRange(T, 0, 1) * 256);
+  Result := (((A and $FF) * (256 - K) + (B and $FF) * K) shr 8) or
+    (((((A shr 8) and $FF) * (256 - K) + ((B shr 8) and $FF) * K) shr 8) shl 8) or
+    (((((A shr 16) and $FF) * (256 - K) + ((B shr 16) and $FF) * K) shr 8) shl 16);
+end;
+
+const
+  INFO_GLASS_OFF = $00403A37;    // aus: leichtes Grau, nah am Bereich (wenig Kontrast)
+  INFO_GLASS_ON  = $00181513;    // an: dunkles Glas, Text in Bernstein
+  INFO_TEXT      = $0050B8F0;    // Bernstein (etwas gedeckter als die Werte)
+
+constructor TInfoScreen.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  DoubleBuffered := True;
+  Cursor := crHandPoint;
+  FGlass := INFO_GLASS_OFF;
+end;
+
+{ Helligkeit Richtung Ziel: einblenden ~0,6 s, ausblenden ~1,5 s; Farbe nur bei Aenderung setzen }
+procedure TInfoScreen.Step(Target, Dt, Sag: Single; Lbl: TLabel);
+var
+  Eff: Single;
+  G, C: TColor;
+begin
+  // Verlauf wie bei einer Roehre: Einblenden glimmt langsam an und wird immer schneller hell
+  // (Shown = Phase^2,2); Ausblenden bleibt lange stehen und sackt zum Schluss weg
+  // (Shown = 1 - (1 - Phase)^2,5). Bei Richtungswechsel die Phase so umrechnen, dass nichts springt.
+  if (Target > Shown + 0.001) and not Rising then
+  begin
+    Rising := True;
+    Bright := Power(Max(Shown, 0), 1 / 2.2);
+  end
+  else if (Target < Shown - 0.001) and Rising then
+  begin
+    Rising := False;
+    Bright := 1 - Power(Max(1 - Shown, 0), 1 / 2.5);
+  end;
+  // Phase laeuft nur, solange das Ziel noch nicht erreicht ist (sonst spraenge sie beim naechsten Ziel)
+  if Rising and (Shown < Target) then
+  begin
+    Bright := Min(1, Bright + Dt / 0.7);
+    Shown := Min(Target, Power(Bright, 2.2));
+    if Shown >= Target then
+      Bright := Power(Max(Shown, 0), 1 / 2.2);
+  end
+  else if not Rising and (Shown > Target) then
+  begin
+    Bright := Max(0, Bright - Dt / 1.6);
+    Shown := Max(Target, 1 - Power(1 - Bright, 2.5));
+    if Shown <= Target then
+      Bright := 1 - Power(Max(1 - Shown, 0), 1 / 2.5);
+  end;
+  Eff := Shown * (1 - Sag);
+  G := MixCol(INFO_GLASS_OFF, INFO_GLASS_ON, Eff);
+  C := MixCol(G, INFO_TEXT, Eff);
+  if Lbl.Visible <> (Shown > 0.02) then
+    Lbl.Visible := Shown > 0.02;
+  if Lbl.Font.Color <> C then
+    Lbl.Font.Color := C;
+  if G <> FGlass then
+  begin
+    FGlass := G;
+    Invalidate;
+  end;
+end;
+
+var
+  GMeasure: Vcl.Graphics.TBitmap;      // Messflaeche fuer Texthoehen (braucht kein Fenster-Handle)
+
+function MeasureCanvas: TCanvas;
+begin
+  if GMeasure = nil then
+    GMeasure := Vcl.Graphics.TBitmap.Create;
+  Result := GMeasure.Canvas;
+end;
+
+function TInfoScreen.TextHeight(W: Integer): Integer;
+var
+  Lbl: TLabel;
+  R: TRect;
+  Cv: TCanvas;
+begin
+  Result := 0;
+  if (ControlCount = 0) or not (Controls[0] is TLabel) then
+    Exit;
+  Lbl := TLabel(Controls[0]);
+  Cv := MeasureCanvas;
+  Cv.Font := Lbl.Font;
+  if BaseSize <> 0 then
+    Cv.Font.Size := BaseSize;
+  R := Rect(0, 0, Max(10, W - 10), 0);
+  DrawText(Cv.Handle, PChar(Lbl.Caption), Length(Lbl.Caption), R, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+  Result := R.Bottom;
+end;
+
+{ passt der Text nach dem Einpassen nicht mehr ganz ins Display, eine Stufe kleiner schreiben }
+procedure TInfoScreen.FitText;
+var
+  Lbl: TLabel;
+  R: TRect;
+  Sz: Integer;
+begin
+  if (ControlCount = 0) or not (Controls[0] is TLabel) then
+    Exit;
+  Lbl := TLabel(Controls[0]);
+  if BaseSize = 0 then
+    BaseSize := Lbl.Font.Size;
+  Sz := BaseSize;
+  repeat
+    MeasureCanvas.Font := Lbl.Font;
+    MeasureCanvas.Font.Size := Sz;
+    R := Rect(0, 0, Max(10, Lbl.Width), 0);
+    DrawText(MeasureCanvas.Handle, PChar(Lbl.Caption), Length(Lbl.Caption), R, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+    if (R.Bottom <= Lbl.Height + 1) or (Sz <= BaseSize - 1) then
+      Break;
+    Dec(Sz);
+  until False;
+  if Lbl.Font.Size <> Sz then
+    Lbl.Font.Size := Sz;
+end;
+
+procedure TInfoScreen.Paint;
+var
+  R: TRect;
+  Y, H: Integer;
+  T: Single;
+begin
+  R := ClientRect;
+  H := Max(1, R.Height);
+  with Canvas do
+  begin
+    // Glas mit leichtem Verlauf (oben heller, unten dunkler) und Glanzstreifen im oberen Drittel
+    for Y := 0 to H - 1 do
+    begin
+      T := Y / H;
+      Pen.Color := MixCol(MixCol(FGlass, $00FFFFFF, 0.05), MixCol(FGlass, $00000000, 0.10), T);
+      if T < 0.33 then
+        Pen.Color := MixCol(Pen.Color, $00FFFFFF, 0.035 * (1 - T / 0.33));
+      MoveTo(R.Left, R.Top + Y);
+      LineTo(R.Right, R.Top + Y);
+    end;
+    // eingelassen: oben/links dunkle Kante, unten/rechts Lichtkante
+    Pen.Color := $00080706;
+    MoveTo(R.Left, R.Bottom - 1); LineTo(R.Left, R.Top); LineTo(R.Right - 1, R.Top);
+    Pen.Color := $00524A45;
+    MoveTo(R.Right - 1, R.Top + 1); LineTo(R.Right - 1, R.Bottom - 1); LineTo(R.Left, R.Bottom - 1);
   end;
 end;
 
@@ -1196,6 +1448,7 @@ begin
   // (Knoepfe, Reiter, Listen) erben die unveraenderte Schrift des Formulars
   ParentFont := False;
   ScaleBy(M, D);
+  FScaleF := FScaleF * M / D;
   for I := 0 to High(FStretch) do
   begin
     FStretch[I].Left := MulDiv(FStretch[I].Left, M, D);
@@ -1204,17 +1457,140 @@ begin
   RelayoutAll(nil);
 end;
 
+var
+  GPanelResizes, GAlignRows: Integer;   // Messung Reiterwechsel
+
 procedure TGranularEditor.PanelResize(Sender: TObject);
 var
-  I, W: Integer;
+  I, K, W, H, M, MT, L, R, B, BestL, BestR, Need, Room: Integer;
+  C: TControl;
+  Alone, HasScreen, Below: Boolean;
+  Grp: TWinControl;
+  OffX, OffY: Integer;
 begin
+  Inc(GPanelResizes);
   W := (Sender as TWinControl).ClientWidth;
+  H := TWinControl(Sender).ClientHeight;
+  HasScreen := False;
+  // liegt der Bereich in einem verschraubten Feld (TGroupPanel), gelten dessen Raender (Schrauben)
+  Grp := TWinControl(Sender);
+  OffX := 0; OffY := 0;
+  while (Grp <> nil) and not (Grp is TGroupPanel) and not (Grp is TInfoScreen) do
+  begin
+    Inc(OffX, Grp.Left); Inc(OffY, Grp.Top);
+    Grp := Grp.Parent;
+  end;
+  if (Grp is TGroupPanel) and (Grp <> Sender) then
+  begin
+    W := Min(W, Grp.ClientWidth - OffX);
+    H := Min(H, Grp.ClientHeight - OffY);
+  end;
+  if Sender is TInfoScreen then
+  begin
+    // Text fuellt das Display mit gleichmaessigem Innenrand
+    M := Round(5 * FScaleF);
+    for I := 0 to TInfoScreen(Sender).ControlCount - 1 do
+      TInfoScreen(Sender).Controls[I].SetBounds(M, M - 1, Max(10, W - 2 * M), Max(10, H - 2 * M + 2));
+    Exit;
+  end;
   for I := 0 to High(FStretch) do
     if FStretch[I].Ctrl.Parent = Sender then
       if FStretch[I].AlignRight then
         FStretch[I].Ctrl.Left := W - FStretch[I].RightGap - FStretch[I].Ctrl.Width
       else
         FStretch[I].Ctrl.Width := Max(30, W - FStretch[I].Left - FStretch[I].RightGap);
+  // Erklaer-Displays: ringsum Luft (links = rechts, unter dem Titel, nie an Rand oder Schrauben)
+  M := Round(12 * FScaleF);
+  MT := Round(26 * FScaleF);
+  for I := 0 to TWinControl(Sender).ControlCount - 1 do
+  begin
+    C := TWinControl(Sender).Controls[I];
+    if not (C is TInfoScreen) then
+      Continue;
+    HasScreen := True;
+    if (TInfoScreen(C).FitW = W) and (TInfoScreen(C).FitH = H) then
+      Continue;                                  // Bereich unveraendert: Display sitzt schon
+    TInfoScreen(C).FitW := W;
+    TInfoScreen(C).FitH := H;
+    L := Max(C.Left, M);
+    R := W - M;                                  // bis zum Rand des Bereichs (Elemente daneben begrenzen unten)
+    if C.Width >= W div 2 then
+      R := W - L;                                // breite Displays: gleicher Abstand links und rechts
+    // Einrasten: liegt die Kante nah an der Kante eines anderen Elements im Bereich (auch aus einer
+    // anderen Reihe), richtet sich das Display daran aus - rechts bis 40 px, links bis 20 px
+    BestR := MaxInt; BestL := MaxInt;
+    for K := 0 to TWinControl(Sender).ControlCount - 1 do
+      with TWinControl(Sender).Controls[K] do
+        if Visible and not (TWinControl(Sender).Controls[K] is TInfoScreen) and (Top > MT div 2) and
+           ((Top + Height <= C.Top) or (Top >= C.Top + C.Height)) then
+        begin
+          if (Left + Width <= W - M) and (Abs(Left + Width - R) <= Round(40 * FScaleF)) and
+             (Abs(Left + Width - R) < Abs(BestR - R)) then
+            BestR := Left + Width;
+          if (Left >= M) and (Abs(Left - L) <= Round(20 * FScaleF)) and (Abs(Left - L) < Abs(BestL - L)) then
+            BestL := Left;
+        end;
+    if BestR <> MaxInt then R := BestR;
+    if BestL <> MaxInt then L := BestL;
+    R := Min(Max(R, L + TInfoScreen(C).MinW), W - M);   // einzeilige Texte nie abschneiden
+    B := Min(C.Top + C.Height, H - M);
+    // Hoehe nach dem Text bei der endgueltigen Breite (nie ueber den Platz bis zum naechsten Element)
+    Need := TInfoScreen(C).TextHeight(R - L) + Round(10 * FScaleF);
+    Room := B - Max(C.Top, MT);
+    for K := 0 to TWinControl(Sender).ControlCount - 1 do
+      with TWinControl(Sender).Controls[K] do
+        if Visible and (TWinControl(Sender).Controls[K] <> C) and (Top >= C.Top + 4) and
+           (Left < R) and (Left + Width > L) then
+          Room := Min(Room, Top - Round(6 * FScaleF) - Max(C.Top, MT));
+    Room := Max(16, Min(Max(Need, C.Height), Room));
+    // letztes Element im Bereich: bis unten, mit demselben Abstand wie links/rechts
+    Below := False;
+    for K := 0 to TWinControl(Sender).ControlCount - 1 do
+      with TWinControl(Sender).Controls[K] do
+        if Visible and (TWinControl(Sender).Controls[K] <> C) and (Top >= C.Top + 4) and
+           (Left < R) and (Left + Width > L) then
+          Below := True;
+    if not Below and (TInfoScreen(C).MinW = 0) then
+      Room := H - M - Max(C.Top, MT);
+    if TInfoScreen(C).MinW > 0 then
+      Room := Max(Room, Need);                   // einzeilig: immer die volle Zeilenhoehe
+    // nur die Erklaerung im Bereich: Display fuellt ihn mit gleichem Abstand ringsum
+    Alone := True;
+    for K := 0 to TWinControl(Sender).ControlCount - 1 do
+      with TWinControl(Sender).Controls[K] do
+        if Visible and (TWinControl(Sender).Controls[K] <> C) and (Top > MT div 2) then
+          Alone := False;
+    if Alone then
+      C.SetBounds(M, MT, W - 2 * M, H - MT - M)
+    else
+    begin
+      // nie in Elemente hineinwachsen, die auf gleicher Hoehe rechts daneben liegen
+      for K := 0 to TWinControl(Sender).ControlCount - 1 do
+        with TWinControl(Sender).Controls[K] do
+          if Visible and (TWinControl(Sender).Controls[K] <> C) and (Left >= L + 20) and (Left < R) and
+             (Top >= Max(C.Top, MT) - 2) and (Top < Max(C.Top, MT) + Room) then
+            R := Left - Round(8 * FScaleF);
+      C.SetBounds(L, Max(C.Top, MT), Max(30, R - L), Room);
+    end;
+    TInfoScreen(C).FitText;
+    HasScreen := True;
+  end;
+  // Wellenanzeige im Osz-Reiter: unten buendig mit gleichem Rand wie die Displays
+  for I := 0 to TWinControl(Sender).ControlCount - 1 do
+  begin
+    C := TWinControl(Sender).Controls[I];
+    if C.ClassName = 'TOscPreviewView' then
+      C.SetBounds(Round(12 * FScaleF), C.Top, W - Round(24 * FScaleF), Max(20, H - Round(12 * FScaleF) - C.Top));
+  end;
+  if HasScreen and not FInAlignRows and not FInRelayout then
+  begin
+    FInAlignRows := True;
+    try
+      AlignInfoRows;
+    finally
+      FInAlignRows := False;
+    end;
+  end;
 end;
 
 { Reiterwechsel ohne sichtbaren Aufbau: vor dem Wechsel das Zeichnen sperren, danach Layout anpassen,
@@ -1231,11 +1607,20 @@ var
   ExSt: NativeInt;
 begin
   try
-    RelayoutAll(Sender);
+    QueryPerformanceCounter(FTp[0]);
+    // Einpassen nur, wenn sich die Groesse seit dem letzten Besuch dieses Reiters geaendert hat
+    if (FPages.ActivePage <> nil) and (FPages.ActivePage.Tag <> FPages.ActivePage.Width * 10000 + FPages.ActivePage.Height) then
+    begin
+      RelayoutAll(Sender);
+      FPages.ActivePage.Tag := FPages.ActivePage.Width * 10000 + FPages.ActivePage.Height;
+    end;
+    QueryPerformanceCounter(FTp[1]);
     // Werte und Live-Anzeigen des neuen Reiters sofort nachziehen (sonst zeigen die Regler kurz ihre
     // Grundstellung, bis der Timer das naechste Mal laeuft) - noch bei gesperrtem Zeichnen
     TimerTick(nil);
+    QueryPerformanceCounter(FTp[2]);
     SyncControlsFromEngine;
+    QueryPerformanceCounter(FTp[3]);
   finally
     if FPages.HandleAllocated then
     begin
@@ -1247,15 +1632,91 @@ begin
       RedrawWindow(FPages.Handle, nil, 0, RDW_ERASE or RDW_FRAME or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_UPDATENOW);
       SetWindowLong(FPages.Handle, GWL_EXSTYLE, ExSt);
     end;
+    QueryPerformanceCounter(FTp[4]);
   end;
+end;
+
+{ Messung (GRANULAR_TABTIME=1): einmal durch alle Reiter schalten, Dauer je Wechsel inkl. Neuzeichnen
+  nach <Plugin-Ordner>eiterwechsel.txt (Pruefung der Reaktionszeit) }
+procedure TGranularEditor.MeasureTabSwitch;
+var
+  I: Integer;
+  F, T0, T1: Int64;
+  Ok: Boolean;
+  L: TStringList;
+begin
+  QueryPerformanceFrequency(F);
+  L := TStringList.Create;
+  try
+    for I := 0 to 2 * FPages.PageCount - 1 do
+    begin
+      if I = FPages.PageCount then
+        L.Add('--- zweite Runde (Steuerelemente schon angelegt) ---');
+      QueryPerformanceCounter(T0);
+      GPanelResizes := 0; GAlignRows := 0;
+      Ok := True;
+      PagesChanging(FPages, Ok);
+      FPages.ActivePageIndex := I mod FPages.PageCount;
+      PagesChange(FPages);
+      QueryPerformanceCounter(T1);
+      L.Add(Format('%-24s %6.1f ms  (Umschalten %.1f, Einpassen %.1f, Timer %.1f, Werte %.1f, Zeichnen %.1f; %d Anpassungen, %d Reihen)',
+        [Trim(FPages.Pages[I mod FPages.PageCount].Caption), (T1 - T0) * 1000 / F, (FTp[0] - T0) * 1000 / F,
+         (FTp[1] - FTp[0]) * 1000 / F, (FTp[2] - FTp[1]) * 1000 / F, (FTp[3] - FTp[2]) * 1000 / F,
+         (FTp[4] - FTp[3]) * 1000 / F, GPanelResizes, GAlignRows]));
+    end;
+    L.SaveToFile(FBaseDir + 'reiterwechsel.txt', TEncoding.UTF8);
+  finally
+    L.Free;
+  end;
+end;
+
+{ liegt das Steuerelement auf dem gerade gewaehlten Reiter (oder auf keinem Reiter)? Unabhaengig davon,
+  ob das Fenster schon sichtbar ist (beim Start noch nicht). }
+function TGranularEditor.OnActivePage(C: TControl): Boolean;
+begin
+  while (C <> nil) and not (C is TTabSheet) do
+    C := C.Parent;
+  Result := (C = nil) or (FPages = nil) or (C = FPages.ActivePage);
 end;
 
 procedure TGranularEditor.RelayoutAll(Sender: TObject);
 var
   I: Integer;
+  P: TWinControl;
+  Done: TList<TWinControl>;
 begin
-  for I := 0 to High(FStretch) do
-    PanelResize(FStretch[I].Ctrl.Parent);
+  if not FTitleGapDone then
+    AddTitleGaps;
+  // jeden Bereich genau einmal anpassen (auch verdeckte Reiter: deren Groessen stehen schon fest)
+  FInRelayout := True;
+  try
+    Done := TList<TWinControl>.Create;
+    try
+      for I := 0 to High(FStretch) do
+      begin
+        P := FStretch[I].Ctrl.Parent;
+        if (P <> nil) and (Done.IndexOf(P) < 0) then
+        begin
+          Done.Add(P);
+          PanelResize(P);
+        end;
+      end;
+      for I := 0 to High(FInfoItems) do
+      begin
+        P := FInfoItems[I].Screen.Parent;
+        if (P <> nil) and (Done.IndexOf(P) < 0) then
+        begin
+          Done.Add(P);
+          PanelResize(P);
+        end;
+      end;
+    finally
+      Done.Free;
+    end;
+  finally
+    FInRelayout := False;
+  end;
+  AlignInfoRows;
   // Sprachflagge ueber dem freien Ende der Reiterzeile
   if FStatus <> nil then
     FStatus.Width := Max(60, FStatus.Parent.ClientWidth - FStatus.Left - 6);
@@ -1486,6 +1947,7 @@ begin
       B.Track.Tag := Result;
       B.Track.OnChange := TrackChange;
       B.Track.OnModWheel := TrackModWheel;
+      B.Track.OnReset := TrackReset;
       if Index < NAMED_COUNT then
         B.Track.PopupMenu := FModMenu;
       TControlAccess(B.Track).OnContextPopup := TrackContextPopup;
@@ -1512,6 +1974,8 @@ begin
       B.ValueLabel.Tag := Result;
       B.ValueLabel.Cursor := crHandPoint;
       B.ValueLabel.OnClick := ValueLabelClick;
+      B.ValueLabel.OnMouseEnter := ValueLabelEnter;
+      B.ValueLabel.OnMouseLeave := ValueLabelLeave;
       if TrackW = 0 then
         AddStretch(B.ValueLabel, 4, True);
     end;
@@ -1553,6 +2017,7 @@ begin
   B.Track.Tag := Result;
   B.Track.OnChange := TrackChange;
   B.Track.OnModWheel := TrackModWheel;
+  B.Track.OnReset := TrackReset;
   if Index < NAMED_COUNT then
     B.Track.PopupMenu := FModMenu;
   TControlAccess(B.Track).OnContextPopup := TrackContextPopup;
@@ -1567,6 +2032,8 @@ begin
   B.ValueLabel.Tag := Result;
   B.ValueLabel.Cursor := crHandPoint;
   B.ValueLabel.OnClick := ValueLabelClick;
+  B.ValueLabel.OnMouseEnter := ValueLabelEnter;
+  B.ValueLabel.OnMouseLeave := ValueLabelLeave;
   ApplyParamHint(B);
   FBindings := FBindings + [B];
   if FBindingOf[Index] < 0 then
@@ -1605,11 +2072,28 @@ begin
   FTopBar.Color := BG_DARK;
 
   FLoadButton := MakeButton(Tr('Audio laden…'), 8, 104, LoadClick);
-  FPanicButton := MakeButton(Tr('Alle Noten aus'), 116, 116, PanicClick);
-  FOctDown := MakeButton(Tr('Okt -'), 240, 46, OctaveClick);
-  FOctUp := MakeButton(Tr('Okt +'), 290, 46, OctaveClick);
+  // aufgeraeumt: Panik nur als Symbol, Oktave kompakt "− Okt 4 +" (Stimmen/Grains stehen unter Leistung)
+  FPanicButton := MakeButton(Tr('Alle Noten aus'), 116, 28, PanicClick);
+  FPanicButton.Hint := Tr('Alle Noten aus (hängende Töne stoppen)');
+  FPanicButton.ShowHint := True;
+  FOctDown := MakeButton('−', 150, 22, OctaveClick);
+  FOctUp := MakeButton('+', 222, 22, OctaveClick);
+  FOctDown.Hint := Tr('PC-Tastatur eine Oktave tiefer (Taste -)');
+  FOctUp.Hint := Tr('PC-Tastatur eine Oktave höher (Taste +)');
+  FOctDown.ShowHint := True;
+  FOctUp.ShowHint := True;
+  FOctLabel := TLabel.Create(Self);
+  FOctLabel.Parent := FTopBar;
+  FOctLabel.AutoSize := False;
+  FOctLabel.Alignment := taCenter;
+  FOctLabel.SetBounds(172, 11, 50, 16);
+  FOctLabel.Font.Color := COL_NAME;
+  FOctLabel.Transparent := True;
+  FOctLabel.Hint := Tr('Oktave der PC-Tastatur: A W S E D F T G Z H U J K O L P spielt');
+  FOctLabel.ShowHint := True;
   FLoadButton.Icon := eiOpen;
   FPanicButton.Icon := eiPanic;
+  FPanicButton.IconOnly := True;
 
   FPresetCombo := TComboBox.Create(Self);
   FPresetCombo.Parent := FTopBar;
@@ -1619,7 +2103,7 @@ begin
   FPresetCat := TComboBox.Create(Self);
   FPresetCat.Parent := FTopBar;
   FPresetCat.Style := csDropDownList;
-  FPresetCat.SetBounds(350, 8, 116, 21);
+  FPresetCat.SetBounds(254, 8, 116, 21);
   FPresetCat.DropDownCount := 20;
   FPresetCat.TabStop := False;
   for var CatName in PRESET_CATS do
@@ -1630,7 +2114,7 @@ begin
   FPresetCat.OnChange := PresetCatChange;
   FPresetFilter := TEdit.Create(Self);
   FPresetFilter.Parent := FTopBar;
-  FPresetFilter.SetBounds(470, 8, 40, 21);
+  FPresetFilter.SetBounds(374, 8, 40, 21);
   FPresetFilter.TextHint := Tr('Filter');
   FPresetFilter.Color := $00A09C98;       // Metallgrau wie die Aufklapplisten
   FPresetFilter.Hint := Tr('Presetliste filtern: nur Namen, die diesen Text enthalten (z.B. FM, Arp, Natur, Stimme). ' +
@@ -1638,41 +2122,45 @@ begin
   FPresetFilter.ShowHint := True;
   FPresetFilter.OnChange := PresetFilterChange;
   FPresetFilter.OnKeyDown := PresetFilterKeyDown;
-  FPresetPrev := MakeButton('<', 508, 24, PresetStepClick);
+  FPresetPrev := MakeButton('<', 418, 24, PresetStepClick);
   FPresetPrev.Icon := eiPrev;
   FPresetPrev.IconOnly := True;
-  FPresetCombo.SetBounds(534, 8, 156, 21);
+  FPresetCombo.SetBounds(444, 8, 200, 21);
   FPresetCombo.DropDownCount := 30;
   FPresetCombo.TabStop := False;
   FPresetCombo.OnChange := PresetComboChange;
-  FPresetNext := MakeButton('>', 692, 24, PresetStepClick);
+  FPresetNext := MakeButton('>', 646, 24, PresetStepClick);
   FPresetNext.Icon := eiNext;
   FPresetNext.IconOnly := True;
-  FPresetFav := MakeButton('☆', 720, 26, PresetFavClick);
+  FPresetFav := MakeButton('☆', 674, 26, PresetFavClick);
   FPresetFav.Icon := eiStar;
   FPresetFav.IconOnly := True;
   FPresetFav.Hint := Tr('Aktuelles Preset als Favorit markieren / Markierung entfernen');
   FPresetFav.ShowHint := True;
-  FPresetSave := MakeButton(Tr('Speichern…'), 750, 94, PresetSaveClick);
+  FPresetSave := MakeButton(Tr('Speichern…'), 704, 94, PresetSaveClick);
   FPresetSave.Icon := eiSave;
 
   FStatus := TLabel.Create(Self);
   FStatus.Parent := FTopBar;
   FClipLed := TClipLed.Create(Self, FEngine);
   FClipLed.Parent := FTopBar;
-  FClipLed.SetBounds(850, 9, 36, 19);
+  FClipLed.SetBounds(806, 9, 36, 19);
   FClipLed.Hint := Tr('Leuchtet, wenn der weiche Clipper eingreift (Ausgang zu laut) - Lautstärke etwas zurücknehmen');
   FClipLed.ShowHint := True;
   FMidiLed := TClipLed.Create(Self, FEngine);
   FMidiLed.Midi := True;
   FMidiLed.Parent := FTopBar;
-  FMidiLed.SetBounds(890, 9, 36, 19);
+  FMidiLed.SetBounds(846, 9, 36, 19);
   FMidiLed.Hint := Tr('Leuchtet bei jedem MIDI-Ereignis (Noten, Pitchbend, Modrad, Aftertouch, Pedal)');
   FMidiLed.ShowHint := True;
-  var B := MakeButton(Tr('Info'), 930, 44, InfoClick);
+  // Erklaertexte ein/aus (bernsteinfarben = an); aus: Tooltip am Bereichstitel mit ⓘ
+  FInfoBtn := MakeButton(Tr('Erklärungen'), 890, 90, InfoToggleClick);
+  FInfoBtn.Hint := Tr('Erklärtexte in den Displays zeigen oder ausblenden (aus: Maus über einen Bereich zeigt den Text leicht, Klick ins Display hält ihn fest)');
+  FInfoBtn.ShowHint := True;
+  var B := MakeButton(Tr('Info'), 984, 44, InfoClick);
   B.Icon := eiInfo;
   B.Hint := Tr('Klartext-Übersicht: was passiert bei einem Tastendruck (live)');
-  B := MakeButton(Tr('Hilfe'), 978, 48, HelpClick);
+  B := MakeButton(Tr('Hilfe'), 1032, 48, HelpClick);
   B.Icon := eiHelp;
   B.Hint := Tr('Bedienung in einfachen Worten (Kapitel)');
   // Sprachflagge (klein, gedaempft): rechts in der Reiterzeile, Klick schaltet zur naechsten Sprache
@@ -1714,7 +2202,7 @@ begin
     FLangFlag.Hint := Tr('Sprache wechseln');
   FStatus.AutoSize := False;
   FStatus.EllipsisPosition := epEndEllipsis;
-  FStatus.SetBounds(1034, 11, 220, 16);
+  FStatus.SetBounds(1088, 11, 166, 16);
   FStatus.Anchors := [akLeft, akTop, akRight];
   FStatus.Hint := Tr('PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave');
   FStatus.ShowHint := True;
@@ -1857,6 +2345,8 @@ begin
   BuildMixTab;
   BuildPerfTab;
   SetupLeds;
+  BuildInfoScreens;
+  ApplyInfoMode;
   StartMark('BuildMixTab');
   ApplyCaptionHints;
   ShowMatrixPage(0);
@@ -1991,6 +2481,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Sidechain-Trigger: alle Haken müssen erfüllt sein. Ausgang > Schwelle: eigener Pegel, ' +
@@ -2067,6 +2558,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   AddStretch(L, 8);
   L.Caption := Tr('Ziele zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro 1-4, ' +
@@ -2133,7 +2625,16 @@ begin
       '(Velocity, Noten-LFO …) wirkt hier global und folgt der zuletzt angeschlagenen Note.');
     FSlotGlobal[S].ShowHint := True;
     FSlotGlobal[S].Visible := False;
+    // alles, was beim Zusammenruecken der Zeilen mitwandert (auch die roten Wirkwert-Striche)
+    FSlotRowY[S] := S mod MAT_ROWS;
+    FSlotMove[S] := FSlotCtrls[S] + [FSlotGlobal[S]];
+    for K := FirstB to High(FBindings) do
+      if FBindings[K].ModMarker <> nil then
+        FSlotMove[S] := FSlotMove[S] + [FBindings[K].ModMarker];
   end;
+  FMatUsedMask := -1;
+  FGlideY := MAT_ROWS;
+  FirstB := ComponentCount;
   // Portamento unter der Matrix (Tonhoehen-Bewegung zwischen den Noten)
   // in den Spalten der Matrix: Beschriftung unter "Quelle", Modus unter "Ziel", Zeit unter "Menge" (Tooltip)
   Y := 44 + MAT_ROWS * 34 + 6;
@@ -2155,6 +2656,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Wirkwert = Grundwert + (Quelle × Faktor + Offset) × Menge, im Reglerbereich (Zeiten ' +
@@ -2162,6 +2664,10 @@ begin
     'aktueller Wirkwert. Tonhöhe folgen: SC-Tonhöhe → Pitch, Faktor x2,65 Ton, Offset ' +
     '-125 %, Menge 100 % (C4 = Originalhöhe).');
   AddStretch(L, 10);
+  // Glide-Zeile und Erklaerung ruecken mit unter die letzte sichtbare Matrix-Zeile
+  for K := FirstB to ComponentCount - 1 do
+    if (Components[K] is TControl) and (TControl(Components[K]).Parent = Right) then
+      FGlideCtrls := FGlideCtrls + [TControl(Components[K])];
 end;
 
 { --- Reiter Filter: Filter 1 und 2 wirken je Note (jede Stimme hat eigene Filter und Huellkurve) --- }
@@ -2243,6 +2749,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Beide Filter wirken je Note: jede Stimme hat ihre eigenen Filter und ihre eigene Filter-Hüllkurve. ' +
@@ -2293,7 +2800,7 @@ begin
   FEchoView := TFxCurveView.Create(Self, FEngine);
   FEchoView.Kind := fxEcho;
   FEchoView.Parent := PE;
-  FEchoView.SetBounds(8, 24 + 8 * ROW_H + 8, 340, 136);
+  FEchoView.SetBounds(8, 24 + 8 * ROW_H + 8, 340, 144);   // endet auf derselben Hoehe wie die Hallkurve
   AddStretch(FEchoView, 8);
   FHallView := TFxCurveView.Create(Self, FEngine);
   FHallView.Kind := fxHall;
@@ -2306,6 +2813,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Echo und Hall wirken auf den Gesamtklang (alle Noten zusammen). Echo-Zeit mit Sync = Notenwert zum Tempo. ' +
@@ -2420,6 +2928,7 @@ var
     Result.AutoSize := False;
     Result.WordWrap := True;
     Result.Font.Color := $00A0A0A0;
+    Explain(Result);
     Result.Transparent := True;
     Result.Caption := Text;
     AddStretch(Result, 10);
@@ -2472,10 +2981,8 @@ begin
   FArpPattern.SetBounds(8, 24 + 7 * ROW_H + 24, 300, 30);
   AddStretch(FArpPattern, 8);
   Hint(PA, 24 + 7 * ROW_H + 60, 94,
-    Tr('Gehaltene Tasten werden nacheinander gespielt, im Tempo des Hosts; auch eine einzelne ' +
-    'Taste läuft über die Oktaven. Schritte im Muster ausschalten = Pause an dieser Stelle ' +
-    '(wie beim microKorg). Akkord = alle Tasten gleichzeitig im Rhythmus des Musters. ' +
-    'Tonleiter (rechts) gilt auch für den Arp.'));
+    Tr('Gehaltene Tasten laufen nacheinander im Host-Tempo, auch eine einzelne über die Oktaven. ' +
+    'Ausgeschaltete Schritte = Pause, Akkord = alle Tasten zugleich. Die Tonleiter (rechts) gilt auch hier.'));
   // Muster als MIDI-Datei in die DAW ziehen (Klick ohne Ziehen = speichern)
   FArpMidiBars := TComboBox.Create(Self);
   FArpMidiBars.Parent := PA;
@@ -2505,9 +3012,8 @@ begin
   AddParam(PH, Ord(gpScaleRoot), 8, 24 + ROW_H, 90, 0, 80);
   AddParam(PH, Ord(gpScaleKeys), 100, 24 + 2 * ROW_H, 0, 0, 0, Tr('Weiße Tasten = Tonleiter'));
   Hint(PH, 24 + 3 * ROW_H + 6, 84,
-    Tr('Tonleiter: jeder Ton (Keyboard, DAW, Arp, Zufall, LFO) rastet bei Grains und Oszillatoren auf die ' +
-    'Tonleiter ein. Weiße Tasten = Tonleiter: die weißen Tasten spielen der Reihe nach die Töne der Tonleiter ' +
-    '(C4 = Grundton), die schwarzen schweigen.'));
+    Tr('Jeder Ton (Keyboard, DAW, Arp, LFO) rastet auf die Tonleiter ein. Weiße Tasten = Tonleiter: ' +
+    'die weißen spielen ihre Töne ab C4, die schwarzen schweigen.'));
 
   // Sprache der Oberflaeche: "Deutsch" + jede Datei in Sprachen\ (Beschriftung bewusst zweisprachig)
   L := TLabel.Create(Self);
@@ -2553,8 +3059,7 @@ begin
 
   AddParam(PK, Ord(gpFreeze), 8, 24, 90, 0);
   Hint(PK, 24 + ROW_H + 2, 50,
-    Tr('Freeze: die Leseposition steht still, der Klang friert ein; mit Hall klingt er lange aus. ' +
-    'Sättigung, Breite und Panorama: Reiter Summe.'));
+    Tr('Freeze: die Leseposition steht still, der Klang friert ein; mit Hall klingt er lange aus.'));
 
   AddParam(PM, Ord(gpMorph), 8, 24, 70, 52);
   // eigener Morph-LFO (unabhaengig von beiden Klaengen)
@@ -2614,9 +3119,8 @@ begin
   AddParam(PM, Ord(gpGateThresh), 8, 24 + 5 * ROW_H + 136, 70, 52, 0, Tr('Schwelle'));
   AddParam(PM, Ord(gpGateQuiet), 8, 24 + 6 * ROW_H + 136, 70, 52, 0, Tr('Ruhe-Dauer'));
   Hint(PM, 24 + 7 * ROW_H + 136, 64,
-    Tr('Schwellen-Tor = 1, sobald die Quelle über der Schwelle liegt: als ' +
-    'Matrix-Quelle schaltet es Ein/Aus-Regler, als LFO-Trigger startet es einen LFO. Trigger "Ruhe": startet den LFO, wenn die Quelle die ' +
-    'Ruhe-Dauer lang unter der Schwelle blieb (Pause, Stille).'));
+    Tr('Schwellen-Tor = 1, sobald die Quelle über der Schwelle liegt (Matrix-Quelle oder LFO-Trigger). ' +
+    'Trigger "Ruhe" startet den LFO, wenn die Quelle die Ruhe-Dauer lang darunter blieb.'));
   UpdateMorphLabel;
 end;
 
@@ -2951,6 +3455,256 @@ begin
   ShowHelpWindow(Self, LangHelpFile(FBaseDir));
 end;
 
+const
+  INFO_FILE = 'Erklaerungen.txt';
+
+{ Erklaertext registrieren: er bekommt ein eigenes, eingelassenes Display (BuildInfoScreens nach dem Aufbau).
+  Erklaerungen an: alle Displays zeigen ihren Text. Aus: Displays dunkel; Maus ueber dem Bereich = Text
+  leicht, Klick ins Display = Text bleibt stehen (nochmal = wieder aus). }
+procedure TGranularEditor.Explain(L: TLabel);
+begin
+  SetLength(FInfoItems, Length(FInfoItems) + 1);
+  FInfoItems[High(FInfoItems)].Lbl := L;
+  FInfoItems[High(FInfoItems)].Screen := nil;
+end;
+
+procedure TGranularEditor.BuildInfoScreens;
+const
+  PAD = 5;
+var
+  I, K: Integer;
+  L: TLabel;
+  S: TInfoScreen;
+  R: TRect;
+  Bmp: Vcl.Graphics.TBitmap;
+begin
+  Bmp := Vcl.Graphics.TBitmap.Create;
+  try
+  for I := 0 to High(FInfoItems) do
+  begin
+    L := FInfoItems[I].Lbl;
+    S := TInfoScreen.Create(Self);
+    S.Parent := L.Parent;
+    S.SetBounds(L.Left - PAD, L.Top - PAD + 1, L.Width + 2 * PAD, L.Height + 2 * PAD - 2);
+    S.OnClick := InfoScreenClick;
+    if L.Height <= 20 then
+    begin
+      Bmp.Canvas.Font := L.Font;
+      S.MinW := Bmp.Canvas.TextWidth(L.Caption) + 2 * PAD + 6;
+    end;
+    S.ShowHint := False;                         // kein Tooltip: er stoert das Ein- und Ausblenden
+    L.ShowHint := False;
+    // Mitwachsen mit dem Bereich: die Streckung des Textes geht auf das Display ueber
+    for K := 0 to High(FStretch) do
+      if FStretch[K].Ctrl = L then
+      begin
+        FStretch[K].Ctrl := S;
+        FStretch[K].Left := S.Left;
+        FStretch[K].RightGap := Max(FStretch[K].RightGap - PAD, 16);   // Eckschrauben frei lassen
+      end;
+    for K := 0 to High(FGlideCtrls) do          // Matrix: Erklaerung rueckt mit Glide nach
+      if FGlideCtrls[K] = L then
+        FGlideCtrls[K] := S;
+    L.Parent := S;
+    L.SetBounds(PAD, PAD - 1, S.Width - 2 * PAD, S.Height - 2 * PAD + 2);
+    S.OnResize := PanelResize;                   // Text fuellt das Display (PanelResize)
+    L.OnClick := InfoScreenClick;
+    FInfoItems[I].Screen := S;
+    // passt der Text nicht ganz hinein, waechst das Display nach unten mit
+    if L.Caption <> '' then
+    begin
+      R := Rect(0, 0, Max(20, S.Width - 2 * PAD), 0);
+      Bmp.Canvas.Font := L.Font;
+      DrawText(Bmp.Canvas.Handle, PChar(L.Caption), Length(L.Caption), R, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+      if R.Bottom + 2 * PAD > S.Height then
+      begin
+        S.Height := R.Bottom + 2 * PAD;
+        L.Height := S.Height - 2 * PAD + 2;
+      end;
+    end;
+  end;
+  finally
+    Bmp.Free;
+  end;
+end;
+
+{ Displays in nebeneinanderliegenden, gleich hohen Bereichen (z.B. die vier Effekte) bekommen dieselbe
+  Oberkante (die tiefste) und enden alle mit gleichem Abstand ueber dem unteren Rand - wie von Hand eingebaut. }
+procedure TGranularEditor.AlignInfoRows;
+var
+  I, J, Top, M: Integer;
+  A, B: TControl;
+  Row: array of TControl;
+begin
+  Inc(GAlignRows);
+  M := Round(12 * FScaleF);
+  for I := 0 to High(FInfoItems) do
+  begin
+    A := FInfoItems[I].Screen;
+    if (A = nil) or (A.Parent = nil) or (A.Parent.Parent = nil) then
+      Continue;
+    Row := [A];
+    Top := A.Top;
+    for J := 0 to High(FInfoItems) do
+    begin
+      B := FInfoItems[J].Screen;
+      if (J <> I) and (B <> nil) and (B.Parent <> A.Parent) and (B.Parent <> nil) and
+         (B.Parent.Parent = A.Parent.Parent) and (B.Parent.Top = A.Parent.Top) and
+         (B.Parent.Height = A.Parent.Height) and (Abs(B.Top - A.Top) <= Round(60 * FScaleF)) then
+      begin
+        Row := Row + [B];
+        Top := Max(Top, B.Top);
+      end;
+    end;
+    if Length(Row) < 2 then
+      Continue;
+    for B in Row do
+    begin
+      B.SetBounds(B.Left, Top, B.Width, Max(16, B.Parent.ClientHeight - M - Top));
+      TInfoScreen(B).FitText;
+    end;
+  end;
+end;
+
+{ Luft unter den Bereichstiteln: der Inhalt jedes Bereichs rueckt einmalig etwas nach unten - nur wenn
+  unten noch Platz bleibt (Schrauben frei). }
+procedure TGranularEditor.AddTitleGaps;
+
+  procedure Walk(W: TWinControl);
+  var
+    I, Gap, MaxB: Integer;
+    C: TControl;
+  begin
+    for I := 0 to W.ControlCount - 1 do
+      if W.Controls[I] is TWinControl then
+        Walk(TWinControl(W.Controls[I]));
+    if not (W is TGroupPanel) or (W.ClientHeight < 60) then
+      Exit;
+    Gap := Round(6 * FScaleF);
+    MaxB := 0;
+    for I := 0 to W.ControlCount - 1 do
+    begin
+      C := W.Controls[I];
+      if C.Align = alNone then
+        MaxB := Max(MaxB, C.Top + C.Height);
+    end;
+    if MaxB + Gap > W.ClientHeight - Round(8 * FScaleF) then
+      Exit;
+    for I := 0 to W.ControlCount - 1 do
+    begin
+      C := W.Controls[I];
+      if C is TInfoScreen then
+      begin
+        TInfoScreen(C).FitW := -1;               // Display passt sich selbst neu ein (eigene Raender)
+        Continue;
+      end;
+      if C.Top >= Round(18 * FScaleF) then
+        if C.Align = alNone then
+          C.Top := C.Top + Gap
+        else if C.AlignWithMargins then
+          C.Margins.Top := C.Margins.Top + Gap;
+    end;
+  end;
+
+begin
+  if (FPages = nil) or (ClientHeight < 200) then
+    Exit;
+  FTitleGapDone := True;
+  Walk(Self);
+end;
+
+procedure TGranularEditor.LayoutForCheck;
+begin
+  RelayoutAll(nil);
+end;
+
+procedure TGranularEditor.InfoScreenClick(Sender: TObject);
+var
+  S: TInfoScreen;
+begin
+  if Sender is TLabel then
+    S := TInfoScreen(TLabel(Sender).Parent)
+  else
+    S := TInfoScreen(Sender);
+  if FShowInfo then
+    Exit;                                       // alle Texte an: Klick aendert nichts
+  S.Pinned := not S.Pinned;                      // an: bleibt hell; aus: dimmt ab, geht beim Verlassen aus
+  S.HoverT := 0;
+end;
+
+procedure TGranularEditor.ApplyInfoMode;
+var
+  I: Integer;
+begin
+  if FInfoBtn <> nil then
+    FInfoBtn.Active := FShowInfo;
+  // beim Umschalten sofort in den Endzustand (kein Ueberblenden aller Displays auf einmal)
+  for I := 0 to High(FInfoItems) do
+    if FInfoItems[I].Screen <> nil then
+      with TInfoScreen(FInfoItems[I].Screen) do
+      begin
+        if FShowInfo or Pinned then Bright := 1 else Bright := 0;
+        Shown := Bright;
+        Rising := Bright > 0.5;
+        Step(Shown, 0, GDisplayDim / 255, FInfoItems[I].Lbl);
+      end;
+end;
+
+{ je Takt: Bereich unter der Maus finden und alle sichtbaren Displays weich nachfuehren.
+  Maus im Bereich: Text blendet leicht ein und dimmt mit der Zeit langsam weiter ab. }
+procedure TGranularEditor.UpdateInfoHover;
+var
+  DT: Single;
+  Now_: Int64;
+  P: TPoint;
+  I: Integer;
+  S: TInfoScreen;
+  Area: TWinControl;
+  Inside: Boolean;
+  Target, Sag: Single;
+begin
+  if not (HandleAllocated and IsWindowVisible(Handle)) then
+    Exit;
+  if not GetCursorPos(P) then
+    P := Point(-99999, -99999);
+  Sag := GDisplayDim / 255;
+  // echte verstrichene Zeit: der Anzeige-Timer wird je nach Last gedrosselt (Schnell-Reiter mit Spektrum),
+  // die Blende soll trotzdem ueberall gleich schnell laufen
+  Now_ := GetTickCount64;
+  if FInfoLastTick = 0 then DT := 0.033 else DT := EnsureRange((Now_ - FInfoLastTick) / 1000, 0, 0.25);
+  FInfoLastTick := Now_;
+  for I := 0 to High(FInfoItems) do
+  begin
+    S := TInfoScreen(FInfoItems[I].Screen);
+    if (S = nil) or not S.Showing then
+      Continue;
+    Area := S.Parent;
+    Inside := PtInRect(Rect(Area.ClientToScreen(Point(0, 0)),
+      Area.ClientToScreen(Point(Area.Width, Area.Height))), P);
+    if Inside then S.HoverT := S.HoverT + DT else S.HoverT := 0;
+    if FShowInfo or S.Pinned then
+      Target := 1
+    else if Inside then
+      Target := 0.22 + 0.33 * Exp(-S.HoverT / 5)    // erst leicht, dann langsam dunkler
+    else
+      Target := 0;
+    S.Step(Target, DT, Sag, FInfoItems[I].Lbl);
+  end;
+end;
+
+procedure TGranularEditor.InfoToggleClick(Sender: TObject);
+begin
+  FShowInfo := not FShowInfo;
+  if FInfoBtn <> nil then
+    FInfoBtn.Active := FShowInfo;                // die Displays blenden ueber den Timer weich um
+  if FBaseDir <> '' then
+    try
+      TFile.WriteAllText(FBaseDir + INFO_FILE, IfThen(FShowInfo, '1', '0'));
+    except
+      // schreibgeschuetzter Plugin-Ordner: Einstellung gilt nur bis zum Schliessen
+    end;
+end;
+
 procedure TGranularEditor.InfoClick(Sender: TObject);
 begin
   if FInfoForm = nil then
@@ -2988,7 +3742,7 @@ begin
   begin
     FLfoPageBtn[K] := TButton.Create(Self);
     FLfoPageBtn[K].Parent := P;
-    FLfoPageBtn[K].SetBounds(14 + K * 154, 144, 148, 24);   // Ecken frei fuer die Schrauben
+    FLfoPageBtn[K].SetBounds(14 + K * 154, 26, 148, 24);    // oben; darunter die Erklaerung
     FLfoPageBtn[K].Tag := K;
     FLfoPageBtn[K].TabStop := False;
     FLfoPageBtn[K].OnClick := LfoPageClick;
@@ -3002,11 +3756,12 @@ begin
   FTrigPanel.Parent := Area;
   FTrigPanel.SetBounds(364, 0, 330, 183);
   AddStretch(FTrigPanel, 0);
-  L.SetBounds(8, 26, 314, 116);
+  L.SetBounds(8, 56, 314, 116);
   AddStretch(L, 8);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Alle acht LFOs können dasselbe und sind in der Matrix "LFO 1" bis "LFO 8" (Umschalter unten). "frei" = läuft für alle ' +
@@ -3139,6 +3894,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Jedes Ereignis, das einen LFO startet oder stoppt (Reiter LFO 1-8 / Trigger), kann hier verzögert wirken: ' +
@@ -3217,6 +3973,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Eingeschaltet läuft der Oszillator nur durch diesen Filter, an Filter 1/2 vorbei - z.B. Rausch-' +
@@ -3251,6 +4008,15 @@ begin
   FWtName[O].Font.Color := $00A0A0A0;
   FWtName[O].Transparent := True;
   FWtName[O].Caption := '';
+  // Welle, wie der Oszillator sie gerade spielt (Welle / Zeichnung / Wavetable-Position, Sync, FM)
+  // direkt unter dem Wavetable-Namen (passt auch bei 125 % noch ganz in den Bereich)
+  FOscPreview[O] := TOscPreviewView.Create(Self, FEngine, O);
+  FOscPreview[O].Parent := P2;
+  FOscPreview[O].SetBounds(8, 24 + 10 * ROW_H + 28, 384, 44);
+  FOscPreview[O].Hint := Tr('Eine Periode der Welle, wie der Oszillator sie gerade spielt: Welle, Zeichnung oder ' +
+    'Wavetable-Position, dazu Sync und FM (ohne Hüllkurven und Modulation)');
+  FOscPreview[O].ShowHint := True;
+  AddStretch(FOscPreview[O], 8);
   P1 := MakePanel(Area, alClient, Format(Tr('Lautstärke-Hüllkurve (Oszillator %d)'), [O + 1]));
   // Anzeige der Oszillator-Huellkurve (roter Punkt = juengste Stimme)
   FOscEnvView[O] := TEnvelopeView.Create(Self, FEngine);
@@ -3323,6 +4089,7 @@ begin
     L.AutoSize := False;
     L.WordWrap := True;
     L.Font.Color := $00A0A0A0;
+    Explain(L);
     L.Transparent := True;
     L.Caption :=
       Tr('Spielt jede Note mit: z.B. Bass (Sinus, Oktave -1/-2), Glocke (FM 3,5 / 40 %), Kick (FM + kurzer ' +
@@ -3372,20 +4139,11 @@ begin
   PR := MakePanel(RCol, alTop, Tr('Sample bearbeiten und Aufnahme vom Eingang'));
   PR.Height := 146;
 
-  L := TLabel.Create(Self);
-  L.Parent := PZ;
-  L.SetBounds(8, 26, 610, 34);
-  L.AutoSize := False;
-  L.WordWrap := True;
-  L.Font.Color := $00A0A0A0;
-  L.Transparent := True;
-  L.Caption := Tr('Das Hauptsample (Reiter Grain) spielt unterhalb der ersten Zone. Jede Zone gilt ab ihrer ' +
-    'Starttaste bis zur nächsten Zone - z.B. tiefe Töne vom Cello, hohe von der Geige. Alle Grain-Regler wirken auf alle Zonen.');
   for Z := 1 to ZONE_COUNT do
   begin
     FZoneRow[Z] := TPanel.Create(Self);
     FZoneRow[Z].Parent := PZ;
-    FZoneRow[Z].SetBounds(8, 66 + (Z - 1) * 40, 620, 34);
+    FZoneRow[Z].SetBounds(8, 26 + (Z - 1) * 40, 620, 34);   // Zeilen direkt unter dem Titel
     FZoneRow[Z].BevelOuter := bvNone;
     FZoneRow[Z].ParentBackground := False;
     FZoneRow[Z].Color := BG_MAIN;
@@ -3448,12 +4206,17 @@ begin
   end;
   L := TLabel.Create(Self);
   L.Parent := PZ;
-  L.SetBounds(8, 66 + ZONE_COUNT * 40 + 6, 610, 34);
+  L.SetBounds(8, 26 + ZONE_COUNT * 40 + 6, 610, 90);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
-  L.Caption := Tr('Tipp: Audiodateien lassen sich auch aus dem Explorer auf das Fenster ziehen - auf eine ' +
+  // ein Display fuer beide Erklaerungen (Zonen + Ziehen aus dem Explorer)
+  L.Caption := Tr('Das Hauptsample (Reiter Grain) spielt unterhalb der ersten Zone. Jede Zone gilt ab ihrer ' +
+    'Starttaste bis zur nächsten Zone - z.B. tiefe Töne vom Cello, hohe von der Geige. Alle Grain-Regler wirken auf alle Zonen.') +
+    sLineBreak + sLineBreak +
+    Tr('Tipp: Audiodateien lassen sich auch aus dem Explorer auf das Fenster ziehen - auf eine ' +
     'Zonen-Zeile = in diese Zone, sonst als Hauptsample.');
 
   FRecButton := TButton.Create(Self);
@@ -3484,6 +4247,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption := Tr('Nimmt den Sidechain-Eingang auf (in der DAW: Eingang des Plugins, im Host: Mikrofon/Eingang) ' +
     'und lädt das Ergebnis als neues Hauptsample - so lässt sich eine Spur, die Stimme oder der eigene ' +
@@ -3508,6 +4272,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption := Tr('Solange eine Taste gehalten wird, wird das Gespielte (mit Effekten und Hall) nach jedem Durchlauf ' +
     'zur neuen Grain-Quelle - der Klang entwickelt sich, je länger man hält. Jeder neue Anschlag beginnt wieder beim ' +
@@ -4026,6 +4791,7 @@ var
     L.AutoSize := False;
     L.WordWrap := True;
     L.Font.Color := $00A0A0A0;
+    Explain(L);
     L.Transparent := True;
     L.Caption := Text;
     AddStretch(L, 10);
@@ -4214,6 +4980,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Grains/Osz 1-3 = Pegel der Quellen, Echo/Hall = Mischanteil, Gate/Crusher/Chorus/Phaser = Reiter Effekte ' +
@@ -4284,7 +5051,7 @@ begin
   PR := MakePanel(Area, alClient, Tr('Rechenzeit (gemessen)'));
   FLoadGauge := TLoadGauge.Create(Self);
   FLoadGauge.Parent := PR;
-  FLoadGauge.SetBounds(8, 24, 380, 290);
+  FLoadGauge.SetBounds(8, 24, 380, 262);
   FLoadGauge.Font.Assign(Font);
   FLoadGauge.Hint := Tr('Nadel: Rechenzeit des Plugins (Anteil eines Kerns, Mittel je Sekunde). ' +
     'Bernsteinmarke: längster Aufruf im Verhältnis zur Pufferdauer.');
@@ -4293,7 +5060,7 @@ begin
   L.Parent := PR;
   L.AutoSize := False;
   L.WordWrap := True;               // erst nach AutoSize := False, sonst schrumpft die Beschriftung
-  L.SetBounds(12, 318, 384, 46);
+  L.SetBounds(12, 288, 384, 62);
   L.Caption := '';
   L.Font.Color := COL_NAME;
   L.Transparent := True;
@@ -4304,13 +5071,14 @@ begin
   FProcStat.ShowHint := True;
   L := TLabel.Create(Self);
   L.Parent := PR;
-  L.SetBounds(12, 366, 384, 52);
+  L.SetBounds(12, 356, 384, 52);
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
-  L.Caption := Tr('Gemessen wird nur, solange dieser Reiter offen ist. FL Studio: Optionen > Audio > ' +
-    '"Multithreaded generator processing" verteilt Instanzen auf mehrere Kerne. Weniger Last: Mischpult > Leistung.');  // Rendern: beim Export (offline) HQ und volle Stimmenzahl, egal wie sparsam live eingestellt
+  L.Caption := Tr('Misst nur bei offenem Reiter. Weniger Last: Mischpult > Leistung. FL Studio verteilt Instanzen ' +
+    'mit "Multithreaded generator processing" auf mehrere Kerne.');  // Rendern: beim Export (offline) HQ und volle Stimmenzahl, egal wie sparsam live eingestellt
   AddParam(PR, Ord(gpRenderHQ), 400, 30, 0, 0, 0, Tr('Rendern in Höchstqualität'));
   L := TLabel.Create(Self);
   L.Parent := PR;
@@ -4318,9 +5086,10 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
-  L.Caption := Tr('An: Beim Export/Rendern der DAW (nicht in Echtzeit) rechnet GranularSynth immer mit HQ und ' +
-    'voller Stimmen- und Grainzahl - live darf es sparsam sein, die Datei klingt trotzdem bestmöglich.');
+  L.Caption := Tr('An: Beim Export der DAW immer HQ und volle Stimmenzahl - live darf es sparen, ' +
+    'die Datei klingt trotzdem bestmöglich.');
   // Oversampling: gehoert zum Rechner (wie die Leistungsstufe), wirkt nur bei HQ
   AddParam(PR, Ord(gpOversample), 400, 150, 0, 0, 0, Tr('Oversampling 2x (bei HQ)'));
   L := TLabel.Create(Self);
@@ -4329,9 +5098,10 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
-  L.Caption := Tr('An (Standard): Oszillatoren und Sättigung rechnen intern mit doppelter Abtastrate. ' +
-    'Harte FM-, Sync- und Drive-Klänge bleiben sauber, ohne metallische Spiegelfrequenzen. Kostet etwas mehr Rechenzeit.');
+  L.Caption := Tr('An (Standard): Oszillatoren und Sättigung rechnen doppelt so fein - harte FM-, Sync- und ' +
+    'Drive-Klänge bleiben sauber. Etwas mehr Rechenzeit.');
   // Oszillator-Modell: aus = Wavetable (bandbegrenzt, Standard), an = klassisch (bitgenau wie bis 2.9)
   AddParam(PR, Ord(gpOscModel), 400, 284, 0, 0, 0, Tr('Klassische Oszillatoren (bis 2.9)'));
   L := TLabel.Create(Self);
@@ -4340,9 +5110,9 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
-  L.Caption := Tr('Aus (Standard): Dreieck, Säge und Rechteck kommen bandbegrenzt aus Wavetables - sauberer, ' +
-    'ohne Oversampling. An: genau der Klang bis Version 2.9, nur für alte Projekte.');
+  L.Caption := Tr('Aus (Standard): Wellen bandbegrenzt aus Wavetables. An: Klang bis 2.9, für alte Projekte.');
 end;
 
 { --- Reiter EQ --- }
@@ -4422,13 +5192,14 @@ begin
   L.SetBounds(8 + 6 * 82 + 8, 86, 400, 16);
   L.Caption := Tr('Bänder A/B, Bässe, Höhen: Matrix-Ziele (z.B. Sidechain 2 duckt Band A).');
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   FEqView := TEqView.Create(Self, FEngine);
   FEqView.Spectrum := FSpectrum;     // Filteransicht leuchtet mit dem Ausgangsspektrum (Schnell-Tab ist schon gebaut)
   FEqView.Parent := Area;
   FEqView.Align := alClient;
   FEqView.AlignWithMargins := True;
-  FEqView.Margins.SetBounds(8, 4, 8, 8);
+  FEqView.Margins.SetBounds(17, 4, 8, 8);   // links buendig mit den Kurven-Knoepfen darueber
 end;
 
 procedure TGranularEditor.EqPresetClick(Sender: TObject);
@@ -5375,6 +6146,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
+  Explain(L);
   L.Transparent := True;
   L.Caption :=
     Tr('Variieren ändert die eingeschalteten Bereiche (Variieren in) zufällig um die eingestellte Stärke. ' +
@@ -5836,6 +6608,7 @@ begin
   FBanner.FormatName := Value;
   if FFxInPanel <> nil then
     FFxInPanel.Visible := (Pos('FX', Value) > 0) or (GetEnvironmentVariable('GRANULAR_FXTEST') = '1');
+  ApplyInfoMode;
 end;
 
 { Rechtsklick > "Automation in der DAW": Regler bei der DAW als zuletzt geaendert melden. In FL Studio
@@ -6011,13 +6784,7 @@ var
   C: TControl;
 begin
   FMatPage := EnsureRange(Page, 0, High(FMatPageBtn));
-  for S := 0 to MOD_SLOTS - 1 do
-  begin
-    for C in FSlotCtrls[S] do
-      C.Visible := S div MAT_ROWS = FMatPage;
-    if FSlotGlobal[S] <> nil then
-      FSlotGlobal[S].Visible := (S div MAT_ROWS = FMatPage) and FEngine.SlotIsGlobalNote(S);
-  end;
+  RelayoutMatrix(True);
   for S := 0 to MOD_SLOTS - 1 do
     if S div MAT_ROWS <> FMatPage then
       for var K := 0 to High(FBindings) do
@@ -6025,6 +6792,61 @@ begin
            (FBindings[K].Index <= SlotOffsetIndex(S)) then
           FBindings[K].ModMarker.Visible := False;
   UpdateMatrixPageCaptions;
+end;
+
+{ Matrix kompakt: auf der sichtbaren Seite nur benutzte Zeilen (Quelle oder Ziel gesetzt) und darunter
+  eine freie Zeile zum Anlegen; Glide rueckt nach. Force = auch ohne Aenderung neu anordnen. }
+procedure TGranularEditor.RelayoutMatrix(Force: Boolean);
+var
+  S, R, Dy, Mask, Shown, First: Integer;
+  C: TControl;
+  Used, FreeShown: Boolean;
+begin
+  if FMatPageBtn = nil then
+    Exit;
+  Mask := 0;
+  First := FMatPage * MAT_ROWS;
+  for S := First to Min(MOD_SLOTS, First + MAT_ROWS) - 1 do
+    if (ParamStep(SlotSourceIndex(S), FEngine.GetParam(SlotSourceIndex(S))) > 0) or
+       (ParamStep(SlotDestIndex(S), FEngine.GetParam(SlotDestIndex(S))) > 0) then
+      Mask := Mask or (1 shl (S - First));
+  if not Force and (Mask = FMatUsedMask and $FFFF) and ((FMatUsedMask shr 16) = FMatPage) then
+    Exit;
+  Shown := 0;
+  FreeShown := False;
+  for S := 0 to MOD_SLOTS - 1 do
+  begin
+    Used := (S div MAT_ROWS = FMatPage) and (((Mask shr (S mod MAT_ROWS)) and 1) <> 0);
+    if (S div MAT_ROWS = FMatPage) and not Used and not FreeShown then
+    begin
+      Used := True;            // die erste freie Zeile bleibt als "neue Zuordnung" stehen
+      FreeShown := True;
+    end;
+    for C in FSlotCtrls[S] do
+      C.Visible := Used;
+    if FSlotGlobal[S] <> nil then
+      FSlotGlobal[S].Visible := Used and FEngine.SlotIsGlobalNote(S);
+    if Used then
+    begin
+      R := Shown;
+      Inc(Shown);
+      if R <> FSlotRowY[S] then
+      begin
+        Dy := Round((R - FSlotRowY[S]) * 34 * FScaleF);
+        for C in FSlotMove[S] do
+          C.Top := C.Top + Dy;
+        FSlotRowY[S] := R;
+      end;
+    end;
+  end;
+  if Shown <> FGlideY then
+  begin
+    Dy := Round((Shown - FGlideY) * 34 * FScaleF);
+    for C in FGlideCtrls do
+      C.Top := C.Top + Dy;
+    FGlideY := Shown;
+  end;
+  FMatUsedMask := Mask or (FMatPage shl 16);
 end;
 
 procedure TGranularEditor.MatPageClick(Sender: TObject);
@@ -6170,6 +6992,34 @@ begin
   PushUndo;
   FEngine.SetParam(Idx, PlainToParam(Idx, GetParamInfo(Idx).DefV));
   UpdateFromEngine;
+end;
+
+{ Doppelklick auf einen Regler: zurueck auf den Standardwert (wie Rechtsklick > Standardwert) }
+procedure TGranularEditor.TrackReset(Sender: TObject);
+var
+  K, Idx: Integer;
+begin
+  K := (Sender as TComponent).Tag;
+  if (K < 0) or (K > High(FBindings)) then
+    Exit;
+  Idx := FBindings[K].Index;
+  PushUndo;
+  FEngine.SetParam(Idx, PlainToParam(Idx, GetParamInfo(Idx).DefV));
+  UpdateFromEngine;
+  ParamChangedByUser(Idx, K);                    // DAW-Automation erfaehrt den neuen Wert
+end;
+
+{ Wertanzeige: beim Darueberfahren unterstrichen - zeigt, dass man hier einen Wert eintippen kann }
+procedure TGranularEditor.ValueLabelEnter(Sender: TObject);
+begin
+  with Sender as TLabel do
+    Font.Style := Font.Style + [fsUnderline];
+end;
+
+procedure TGranularEditor.ValueLabelLeave(Sender: TObject);
+begin
+  with Sender as TLabel do
+    Font.Style := Font.Style - [fsUnderline];
 end;
 
 { --- Werte exakt eingeben: Klick auf die Wertanzeige oeffnet ein Eingabefeld --- }
@@ -7034,14 +7884,16 @@ begin
       Load := 100 * (Ticks / Freq) / Max(Sec, 0.001);                       // Anteil an der Echtzeit
       MaxLoad := 100 * (MaxT / Freq) / Max(AvgFr / FEngine.SampleRate, 1E-6);  // laengster Aufruf / Pufferdauer
       HostPct := 100 * (Host / Freq) / Max(Sec, 0.001);
-      FProcStat.Caption := Format(Tr('Laufzeit: %d Aufrufe/s, %.0f Samples, Rechenzeit %.1f %% (max. %.0f %% eines Puffers)') +
+      FProcStat.Caption := Format(Tr('Stimmen %d, Grains %d'), [FVoiceCount, FEngine.ActiveGrains]) + sLineBreak +
+        Format(Tr('Laufzeit: %d Aufrufe/s, %.0f Samples, Rechenzeit %.1f %% (max. %.0f %% eines Puffers)') +
         sLineBreak + Tr('DAW-Rückfragen %.2f %%, Thread-Wechsel %d/s'),
         [Round(Calls / Sec), AvgFr, Load, MaxLoad, HostPct, Round(Hops / Sec)]);
       FLoadGauge.SetValues(Load, MaxLoad, FLoadList.TheoryPercent);
     end
     else
     begin
-      FProcStat.Caption := Tr('Laufzeit: keine Aufrufe der DAW (Plugin pausiert)');
+      FProcStat.Caption := Format(Tr('Stimmen %d, Grains %d'), [FVoiceCount, FEngine.ActiveGrains]) + sLineBreak +
+        Tr('Laufzeit: keine Aufrufe der DAW (Plugin pausiert)');
       FLoadGauge.SetValues(0, 0, FLoadList.TheoryPercent);
     end;
   end;
@@ -7241,10 +8093,23 @@ begin
     for I := 0 to MIX_METERS - 1 do
       if FMixMeters[I] <> nil then
         FMixMeters[I].Feed(FEngine.TakeMeter(I));
+  UpdateInfoHover;                             // Erklaer-Displays: Einblenden, Maus, Abdunkeln
+  if not FTabTimeDone and (FMainTick > 12) and (GetEnvironmentVariable('GRANULAR_TABTIME') = '1') then
+  begin
+    FTabTimeDone := True;
+    MeasureTabSwitch;
+  end;
+  if FMainTick mod 4 = 0 then
+    for I := 0 to OSC_COUNT - 1 do
+      if (FPages.ActivePage = FTabOsc[I]) and (FOscPreview[I] <> nil) then
+        FOscPreview[I].Poll;
   if FPages.ActivePage = FTabMod then
+  begin
+    RelayoutMatrix(False);      // Zeile angelegt oder geleert: Matrix ruecken
     for I := 0 to MOD_SLOTS - 1 do
       if FSlotGlobal[I] <> nil then
-        FSlotGlobal[I].Visible := (I div MAT_ROWS = FMatPage) and FEngine.SlotIsGlobalNote(I);
+        FSlotGlobal[I].Visible := (FSlotCtrls[I] <> nil) and FSlotCtrls[I][0].Visible and FEngine.SlotIsGlobalNote(I);
+  end;
   // Vordergrund laeuft der Anzeige-Timer mit 33 ms (30 Hz): Stufen 0..3 = jeder Takt,
   // gedrosselte Stufen entsprechend seltener; Hintergrund (250 ms) wie gehabt
   if FGfxLevel >= GFX_BG_MIN then
@@ -7258,6 +8123,7 @@ begin
   if (FGfxLevel >= GFX_BG_MIN) and not LiveFrame then
     Exit;
   PC := FEngine.GetPlayheads(FPlayheads);
+  FVoiceCount := PC;
   if FEngine.ActiveGrains > 0 then
     GC := FEngine.GetRecentGrains(FGrains)
   else
@@ -7411,17 +8277,9 @@ begin
   end;
   // Zahlen mit fester Breite (Ziffern-Leerzeichen U+2007 = so breit wie eine Ziffer): beim Wechsel
   // von ein- auf mehrstellig rutschen die Trenner und der Samplename nicht hin und her
-  FStatus.Caption := Format(Tr('Okt %s  |  %s Stimmen  |  %s Grains  |  %s'),
-    [FixNum(FOctave, 2), FixNum(PC, 2), FixNum(FEngine.ActiveGrains, 4), SmpInfo]);
-  // passt der Samplename nicht mehr ganz hinein, lieber weglassen als nur 'S...' (steht im Tooltip)
-  if FStatus.Canvas.TextWidth(FStatus.Caption) > FStatus.Width then
-  begin
-    FStatus.Caption := Format(Tr('Okt %s  |  %s Stimmen  |  %s Grains  |  %s'),
-      [FixNum(FOctave, 2), FixNum(PC, 2), FixNum(FEngine.ActiveGrains, 4), '']);
-    FStatus.Caption := TrimRight(FStatus.Caption);
-    if (FStatus.Caption <> '') and (FStatus.Caption[Length(FStatus.Caption)] = '|') then
-      FStatus.Caption := TrimRight(Copy(FStatus.Caption, 1, Length(FStatus.Caption) - 1));
-  end;
+  // Kopfleiste: nur noch das Sample (Stimmen/Grains stehen unter Leistung, die Oktave zwischen − und +)
+  FStatus.Caption := SmpInfo;
+  FOctLabel.Caption := Format(Tr('Okt %d'), [FOctave]);
   FStatus.Hint := SmpFull + sLineBreak + AnimInfo + Tr(' - PC-Tastatur: A W S E D F T G Z H U J K O L P spielt, + / - wechselt die Oktave');
 end;
 
@@ -7549,6 +8407,14 @@ begin
     FBaseDir := IncludeTrailingPathDelimiter(Value)
   else
     FBaseDir := '';
+  // Erklaertexte: Einstellung je Plugin-Ordner (Datei mit "1" = an), sonst aus
+  try
+    FShowInfo := not ((FBaseDir <> '') and FileExists(FBaseDir + INFO_FILE) and
+      (Trim(TFile.ReadAllText(FBaseDir + INFO_FILE)) = '0'));   // ohne Einstellung: an
+  except
+    FShowInfo := True;
+  end;
+  ApplyInfoMode;
   RefreshPresets;
 end;
 

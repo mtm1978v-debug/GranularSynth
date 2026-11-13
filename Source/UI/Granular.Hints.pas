@@ -346,7 +346,7 @@ const
     ('Verz. Note an', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).'),
     ('Verz. Note an Takt', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).')
   );
-  CAPTION_HINTS: array[0..114, 0..1] of string = (
+  CAPTION_HINTS: array[0..115, 0..1] of string = (
     ('A ↔ B tauschen', 'Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.'),
     ('A/B', 'Zwischen zwei Fassungen hin- und herschalten und vergleichen.'),
     ('Alle Noten aus', 'Beendet sofort alle klingenden Noten (Notbremse).'),
@@ -377,6 +377,7 @@ const
     ('Eingang → Echo/Hall', 'Nur in der FX-Variante (im Mixer): schickt den Eingang der Spur zusätzlich durch Echo und Hall. Das trockene Signal bleibt unverändert, dazu kommt nur der Echo-/Hall-Anteil. Wird von Presets nicht verändert.'),
     ('Eingänge (DAW)', 'Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar Sidechain 1 bzw. 2 speist. Sidechain 2 liefert der Matrix seinen Pegel (Quelle "Sidechain 2") und seine Tonhöhe (Quelle "SC2-Tonhöhe", wird nur gerechnet, wenn eine Zeile sie nutzt).'),
     ('Einmal', 'Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).'),
+    ('Erklärungen', 'Schaltet die Erklär-Displays in den Reitern ein (Standard) oder aus. Aus: Maus über einen Bereich zeigt dessen Text leicht, ein Klick ins Display hält ihn fest.'),
     ('FM-Klangfarbe', 'Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.'),
     ('FM-Verhältnis / FM-Menge', 'Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Fader', 'Alle Lautstärken an einem Ort: Grains, Osz 1-3, Echo, Hall, die Effekte Gate (Tiefe), Crusher, Chorus und Phaser (Mix; ihre Anzeige zeigt, wie stark der Effekt den Klang verändert), Morph, Panorama, Summe (Grains + Oszillatoren), Master. Es sind dieselben Regler wie in den anderen Reitern - wer hier schiebt, sieht es dort und umgekehrt.'),
@@ -418,7 +419,7 @@ const
     ('Modulationsmatrix', '32 Zeilen auf vier Seiten (Knöpfe oben rechts, in Klammern: benutzte Zeilen; "Modulieren mit" im Rechtsklick-Menü nimmt immer die oberste freie Zeile). Jede Zeile: Quelle → Ziel mit Menge, Faktor und Offset. Die leuchtende Anzeige vorne pulsiert mit der Quelle. Noten-Quellen (Velocity, Note, Zufall je Note, Grain-, Filter- und Osz1-3-Hüllkurve - jede für sich -, LFOs mit Neustart bei Note an/aus) wirken je Note: jede Stimme hat ihre eigenen LFOs und eigenen Werte für Grain-Regler, Tonhöhe, Lautstärke, Oszillator, Filter, alle Huellkurven-Zeiten, Scan, Filter-Konturen und die LFO-Raten - eine neue Note verändert die klingenden nicht. Ziele, die es nur einmal gibt (Echo, Hall, EQ, Sättigung, Breite, Summen-Panorama, Morph, Arp, Tor), folgen der zuletzt angeschlagenen Note; die Zeile zeigt dann ''global: letzte Note''. Der Papierkorb am Zeilenende leert die Zeile (Strg+Z nimmt es zurück).'),
     ('Morph, Morph-LFO', 'Blendet zwischen Klang A und Ziel B; der Morph-LFO bewegt das automatisch (auch frei gezeichnet, Klick auf die Grafik).'),
     ('Neustart', 'Frei, Note an, Note aus, an + aus, Ende Partner-LFO (Einmal), Sidechain-Trigger, SC-Ton > Schwelle, Schwellen-Tor öffnet, Ruhe, Ausgang > Schwelle.'),
-    ('Okt - / Okt +', 'Verschiebt die PC-Tastatur und die Klaviatur um eine Oktave.'),
+    ('Okt - / Okt +', 'Verschiebt die PC-Tastatur und die Klaviatur um eine Oktave; dazwischen steht die aktuelle Oktave.'),
     ('Oktave', 'Verschiebt die Grains um ganze Oktaven (-4 bis +4), zusätzlich zu Pitch.'),
     ('Oktave / Feinstimmung / Pegel / Panorama', 'Tonlage, Feinabstimmung in Cent, Lautstärke (bis 200 %) und Position.'),
     ('Oszillator an', 'Drei gleich aufgebaute Oszillatoren, jeder spielt jede Note mit - einzeln einschaltbar und schichtbar (z.B. zwei verstimmte Sägezähne + Sub-Sinus).'),
@@ -442,7 +443,7 @@ const
     ('Spektrum', 'Zeigt live, welche Frequenzen wie laut klingen.'),
     ('Sprache / Language', 'Sprache der Oberfläche (Deutsch, English, weitere als Datei im Ordner Sprachen). Schneller: Klick auf die kleine Flagge rechts in der Reiterzeile schaltet zur nächsten Sprache.'),
     ('Spray', 'Zufällige Streuung der Leseposition - macht den Klang lebendiger.'),
-    ('Statuszeile', 'Oktave, klingende Stimmen, aktive Grains und das aktive Sample (bei Morph: A und B mit ihrem Anteil).'),
+    ('Statuszeile', 'Das aktive Sample (bei Morph: A und B mit ihrem Anteil) und kurze Meldungen. Klingende Stimmen und aktive Grains stehen im Reiter Leistung.'),
     ('Stereobreite', 'Wie weit die Grains im Stereobild verteilt werden.'),
     ('Stereobreite / Panorama', 'Breite und Position der Summe im Stereobild.'),
     ('Stopp', 'Aus-Trigger: das Ereignis (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle) hält den LFO an - keine Modulation, bis sein Start-Ereignis ihn wieder startet. "nie" = läuft weiter. Wirkt nur mit Start-Ereignis (nicht bei "frei"); mit Stopp wartet der LFO auch anfangs auf seinen ersten Start. Bei LFOs je Note hält "Note aus" nur die losgelassene Note an. Verzögerung wie beim Start (Reiter Timing / Hüllk.). "nach Zeit": der LFO hält nach einer festen Laufzeit ab seinem Start an - in ms oder als Notenwert (2/1, 1/1, 1/2, 1/4, 1/4T …; ein Notenwert gilt vor den ms).'),

@@ -43,7 +43,16 @@ type
     FModN: Integer;
     FModD: array[0..3] of Single;
     FOnModWheel: TModWheelEvent;
+    FOnReset: TNotifyEvent;
+    FLastDown: Cardinal;                 // Doppelklick selbst erkennen (die Windows-Klasse meldet keinen)
+    FLastDownPt: TPoint;
+    FFine: Boolean;                      // Strg + Ziehen: Feineinstellung (1/10 des Weges)
+    FFinePt: TPoint;
+    FFinePos: Double;
     procedure CNNotify(var Message: TWMNotifyTRB); message CN_NOTIFY;
+    procedure WMLButtonDown(var Message: TWMLButtonDown); message WM_LBUTTONDOWN;
+    procedure WMMouseMove(var Message: TWMMouseMove); message WM_MOUSEMOVE;
+    procedure WMLButtonUp(var Message: TWMLButtonUp); message WM_LBUTTONUP;
     procedure TBMSetPos(var Message: TMessage); message TBM_SETPOS;
     procedure DrawChannel(DC: HDC; R: TRect);
     procedure DrawThumb(DC: HDC; R: TRect);
@@ -54,6 +63,8 @@ type
     { Mengen der Zeilen (hoechstens 4 werden gezeichnet); leeres Feld = keine Modulation }
     procedure SetModDepths(const Depths: array of Single);
     property OnModWheel: TModWheelEvent read FOnModWheel write FOnModWheel;
+    { Doppelklick auf den Regler: zurueck auf den Standardwert (setzt der Editor) }
+    property OnReset: TNotifyEvent read FOnReset write FOnReset;
   end;
 
 const
@@ -269,11 +280,92 @@ begin
     Invalidate;
 end;
 
+{ Doppelklick = Standardwert; Strg + Ziehen = Feineinstellung (10x feiner, Griff springt nicht zur Maus) }
+procedure TTrackBar.WMLButtonDown(var Message: TWMLButtonDown);
+var
+  Now_: Cardinal;
+  P: TPoint;
+begin
+  Now_ := GetTickCount;
+  P := Point(Message.XPos, Message.YPos);
+  if Assigned(FOnReset) and (Now_ - FLastDown <= GetDoubleClickTime) and
+     (Abs(P.X - FLastDownPt.X) <= GetSystemMetrics(SM_CXDOUBLECLK)) and
+     (Abs(P.Y - FLastDownPt.Y) <= GetSystemMetrics(SM_CYDOUBLECLK)) then
+  begin
+    FLastDown := 0;
+    if CanFocus then SetFocus;
+    FOnReset(Self);
+    Exit;
+  end;
+  FLastDown := Now_;
+  FLastDownPt := P;
+  if GetKeyState(VK_CONTROL) < 0 then
+  begin
+    FFine := True;
+    FFinePt := P;
+    FFinePos := Position;
+    MouseCapture := True;
+    if CanFocus then SetFocus;
+    Exit;
+  end;
+  inherited;
+end;
+
+procedure TTrackBar.WMMouseMove(var Message: TWMMouseMove);
+var
+  Len, NewPos: Integer;
+  D: Double;
+begin
+  if not FFine then
+  begin
+    inherited;
+    Exit;
+  end;
+  if Orientation = trHorizontal then
+  begin
+    Len := System.Math.Max(20, Width - 20);
+    D := Message.XPos - FFinePt.X;
+  end
+  else
+  begin
+    Len := System.Math.Max(20, Height - 20);
+    D := Message.YPos - FFinePt.Y;           // senkrecht: Position waechst nach unten wie die Maus
+  end;
+  NewPos := System.Math.EnsureRange(Round(FFinePos + D * (Max - Min) / (Len * 10)), Min, Max);
+  if NewPos <> Position then
+  begin
+    Position := NewPos;
+    Changed;
+  end;
+end;
+
+procedure TTrackBar.WMLButtonUp(var Message: TWMLButtonUp);
+begin
+  if FFine then
+  begin
+    FFine := False;
+    MouseCapture := False;
+    Exit;
+  end;
+  inherited;
+end;
+
 function TTrackBar.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  Dir: Integer;
 begin
   if (ssAlt in Shift) and Assigned(FOnModWheel) then
   begin
     FOnModWheel(Self, WheelDelta);
+    Result := True;
+  end
+  else if ssCtrl in Shift then
+  begin
+    // Strg + Mausrad: kleinster Schritt (Rad hoch = Wert hoch, auch bei senkrechten Reglern)
+    if WheelDelta > 0 then Dir := 1 else Dir := -1;
+    if Orientation = trVertical then Dir := -Dir;
+    Position := System.Math.EnsureRange(Position + Dir, Min, Max);
+    Changed;
     Result := True;
   end
   else

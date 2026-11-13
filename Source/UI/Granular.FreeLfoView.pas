@@ -105,6 +105,22 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
+  { Anzeige im Osz-Reiter: eine Periode der Welle, wie der Oszillator sie gerade spielt (Welle, Zeichnung,
+    Wavetable-Position, Sync, FM). Poll vergleicht mit dem letzten Bild und zeichnet nur bei Aenderung. }
+  TOscPreviewView = class(TCustomPaintBox32)
+  private
+    FEngine: TGranularEngine;
+    FOsc: Integer;
+    FData, FNew: array[0..255] of Single;
+    FNoise: Boolean;
+    FValid: Boolean;
+  protected
+    procedure DoPaintBuffer; override;
+  public
+    constructor Create(AOwner: TComponent; AEngine: TGranularEngine; AOsc: Integer); reintroduce;
+    procedure Poll;
+  end;
+
   { Schrittmuster des Arpeggiators: 16 Felder, Klick schaltet einen Schritt an/aus.
     Felder hinter der eingestellten Schrittzahl sind abgedunkelt, der laufende Schritt leuchtet. }
   TArpPatternView = class(TCustomPaintBox32)
@@ -758,6 +774,91 @@ begin
   else
     F.Step[Idx] := EnsureRange(F.Step[Idx] + Dir * 0.02, -1, 1);
   Changed;
+end;
+
+{ TOscPreviewView }
+
+constructor TOscPreviewView.Create(AOwner: TComponent; AEngine: TGranularEngine; AOsc: Integer);
+begin
+  inherited Create(AOwner);
+  BufferOversize := 0;
+  FEngine := AEngine;
+  FOsc := AOsc;
+end;
+
+procedure TOscPreviewView.Poll;
+var
+  I: Integer;
+  Noise, Diff: Boolean;
+begin
+  if not Visible or not HandleAllocated then
+    Exit;
+  Noise := not FEngine.OscPreview(FOsc, FNew);
+  Diff := not FValid or (Noise <> FNoise);
+  if not Diff then
+    for I := 0 to High(FNew) do
+      if Abs(FNew[I] - FData[I]) > 0.002 then
+      begin
+        Diff := True;
+        Break;
+      end;
+  if Diff then
+  begin
+    FData := FNew;
+    FNoise := Noise;
+    FValid := True;
+    Invalidate;
+  end;
+end;
+
+procedure TOscPreviewView.DoPaintBuffer;
+var
+  B: TBitmap32;
+  W, H, Mid, Amp, Px, Y, I, N: Integer;
+  V, YF, YPrevF, Pk: Single;
+begin
+  B := Buffer;
+  B.BeginUpdate;
+  try
+    W := B.Width;
+    H := B.Height;
+    B.Clear(COL_BG);
+    if (W >= 20) and (H >= 12) then
+    begin
+      Mid := H div 2;
+      Amp := Mid - 3;
+      for I := 1 to 3 do
+        B.VertLineS(I * W div 4, 0, H - 1, COL_SEP);
+      B.HorzLineS(0, Mid, W - 1, COL_ZERO);
+      if FValid then
+      begin
+        N := Length(FData);
+        // auf die Hoehe einpassen (Zeichnungen/Wavetables koennen ueber 1 gehen)
+        Pk := 0.001;
+        for I := 0 to N - 1 do
+          Pk := Max(Pk, Abs(FData[I]));
+        Pk := Max(Pk, 1);
+        YPrevF := Mid - FData[0] / Pk * Amp;
+        for Px := 0 to W - 1 do
+        begin
+          V := FData[Min(Px * N div W, N - 1)] / Pk;
+          YF := Mid - V * Amp;
+          Y := Round(YF);
+          if Y < Mid then
+            B.VertLineS(Px, Y, Mid - 1, COL_FILLC)
+          else if Y > Mid then
+            B.VertLineS(Px, Mid + 1, Y, COL_FILLC);
+          if not FNoise then
+            AASpan(B, Px, YPrevF, YF, COL_CURVE);
+          YPrevF := YF;
+        end;
+      end;
+    end;
+    DimDisplay(B);   // innerhalb von BeginUpdate: sonst loest das Abdunkeln ein neues Zeichnen aus
+  finally
+    B.EndUpdate;
+  end;
+  inherited;
 end;
 
 { TOscWaveView }
