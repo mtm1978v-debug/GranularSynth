@@ -6,10 +6,21 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.29 – 13.11.2026
+
+### Geändert
+- **Erklär-Displays:** Standard wieder „aus“ (matte Displays, Text blendet beim Darüberfahren ein). Auf „Modulation“ bilden beide Displays einen Block, auf „Schnell“ beginnt das Display bündig mit „Variieren“.
+- **Extras:** „Harmonie“ und „Halten“ sind zwei eigene Bereiche untereinander.
+
+### Behoben
+- Gleiche Abstände links und rechts bei allen Displays (Filter, LFOs, Osz), auch nach dem Skalieren bzw. bei Windows-Skalierung (Reiter Leistung).
+
+---
+
 ## Version 2.28 – 13.11.2026
 
 ### Neu
-- **Erklärungen im Display** (Kopfleiste „Erklärungen“): Jeder Erklärtext steht in einem eingelassenen Bernstein-Display, das bei lautem Ausgang mit den anderen Anzeigen abdunkelt. Erklärungen an (Standard): alle Displays leuchten. Aus: die Displays sind matt; mit der Maus über einem Bereich blendet sein Text weich ein und dimmt mit der Zeit langsam ab, ein Klick ins Display hält ihn hell (nochmal klicken = abdimmen, beim Verlassen aus). Die Wahl wird gemerkt. Dazu: Displays sauber eingepasst (gleiche Ränder, in Reihen ausgerichtet, Flachbandkabel rechts), mehr Luft unter den Bereichstiteln.
+- **Erklärungen im Display** (Kopfleiste „Erklärungen“): Jeder Erklärtext steht in einem eingelassenen Bernstein-Display, das bei lautem Ausgang mit den anderen Anzeigen abdunkelt. Erklärungen aus (Standard): die Displays sind matt; mit der Maus über einem Bereich blendet sein Text weich ein und dimmt mit der Zeit langsam ab, ein Klick ins Display hält ihn hell (nochmal klicken = abdimmen, beim Verlassen aus). Erklärungen an: alle Displays leuchten. Die Wahl wird gemerkt. Dazu: Displays sauber eingepasst (gleiche Ränder, in Reihen ausgerichtet, Flachbandkabel rechts), mehr Luft unter den Bereichstiteln.
 - **Wellenanzeige im Osz-Reiter:** zeigt eine Periode der Welle, wie der Oszillator sie gerade spielt (Welle, Zeichnung oder Wavetable-Position, dazu Sync und FM).
 - **Regler schneller bedienen:** Doppelklick setzt den Standardwert. Strg + Ziehen stellt zehnmal feiner ein, Strg + Mausrad in kleinsten Schritten. Die Wertanzeige wird beim Darüberfahren unterstrichen - ein Klick darauf öffnet das Eingabefeld.
 

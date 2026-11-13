@@ -206,7 +206,7 @@ type
     FTrigPanel: TPanel;
     FFxInPanel: TPanel;                  // Reiter Echo / Hall: 'Eingang → Echo/Hall' (nur FX-Variante sichtbar)
     // Erklaertexte: standardmaessig aus (Tooltip am Bereichstitel mit ⓘ), Schalter in der Kopfleiste
-    FInfoItems: array of record Lbl: TLabel; Screen: TCustomControl; end;   // Erklaertext im eigenen Display
+    FInfoItems: array of record Lbl: TLabel; Screen: TCustomControl; Group: Integer; LeftTo: TControl; end;   // Erklaertext im eigenen Display
     FShowInfo: Boolean;
     FInfoBtn: TButton;
     FOctLabel: TLabel;
@@ -216,6 +216,7 @@ type
     FInAlignRows: Boolean;
     FInRelayout: Boolean;
     FTabTimeDone: Boolean;
+    FVaryBtn: TControl;              // Schnell-Reiter: das Erklaer-Display beginnt buendig mit diesem Knopf
     FInfoLastTick: Int64;            // Erklaer-Displays: Zeitpunkt der letzten Nachfuehrung
     FTp: array[0..4] of Int64;       // Messung Reiterwechsel: Zeitpunkte der Teilschritte            // RelayoutAll laeuft: Reihen erst am Ende ausrichten
     // Matrix: nur benutzte Zeilen + eine freie (kompakt untereinander)
@@ -375,7 +376,7 @@ type
     procedure MorphFreeClick(Sender: TObject);
     procedure FreeGateClick(Sender: TObject);
     procedure InfoClick(Sender: TObject);
-    procedure Explain(L: TLabel);
+    procedure Explain(L: TLabel; Group: Integer = 0; LeftTo: TControl = nil);
     procedure BuildInfoScreens;
     procedure InfoScreenClick(Sender: TObject);
     procedure UpdateInfoHover;
@@ -574,7 +575,7 @@ begin
   FEngine := AEngine;
   FOctave := 4;
   FScaleF := 1;
-  FShowInfo := True;
+  FShowInfo := False;
   for I := 0 to High(FKeyNote) do
     FKeyNote[I] := -1;
   for I := 0 to PARAM_COUNT - 1 do
@@ -1204,6 +1205,9 @@ type
     FGlass: TColor;
     MinW: Integer;         // einzeilige Texte: Mindestbreite (Text + Rand)
     FitW, FitH: Integer;   // Bereichsgroesse beim letzten Einpassen (sonst nichts zu tun)
+    Group: Integer;        // > 0: Block mit den anderen Displays derselben Gruppe
+    LeftTo: TControl;      // gesetzt: linke Kante buendig mit diesem Element (statt Rand/Einrasten)
+    NatTop: Integer;       // eigene Oberkante (ohne Ausrichten an der Gruppe)
     BaseSize: Integer;     // Schriftgroesse des Textes (ohne Verkleinerung)
     constructor Create(AOwner: TComponent); override;
     procedure FitText;
@@ -1449,6 +1453,9 @@ begin
   ParentFont := False;
   ScaleBy(M, D);
   FScaleF := FScaleF * M / D;
+  for I := 0 to High(FInfoItems) do               // eigene Oberkante der Displays mit skalieren
+    if FInfoItems[I].Screen <> nil then
+      TInfoScreen(FInfoItems[I].Screen).NatTop := MulDiv(TInfoScreen(FInfoItems[I].Screen).NatTop, M, D);
   for I := 0 to High(FStretch) do
   begin
     FStretch[I].Left := MulDiv(FStretch[I].Left, M, D);
@@ -1512,6 +1519,13 @@ begin
       Continue;                                  // Bereich unveraendert: Display sitzt schon
     TInfoScreen(C).FitW := W;
     TInfoScreen(C).FitH := H;
+    if TInfoScreen(C).Group > 0 then
+    begin
+      // Block-Gruppe: gleicher Abstand ringsum, kein Einrasten - Hoehe/Oberkante setzt AlignInfoRows
+      C.SetBounds(M, Max(TInfoScreen(C).NatTop, MT), W - 2 * M, Max(16, H - M - Max(TInfoScreen(C).NatTop, MT)));
+      TInfoScreen(C).FitText;
+      Continue;
+    end;
     L := Max(C.Left, M);
     R := W - M;                                  // bis zum Rand des Bereichs (Elemente daneben begrenzen unten)
     if C.Width >= W div 2 then
@@ -1521,7 +1535,11 @@ begin
     BestR := MaxInt; BestL := MaxInt;
     for K := 0 to TWinControl(Sender).ControlCount - 1 do
       with TWinControl(Sender).Controls[K] do
-        if Visible and not (TWinControl(Sender).Controls[K] is TInfoScreen) and (Top > MT div 2) and
+        // nur Elemente mit sichtbarer Breite (Knopf, Liste, Regler, Anzeige) - Schalter und Beschriftungen
+        // sind breiter als ihr Text, ihre Kante sieht man nicht
+        if Visible and not (TWinControl(Sender).Controls[K] is TInfoScreen) and
+           not (TWinControl(Sender).Controls[K] is Vcl.StdCtrls.TCustomCheckBox) and
+           not (TWinControl(Sender).Controls[K] is TCustomLabel) and (Top > MT div 2) and
            ((Top + Height <= C.Top) or (Top >= C.Top + C.Height)) then
         begin
           if (Left + Width <= W - M) and (Abs(Left + Width - R) <= Round(40 * FScaleF)) and
@@ -1532,6 +1550,8 @@ begin
         end;
     if BestR <> MaxInt then R := BestR;
     if BestL <> MaxInt then L := BestL;
+    if TInfoScreen(C).LeftTo <> nil then
+      L := TInfoScreen(C).LeftTo.Left;
     R := Min(Max(R, L + TInfoScreen(C).MinW), W - M);   // einzeilige Texte nie abschneiden
     B := Min(C.Top + C.Height, H - M);
     // Hoehe nach dem Text bei der endgueltigen Breite (nie ueber den Platz bis zum naechsten Element)
@@ -1568,7 +1588,8 @@ begin
       for K := 0 to TWinControl(Sender).ControlCount - 1 do
         with TWinControl(Sender).Controls[K] do
           if Visible and (TWinControl(Sender).Controls[K] <> C) and (Left >= L + 20) and (Left < R) and
-             (Top >= Max(C.Top, MT) - 2) and (Top < Max(C.Top, MT) + Room) then
+             // ragt mehr als 8 px in die Hoehe des Displays hinein (nicht nur die Unterkante einer Zeile darueber)
+            (Min(Top + Height, Max(C.Top, MT) + Room) - Max(Top, Max(C.Top, MT)) > Round(8 * FScaleF)) then
             R := Left - Round(8 * FScaleF);
       C.SetBounds(L, Max(C.Top, MT), Max(30, R - L), Room);
     end;
@@ -2558,7 +2579,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
-  Explain(L);
+  Explain(L, 1);                               // Gruppe 1: mit dem Matrix-Display ein Block
   L.Transparent := True;
   AddStretch(L, 8);
   L.Caption := Tr('Ziele zuweisen: Rechtsklick auf einen Regler > Modulieren mit > Makro 1-4, ' +
@@ -2656,7 +2677,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
-  Explain(L);
+  Explain(L, 1);
   L.Transparent := True;
   L.Caption :=
     Tr('Wirkwert = Grundwert + (Quelle × Faktor + Offset) × Menge, im Reglerbereich (Zeiten ' +
@@ -2915,7 +2936,7 @@ const
   ARP: array[0..6] of TGranularParamId = (gpArpOn, gpArpMode, gpArpOct, gpArpRate, gpArpGate, gpArpSwing, gpArpSteps);
   ARP_CAP: array[0..6] of string = ('Arp an', 'Richtung', 'Oktaven', 'Notenwert', 'Länge', 'Swing', 'Schritte');
 var
-  Area, PA, PH, PK, PM: TPanel;
+  Area, PA, PH, PK, PM, Col: TPanel;
   B: TButton;
   I: Integer;
   L: TLabel;
@@ -2955,14 +2976,19 @@ begin
   // Spalten: Arpeggiator | Harmonie + Klangfarbe | Morph
   PA := MakePanel(Area, alLeft, Tr('Arpeggiator'));
   PA.Width := 340;
-  PH := MakePanel(Area, alLeft, Tr('Harmonie'));
-  PH.Width := 320;
-  PH.Left := PA.Left + PA.Width + 1;
+  // mittlere Spalte: Harmonie oben, Halten darunter - zwei eigene, verschraubte Bereiche
+  Col := TPanel.Create(Self);
+  Col.Parent := Area;
+  Col.Align := alLeft;
+  Col.Width := 326;
+  Col.Left := PA.Left + PA.Width + 1;
+  Col.BevelOuter := bvNone;
+  Col.ParentBackground := False;
+  Col.Color := AREA_BG;
+  PK := MakePanel(Col, alBottom, Tr('Halten'));
+  PK.Height := 110;
+  PH := MakePanel(Col, alClient, Tr('Harmonie'));
   PM := MakePanel(Area, alClient, Tr('Morph (A → B)'));
-  // oben verankert direkt unter der Harmonie-Erklaerung (nicht unten: sonst wandert der Block mit der Fensterhoehe)
-  PK := MakePanel(PH, alNone, Tr('Halten'));
-  PK.SetBounds(0, 24 + 3 * ROW_H + 6 + 90 + 64, PH.Width, 110);
-  AddStretch(PK, 0);      // eigene Breitenanpassung statt Anchors (beim Skalieren zuverlaessig)
 
   for I := 0 to High(ARP) do
     AddParam(PA, Ord(ARP[I]), 8, 24 + I * ROW_H, 90, 52, 140, ARP_CAP[I]);
@@ -3461,11 +3487,13 @@ const
 { Erklaertext registrieren: er bekommt ein eigenes, eingelassenes Display (BuildInfoScreens nach dem Aufbau).
   Erklaerungen an: alle Displays zeigen ihren Text. Aus: Displays dunkel; Maus ueber dem Bereich = Text
   leicht, Klick ins Display = Text bleibt stehen (nochmal = wieder aus). }
-procedure TGranularEditor.Explain(L: TLabel);
+procedure TGranularEditor.Explain(L: TLabel; Group: Integer; LeftTo: TControl);
 begin
   SetLength(FInfoItems, Length(FInfoItems) + 1);
   FInfoItems[High(FInfoItems)].Lbl := L;
   FInfoItems[High(FInfoItems)].Screen := nil;
+  FInfoItems[High(FInfoItems)].Group := Group;
+  FInfoItems[High(FInfoItems)].LeftTo := LeftTo;   // linke Kante buendig mit diesem Element   // > 0: Displays einer Gruppe bilden einen Block (nur Raender, kein Einrasten)
 end;
 
 procedure TGranularEditor.BuildInfoScreens;
@@ -3494,14 +3522,10 @@ begin
     end;
     S.ShowHint := False;                         // kein Tooltip: er stoert das Ein- und Ausblenden
     L.ShowHint := False;
-    // Mitwachsen mit dem Bereich: die Streckung des Textes geht auf das Display ueber
-    for K := 0 to High(FStretch) do
+    // die alte Streckung des Textes entfaellt: Breite und Lage bestimmt allein das Einpassen (PanelResize)
+    for K := High(FStretch) downto 0 do
       if FStretch[K].Ctrl = L then
-      begin
-        FStretch[K].Ctrl := S;
-        FStretch[K].Left := S.Left;
-        FStretch[K].RightGap := Max(FStretch[K].RightGap - PAD, 16);   // Eckschrauben frei lassen
-      end;
+        Delete(FStretch, K, 1);
     for K := 0 to High(FGlideCtrls) do          // Matrix: Erklaerung rueckt mit Glide nach
       if FGlideCtrls[K] = L then
         FGlideCtrls[K] := S;
@@ -3510,6 +3534,9 @@ begin
     S.OnResize := PanelResize;                   // Text fuellt das Display (PanelResize)
     L.OnClick := InfoScreenClick;
     FInfoItems[I].Screen := S;
+    S.Group := FInfoItems[I].Group;
+    S.LeftTo := FInfoItems[I].LeftTo;
+    S.NatTop := S.Top;
     // passt der Text nicht ganz hinein, waechst das Display nach unten mit
     if L.Caption <> '' then
     begin
@@ -3543,12 +3570,23 @@ begin
     A := FInfoItems[I].Screen;
     if (A = nil) or (A.Parent = nil) or (A.Parent.Parent = nil) then
       Continue;
+    if TInfoScreen(A).Group > 0 then
+    begin
+      // Block: gemeinsame Oberkante = tiefste eigene Oberkante der Gruppe, unten alle gleich
+      Top := 0;
+      for J := 0 to High(FInfoItems) do
+        if (FInfoItems[J].Screen <> nil) and (TInfoScreen(FInfoItems[J].Screen).Group = TInfoScreen(A).Group) then
+          Top := Max(Top, Max(TInfoScreen(FInfoItems[J].Screen).NatTop, Round(26 * FScaleF)));
+      A.SetBounds(M, Top, A.Parent.ClientWidth - 2 * M, Max(16, A.Parent.ClientHeight - M - Top));
+      TInfoScreen(A).FitText;
+      Continue;
+    end;
     Row := [A];
     Top := A.Top;
     for J := 0 to High(FInfoItems) do
     begin
       B := FInfoItems[J].Screen;
-      if (J <> I) and (B <> nil) and (B.Parent <> A.Parent) and (B.Parent <> nil) and
+      if (J <> I) and (B <> nil) and (TInfoScreen(B).Group = 0) and (B.Parent <> A.Parent) and (B.Parent <> nil) and
          (B.Parent.Parent = A.Parent.Parent) and (B.Parent.Top = A.Parent.Top) and
          (B.Parent.Height = A.Parent.Height) and (Abs(B.Top - A.Top) <= Round(60 * FScaleF)) then
       begin
@@ -6112,6 +6150,7 @@ begin
   B.Parent := PV;
   B.SetBounds(8, Y, 110, 30);
   B.Caption := Tr('Variieren');
+  FVaryBtn := B;
   B.Icon := eiDice;
   B.TabStop := False;
   B.OnClick := VaryClick;
@@ -6146,7 +6185,7 @@ begin
   L.AutoSize := False;
   L.WordWrap := True;
   L.Font.Color := $00A0A0A0;
-  Explain(L);
+  Explain(L, 0, FVaryBtn);                     // buendig mit dem Knopf Variieren
   L.Transparent := True;
   L.Caption :=
     Tr('Variieren ändert die eingeschalteten Bereiche (Variieren in) zufällig um die eingestellte Stärke. ' +
@@ -6843,8 +6882,12 @@ begin
   begin
     Dy := Round((Shown - FGlideY) * 34 * FScaleF);
     for C in FGlideCtrls do
-      C.Top := C.Top + Dy;
+      if C is TInfoScreen then
+        TInfoScreen(C).NatTop := TInfoScreen(C).NatTop + Dy   // Display: Block neu ausrichten (unten)
+      else
+        C.Top := C.Top + Dy;
     FGlideY := Shown;
+    AlignInfoRows;
   end;
   FMatUsedMask := Mask or (FMatPage shl 16);
 end;
@@ -8409,10 +8452,10 @@ begin
     FBaseDir := '';
   // Erklaertexte: Einstellung je Plugin-Ordner (Datei mit "1" = an), sonst aus
   try
-    FShowInfo := not ((FBaseDir <> '') and FileExists(FBaseDir + INFO_FILE) and
-      (Trim(TFile.ReadAllText(FBaseDir + INFO_FILE)) = '0'));   // ohne Einstellung: an
+    FShowInfo := (FBaseDir <> '') and FileExists(FBaseDir + INFO_FILE) and
+      (Trim(TFile.ReadAllText(FBaseDir + INFO_FILE)) = '1');     // ohne Einstellung: aus (Displays matt)
   except
-    FShowInfo := True;
+    FShowInfo := False;
   end;
   ApplyInfoMode;
   RefreshPresets;

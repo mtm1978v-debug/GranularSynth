@@ -377,7 +377,7 @@ const
     ('Eingang → Echo/Hall', 'Nur in der FX-Variante (im Mixer): schickt den Eingang der Spur zusätzlich durch Echo und Hall. Das trockene Signal bleibt unverändert, dazu kommt nur der Echo-/Hall-Anteil. Wird von Presets nicht verändert.'),
     ('Eingänge (DAW)', 'Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar Sidechain 1 bzw. 2 speist. Sidechain 2 liefert der Matrix seinen Pegel (Quelle "Sidechain 2") und seine Tonhöhe (Quelle "SC2-Tonhöhe", wird nur gerechnet, wenn eine Zeile sie nutzt).'),
     ('Einmal', 'Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).'),
-    ('Erklärungen', 'Schaltet die Erklär-Displays in den Reitern ein (Standard) oder aus. Aus: Maus über einen Bereich zeigt dessen Text leicht, ein Klick ins Display hält ihn fest.'),
+    ('Erklärungen', 'Schaltet die Erklär-Displays in den Reitern ein oder aus (Standard). Aus: Maus über einen Bereich zeigt dessen Text leicht, ein Klick ins Display hält ihn fest.'),
     ('FM-Klangfarbe', 'Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.'),
     ('FM-Verhältnis / FM-Menge', 'Nur bei Welle FM: Frequenz des Modulators und Stärke - Glocken, E-Piano, Bass.'),
     ('Fader', 'Alle Lautstärken an einem Ort: Grains, Osz 1-3, Echo, Hall, die Effekte Gate (Tiefe), Crusher, Chorus und Phaser (Mix; ihre Anzeige zeigt, wie stark der Effekt den Klang verändert), Morph, Panorama, Summe (Grains + Oszillatoren), Master. Es sind dieselben Regler wie in den anderen Reitern - wer hier schiebt, sieht es dort und umgekehrt.'),

@@ -33,7 +33,7 @@ TABS = [
  ("Speichern…", "aktuelle Einstellung als Preset speichern; eigene T\u00f6ne werden nach \u201eEigene Töne\u201c kopiert. Dateityp \u201emit eingebetteten Samples\u201c: alle benutzten Samples (Haupt-Sample, Klang B, Zonen) kommen mit in die Preset-Datei - eine Datei zum Weitergeben. Auf einem anderen Rechner werden fehlende Samples beim Laden nach \u201eEigene Töne\u201c ausgepackt. Die Wahl wird gemerkt; ältere Versionen laden solche Presets auch (ohne Auspacken). Nach dem Speichern steht der neue Name in der Presetliste."),
  ("CLIP / MIDI", "leuchten bei \u00dcbersteuerung bzw. bei jedem empfangenen MIDI-Ereignis."),
  ("Info", "Klartext, was beim Tastendruck passiert, dazu das Trigger-Protokoll (Noten, R\u00e4der, Ereignisse, Einmal-LFOs) live."),
- ("Erklärungen", "schaltet die Erklär-Displays in den Reitern ein (Standard) oder aus. Aus: Maus über einen Bereich zeigt dessen Text leicht, ein Klick ins Display hält ihn fest."),
+ ("Erklärungen", "schaltet die Erklär-Displays in den Reitern ein oder aus (Standard). Aus: Maus über einen Bereich zeigt dessen Text leicht, ein Klick ins Display hält ihn fest."),
  ("Hilfe", "dieses Fenster."),
  ("Statuszeile", "das aktive Sample (bei Morph: A und B mit ihrem Anteil) und kurze Meldungen. Klingende Stimmen und aktive Grains stehen im Reiter Leistung."),
  ("Autoplay, Haken \u201ealle\u201c", "nur im Test-Host: spielt St\u00fccke ab; die Liste zeigt die zum Preset passenden, mit \u201ealle\u201c jedes St\u00fcck (z.B. eine Fl\u00e4che mit flotter Musik)."),
