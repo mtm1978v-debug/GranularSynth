@@ -138,6 +138,7 @@ TABS = [
  ("Ping-Pong", "Echos springen zwischen links und rechts."),
  ("Hall: Raum, Gr\u00f6\u00dfe, Nachhall, D\u00e4mpfung, Vorverz\u00f6gerung, Breite, Mix", "Raumklang von kleinem Zimmer bis Kathedrale; Raum = Wandmaterial (Holz, Beton …)."),
  ("Bass-Schnitt / H\u00f6hen-Schnitt", "filtern nur den Hallanteil (der trockene Klang bleibt): Bass-Schnitt gegen Dr\u00f6hnen, H\u00f6hen-Schnitt f\u00fcr einen dunklen Raum."),
+ ("Eingang → Echo/Hall", "nur in der FX-Variante (im Mixer): schickt den Eingang der Spur zusätzlich durch Echo und Hall. Das trockene Signal bleibt unverändert, dazu kommt nur der Echo-/Hall-Anteil. Wird von Presets nicht verändert."),
 ]),
 ("Reiter Summe", [
  ("EQ an, B\u00e4sse, H\u00f6hen", "Klangregelung am Ende der Kette."),
@@ -202,7 +203,7 @@ PNAMES = {
  "Echo: Zeit / Sync / R\u00fcckkopplung / D\u00e4mpfung / Mix": "Echo an, Echo Zeit, Echo Sync, Feedback, Dämpfung, Echo Mix",
  "Echo Pitch": "Echo Pitch", "Ping-Pong": "Ping-Pong",
  "Hall: Raum, Gr\u00f6\u00dfe, Nachhall, D\u00e4mpfung, Vorverz\u00f6gerung, Breite, Mix": "Hall an, Hall Raum, Hall Größe, Hall Zeit, Hall Dämpfung, Hall Predelay, Hall Breite, Hall Mix",
- "Bass-Schnitt / H\u00f6hen-Schnitt": "Hall Bass-Schnitt, Hall Höhen-Schnitt", "Latch": "Arp Latch", "Eingänge (DAW)": "SC1 Eingang, SC2 Eingang", "Leistung": "Leistung",
+ "Bass-Schnitt / H\u00f6hen-Schnitt": "Hall Bass-Schnitt, Hall Höhen-Schnitt", "Eingang → Echo/Hall": "Eingang Echo/Hall", "Latch": "Arp Latch", "Eingänge (DAW)": "SC1 Eingang, SC2 Eingang", "Leistung": "Leistung",
  "Trance-Gate": "Trance-Gate an, Trance-Gate Notenwert, Trance-Gate Schritte, Trance-Gate Tiefe, Trance-Gate Glättung", "Anlauf / Anlauf-Start": "Anlauf an, Anlauf-Start", "Schleife hin und her": "Schleife",
  "Chorus: Tempo / R\u00fcckkopplung / Mix": "", "Chorus: Tempo / Tiefe / R\u00fcckkopplung / Mix": "Chorus an, Chorus Tempo, Chorus Tiefe, Chorus Rückkopplung, Chorus Mix",
  "Phaser: Tempo / Tiefe / R\u00fcckkopplung / Mix": "Phaser an, Phaser Tempo, Phaser Tiefe, Phaser Rückkopplung, Phaser Mix",

@@ -176,6 +176,7 @@ type
     gpSubLevel, gpSubOct, gpSubWave, gpNoiseLevel,   // Nov. 2026: Sub-Oszillator und Rauschen (an Osz 1)
     gpFxOrder,                               // Nov. 2026: Reihenfolge Gate/Crusher/Chorus/Phaser
     gpOscFollowPitch,                        // Nov. 2026: Oszillatoren folgen dem Regler Pitch (inkl. Modulation)
+    gpFxInSend,                              // Nov. 2026: FX-Variante: Eingang der Mixer-Spur durch Echo und Hall
     gpPerformance, // Leistungsstufe: begrenzt Stimmen/Grains (gehoert nicht zum Klang, bleibt beim Presetwechsel)
     gpMaster,      // Master-Lautstaerke (gehoert nicht zum Klang: bleibt beim Presetwechsel)
     gpTempo        // Tempo fuer LFO-Sync (im VST spaeter vom Host); muss der LETZTE sein
@@ -201,8 +202,8 @@ const
   { Programmversion: Banner-Text und VST-Versionsnummer (Major*1000 + Minor). Jedes Deploy: Nebenversion +1
     (Tools/bump_version.py), VST3-Unterstuetzung = Version 2.0 (--major) }
   APP_VERSION_MAJOR = 2;
-  APP_VERSION_MINOR = 26;
-  APP_VERSION = '2.26';
+  APP_VERSION_MINOR = 27;
+  APP_VERSION = '2.27';
   MOD_SLOTS = 32;
   MOD_SLOTS_V1 = 8;     // so viele Zeilen gab es bis Okt. 2026 (deren VST-Nummern liegen vor VST_ADDED)
   MATRIX_BASE = NAMED_COUNT;
@@ -737,6 +738,7 @@ const
     (Name: 'Rauschen Pegel'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
     (Name: 'Effekt-Reihenfolge'; UnitStr: ''; MinV: 0; MaxV: 23; DefV: 0; Curve: pcStepped; Steps: 24),
     (Name: 'Osz folgen Pitch'; UnitStr: ''; MinV: 0; MaxV: 1; DefV: 0; Curve: pcStepped; Steps: 2),
+    (Name: 'Eingang Echo/Hall'; UnitStr: '%'; MinV: 0; MaxV: 100; DefV: 0; Curve: pcLinear; Steps: 0),
     (Name: 'Leistung'; UnitStr: ''; MinV: 0; MaxV: 2; DefV: 0; Curve: pcStepped; Steps: 3),
     (Name: 'Master';        UnitStr: 'dB'; MinV: -60;  MaxV: 6;     DefV: 0;    Curve: pcDecibel; Steps: 0),
     (Name: 'Tempo';         UnitStr: 'BPM'; MinV: 60;  MaxV: 200;  DefV: 120;  Curve: pcLinear;  Steps: 0)
@@ -779,7 +781,7 @@ const
     gpOsc3FmAmt, gpOsc3Sync, gpOsc3Attack, gpOsc3Decay, gpOsc3Sustain, gpOsc3Release, gpOsc3FltOn,
     gpOsc3FltType, gpOsc3FltCutoff, gpOsc3FltReso, gpOsc3FltContour, gpOsc3FltEnvAmt, gpOsc3FmEnvOn,
     gpOsc3FmAttack, gpOsc3FmDecay, gpOsc3FmSustain, gpOsc3FmRelease, gpMaster, gpTempo);
-  VST_ADDED_COUNT = 154;   // Anzahl der Eintraege in VST_ADDED
+  VST_ADDED_COUNT = 155;   // Anzahl der Eintraege in VST_ADDED
   VST_ADDED: array[0..VST_ADDED_COUNT - 1] of TGranularParamId = (
     // Okt. 2026: Ereignis-Verzoegerung
     gpDlyOn, gpDlyOnSync, gpDlyOff, gpDlyOffSync, gpDlyEnd, gpDlyEndSync, gpDlySc, gpDlyScSync,
@@ -835,7 +837,9 @@ const
     gpOscWtOn, gpOsc2WtOn, gpOsc3WtOn, gpOscWtPos, gpOsc2WtPos, gpOsc3WtPos,
     // Nov. 2026: Sub/Rauschen, Effekt-Reihenfolge
     gpSubLevel, gpSubOct, gpSubWave, gpNoiseLevel, gpFxOrder,
-    gpOscFollowPitch);
+    gpOscFollowPitch,
+    // Nov. 2026: FX-Variante, Eingang durch Echo/Hall
+    gpFxInSend);
 
 
 { VST-Nummer -> interner Index und zurueck (-1 = ungueltig) }

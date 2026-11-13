@@ -536,6 +536,11 @@ begin
     end;
     OL := Outputs[0] + Done;
     OR_ := Outputs[1] + Done;
+    // FX-Variante: Spur-Eingang fuer 'Eingang Echo/Hall'
+    if FIsFx and (Inputs <> nil) then
+      FEngine.SetFxInput(@FInBuf[0][0], @FInBuf[1][0])
+    else
+      FEngine.SetFxInput(nil, nil);
     FEngine.Process(A1L, A1R, OL, OR_, N, A2L, A2R);
     // FX-Variante: Eingangston (Eingang 1/2 = Signal der Mixer-Spur) zum Ausgang dazu, um die gemeldete
     // Latenz (LIM_LOOK) verzoegert - der Host gleicht sie fuer das ganze Plugin aus

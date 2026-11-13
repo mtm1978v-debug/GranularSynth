@@ -611,6 +611,11 @@ begin
       A2L := @FInBuf[(S2 - 1) * 2][0];
       A2R := @FInBuf[(S2 - 1) * 2 + 1][0];
     end;
+    // FX-Variante: Spur-Eingang fuer 'Eingang Echo/Hall'
+    if FIsFx then
+      FEngine.SetFxInput(@FInBuf[0][0], @FInBuf[1][0])
+    else
+      FEngine.SetFxInput(nil, nil);
     FEngine.Process(A1L, A1R, OL + Done, OR_ + Done, N, A2L, A2R);
     if FIsFx then
       for I := 0 to N - 1 do

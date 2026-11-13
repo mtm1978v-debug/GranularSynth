@@ -427,6 +427,60 @@ end;
 
 { Bass mono: Mitte (L+R) bleibt unveraendert, das Seitensignal unter 120 Hz verschwindet weitgehend,
   darueber bleibt es (Stereobreite 200 %, Demo-Klang tief gespielt) }
+{ FX-Variante 'Eingang Echo/Hall': ohne Noten kommt vom Eingang nur der Echo-/Hall-Anteil (Trockenes
+  gibt das Plugin selbst aus). Send 0 = still; Echo an mit Mix 0 und Hall aus = kein trockener Rest. }
+function CheckFxInSend: string;
+
+  function Run(Send, EchoMix: Double; HallOn: Integer): Double;
+  var
+    E: TGranularEngine;
+    L, R, InL, InR: array[0..511] of Single;
+    Blk, I: Integer;
+  begin
+    Result := 0;
+    E := TGranularEngine.Create;
+    try
+      E.SetSampleRate(SR);
+      E.LoadSample(CreateDemoSample(SR));
+      E.SetParamById(gpLimiter, StepToParam(Ord(gpLimiter), 0));
+      E.SetParamById(gpEchoOn, StepToParam(Ord(gpEchoOn), 1));
+      E.SetParamById(gpEchoMix, PlainToParam(gpEchoMix, EchoMix));
+      E.SetParamById(gpRevOn, StepToParam(Ord(gpRevOn), HallOn));
+      E.SetParamById(gpFxInSend, PlainToParam(gpFxInSend, Send));
+      for Blk := 0 to 59 do
+      begin
+        for I := 0 to 511 do
+        begin
+          if Blk < 10 then
+            InL[I] := 0.5 * Sin(2 * Pi * 440 * (Blk * 512 + I) / SR)
+          else
+            InL[I] := 0;
+          InR[I] := InL[I];
+        end;
+        E.SetFxInput(@InL[0], @InR[0]);
+        E.Process(nil, nil, @L[0], @R[0], 512);
+        for I := 0 to 511 do
+          Result := Max(Result, Max(Abs(L[I]), Abs(R[I])));
+      end;
+    finally
+      E.Free;
+    end;
+  end;
+
+var
+  Off, Wet, Leak: Double;
+begin
+  Off := Run(0, 40, 1);
+  Wet := Run(60, 40, 1);
+  Leak := Run(100, 0, 0);
+  Result := Format('Eingang Echo/Hall (FX): Send 0 Spitze %.1e, Send 60 %% Spitze %.3f, trockener Rest %.1e',
+    [Off, Wet, Leak]);
+  if (Off < 1E-6) and (Wet > 0.01) and (Leak < 1E-6) then
+    Result := Result + ' -> OK'
+  else
+    Result := Result + ' -> FEHLER';
+end;
+
 function CheckBassMono: string;
 var
   SumDev, LowOff, LowOn, HiOff, HiOn: Double;
@@ -4729,6 +4783,7 @@ begin
     Lap('CheckShape', CheckShape) + sLineBreak +
     Lap('CheckComp', CheckComp) + sLineBreak +
     Lap('CheckBassMono', CheckBassMono) + sLineBreak +
+    Lap('CheckFxInSend', CheckFxInSend) + sLineBreak +
     Lap('CheckModEnv', CheckModEnv) + sLineBreak +
     Lap('CheckWtFile', CheckWtFile) + sLineBreak +
     Lap('CheckSaveAudio', CheckSaveAudio) + sLineBreak +

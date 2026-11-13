@@ -387,8 +387,9 @@ begin
 end;
 
 const
-  { aussortierte Presets (01.11.2026): Code bleibt als Vorlage stehen, die Nummern werden nicht wieder vergeben }
-  DELETED_PRESETS: array[0..18] of Integer = (2, 3, 23, 35, 40, 46, 48, 55, 65, 66, 95, 101, 107, 109, 112, 113, 117, 133, 158);
+  { aussortierte Presets (01.11. und 11.11.2026): Code bleibt als Vorlage stehen, die Nummern werden nicht wieder vergeben }
+  DELETED_PRESETS: array[0..28] of Integer = (2, 3, 23, 35, 40, 46, 48, 55, 65, 66, 95, 101, 107, 109, 112, 113, 117, 133, 158,
+    5, 11, 21, 28, 29, 38, 39, 85, 96, 169);  // 11.11.2026
 
 function IsDeletedPreset(const AName: string): Boolean;
 var
@@ -1914,6 +1915,9 @@ begin
   B.Start('Klavier_C4.wav');
   B.P(gpGrainSize, 260); B.P(gpDensity, 30); B.P(gpSpray, 6); B.P(gpScan, 0.15); B.P(gpSpread, 80);
   B.P(gpWindow, W_GAUSS); B.P(gpAttack, 600); B.P(gpSustain, 100); B.P(gpRelease, 3000);
+  // leicht hochgestimmtes Echo: jeder Durchlauf bekommt neue, schwebende Wiederholungen dazu
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_4); B.P(gpEchoFeedback, 40); B.P(gpEchoDamp, 45); B.P(gpEchoPitch, 0.2);
+  B.P(gpEchoPingPong, 1); B.P(gpEchoMix, 25);
   B.Hall(85, 5, 40, 25, 30);
   B.Eq(120, 0, -2, 0, 1);
   B.P(gpResOn, 1); B.P(gpResMix, 60); B.P(gpResSync, 3);
@@ -1924,6 +1928,9 @@ begin
   B.P(gpGrainSize, 320); B.P(gpDensity, 28); B.P(gpSpray, 10); B.P(gpScan, 0.05); B.P(gpPosition, 30); B.P(gpSpread, 90);
   B.P(gpWindow, W_GAUSS); B.P(gpAttack, 1200); B.P(gpSustain, 100); B.P(gpRelease, 4000);
   B.LfoFree(1, 0.05, SINUS); B.M(msLfo1, gpPosition, 15);
+  // leicht tiefer gestimmtes, dunkles Echo: der Nebel sinkt mit jedem Durchlauf ein wenig ab und schwebt
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_4T); B.P(gpEchoFeedback, 50); B.P(gpEchoDamp, 55); B.P(gpEchoPitch, -0.15);
+  B.P(gpEchoPingPong, 1); B.P(gpEchoMix, 22);
   B.Hall(100, 8, 45, 30, 40);
   B.Eq(150, 0, -2, -1, 2);
   B.P(gpResOn, 1); B.P(gpResMix, 35); B.P(gpResTime, 1500);
@@ -1933,7 +1940,7 @@ begin
   B.Start('Roehrenglocke_C5.wav');
   B.P(gpGrainSize, 180); B.P(gpDensity, 40); B.P(gpSpray, 3); B.P(gpScan, 0.4); B.P(gpSpread, 85);
   B.P(gpWindow, W_HANN); B.P(gpAttack, 10); B.P(gpSustain, 100); B.P(gpRelease, 3500);
-  B.P(gpEchoOn, 1); B.EchoSync(D_1_8T); B.P(gpEchoFeedback, 45); B.P(gpEchoMix, 25);
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8T); B.P(gpEchoFeedback, 50); B.P(gpEchoPitch, 0.3); B.P(gpEchoPingPong, 1); B.P(gpEchoMix, 28);
   B.Hall(90, 6, 35, 30, 32);
   B.Eq(200, 0, -1, -1, 0);
   B.P(gpResOn, 1); B.P(gpResMix, 70); B.P(gpResSync, 2);
@@ -1944,6 +1951,9 @@ begin
   B.P(gpGrainSize, 200); B.P(gpDensity, 35); B.P(gpSpray, 8); B.P(gpScan, 0.1); B.P(gpSpread, 85);
   B.P(gpWindow, W_GAUSS); B.P(gpAttack, 400); B.P(gpSustain, 100); B.P(gpRelease, 2500);
   B.P(gpFltOn, 1); B.P(gpFltType, F_TP); B.P(gpFltCutoff, 2500); B.P(gpFltReso, 10);
+  // kurzes, leicht verstimmtes Ping-Pong-Echo im Achtel: jeder Durchlauf webt neue Fasern in den Teppich
+  B.P(gpEchoOn, 1); B.EchoSync(D_1_8); B.P(gpEchoFeedback, 35); B.P(gpEchoDamp, 60); B.P(gpEchoPitch, -0.1);
+  B.P(gpEchoPingPong, 1); B.P(gpEchoMix, 18);
   B.Hall(80, 4, 50, 20, 28);
   B.Eq(140, 0, -3, 1, 1);
   B.P(gpResOn, 1); B.P(gpResMix, 50); B.P(gpResSync, 3);

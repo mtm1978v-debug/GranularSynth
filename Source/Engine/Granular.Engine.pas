@@ -502,6 +502,12 @@ type
     FMeterOn: Boolean;
     FMeter: array[0..MIX_METERS - 1] of Single;
     FMeterTmp: array[0..SUB_BLOCK * 2 - 1] of Single;
+    // FX-Variante: Eingang der Mixer-Spur durch Echo und Hall (nur deren Anteil kommt dazu)
+    FFxInL, FFxInR: PSingle;       // ganzer Block (vom Plugin je Aufruf gesetzt)
+    FFxSubL, FFxSubR: PSingle;     // aktueller Subblock
+    FFxSend: Single;               // geglaetteter Send-Anteil 0..1
+    FFxInBuf: array[0..SUB_BLOCK * 2 - 1] of Single;   // eingespeist (wird nach dem Hall wieder abgezogen)
+    FFxInFed: Boolean;
 
     procedure BuildWindows;
     procedure RenderSub(SubInL, SubInR, Sc2L, Sc2R: PSingle; N: Integer; Audible: Boolean);
@@ -561,6 +567,9 @@ type
     procedure RunSvf(var Svf: TSvfArgs; Buf: PSingle; N, FType: Integer; Cutoff, Reso, Contour, EnvAmt: Double;
       Env: Double = -1);
     procedure ProcessEcho(N: Integer);
+    procedure FxInFeed(N: Integer);
+    function FxInSilent(Frames: Integer): Boolean;
+    procedure FxInRemove(N: Integer);
     procedure ProcessReverb(N: Integer);
     procedure ProcessDrive(N: Integer);
     procedure SatBuffer(P: PSingle; Count: Integer; Drive, Make: Single);
@@ -656,6 +665,8 @@ type
 
     { InL/InR = Sidechain-Eingang, nil wenn keiner vorhanden }
     procedure Process(InL, InR, OutL, OutR: PSingle; Frames: Integer; In2L: PSingle = nil; In2R: PSingle = nil);
+    { FX-Variante: Eingang fuer 'Eingang Echo/Hall' fuer den naechsten Process-Aufruf (nil = keiner) }
+    procedure SetFxInput(L, R: PSingle);
 
     function GetParam(Index: Integer): Single;
     procedure SetParam(Index: Integer; Value: Single);
@@ -4073,6 +4084,7 @@ begin
     end;
   if GSectProfOn then SectMark(26, T);
   if GSectProfOn then SectMark(7, T);
+  FxInFeed(N);        // FX-Variante: Eingang in Echo und Hall einspeisen
   ProcessEcho(N);
   if GSectProfOn then SectMark(5, T);
   if FMeterOn then
@@ -4085,6 +4097,8 @@ begin
   if GSectProfOn then SectMark(6, T);
   if FMeterOn then
     MeterDiff(MM_HALL, @FMix[0], N * 2);
+  if FFxInFed then
+    FxInRemove(N);    // trockenen Eingang wieder abziehen: er laeuft im Plugin am Effektweg vorbei
   ProcessDrive(N);
   if GSectProfOn then SectMark(22, T);
   ProcessEq(N);       // Equalizer vor dem Limiter
@@ -4212,7 +4226,7 @@ begin
     // hoerbar waere nichts; LFOs bleiben stehen und laufen beim naechsten Ton weiter.
     if (FEventCount = 0) and (FIdleSamples >= FSampleRate * 0.2) and EngineIdle and
        (not FLayerOn or FLayerB.EngineIdle) and InputSilent(InL, InR, Frames) and
-       InputSilent(In2L, In2R, Frames) then
+       InputSilent(In2L, In2R, Frames) and FxInSilent(Frames) then
     begin
       FOutPeak := 0;
       Inc(FIdleSkips);
@@ -4296,6 +4310,13 @@ begin
         SubInL := nil;
         SubInR := nil;
       end;
+      if FFxInL <> nil then
+      begin
+        FFxSubL := FFxInL + Done;
+        FFxSubR := FFxInR + Done;
+      end
+      else
+        FFxSubL := nil;
       Sc2L := nil;
       Sc2R := nil;
       if In2L <> nil then
@@ -4369,7 +4390,7 @@ begin
       ResRestore;
     // Stille-Zaehler: nur wenn nichts aktiv ist und der ganze Block unter -100 dB liegt
     if (FEventCount = 0) and EngineIdle and (not FLayerOn or FLayerB.EngineIdle) and
-       InputSilent(OutL, OutR, Frames) and InputSilent(InL, InR, Frames) then
+       InputSilent(OutL, OutR, Frames) and InputSilent(InL, InR, Frames) and FxInSilent(Frames) then
       Inc(FIdleSamples, Frames)
     else
       FIdleSamples := 0;
@@ -5066,6 +5087,67 @@ begin
     end;
     FScopeFltPos := P;
   end;
+end;
+
+{ FX-Variante: Eingang der Mixer-Spur geht mit dem Send-Anteil durch Echo und Hall. Beide addieren
+  ihren Anteil nur (Trockenes bleibt 1:1), daher wird der eingespeiste Eingang nach dem Hall exakt
+  wieder abgezogen - es bleibt nur sein Echo/Hall. Das Trockene gibt das Plugin selbst aus.
+  Kostet nichts, wenn der Regler auf 0 steht oder Echo und Hall aus sind. }
+procedure TGranularEngine.FxInFeed(N: Integer);
+var
+  I: Integer;
+  S, G, D: Single;
+begin
+  FFxInFed := False;
+  S := EnsureRange(Eff(gpFxInSend) / 100, 0, 1);
+  if (FFxSubL = nil) or ((Eff(gpEchoOn) < 0.5) and (Eff(gpRevOn) < 0.5)) then
+    S := 0;
+  if (S <= 0) and (FFxSend <= 0) then
+    Exit;
+  D := (S - FFxSend) / N;          // Rampe gegen Knacken beim Drehen
+  G := FFxSend;
+  if FFxSubL = nil then
+  begin
+    FFxSend := 0;
+    Exit;
+  end;
+  for I := 0 to N - 1 do
+  begin
+    G := G + D;
+    FFxInBuf[I * 2] := FFxSubL[I] * G;
+    FFxInBuf[I * 2 + 1] := FFxSubR[I] * G;
+    FMix[I * 2] := FMix[I * 2] + FFxInBuf[I * 2];
+    FMix[I * 2 + 1] := FMix[I * 2 + 1] + FFxInBuf[I * 2 + 1];
+  end;
+  FFxSend := S;
+  if S < 1E-4 then
+    FFxSend := 0;
+  if FMeterOn then                 // Pegelanzeige: Eingang zaehlt nicht als Echo-Anteil
+    for I := 0 to N * 2 - 1 do
+      FMeterTmp[I] := FMeterTmp[I] + FFxInBuf[I];
+  FFxInFed := True;
+end;
+
+procedure TGranularEngine.FxInRemove(N: Integer);
+var
+  I: Integer;
+begin
+  for I := 0 to N * 2 - 1 do
+    FMix[I] := FMix[I] - FFxInBuf[I];
+  FFxInFed := False;
+end;
+
+procedure TGranularEngine.SetFxInput(L, R: PSingle);
+begin
+  FFxInL := L;
+  if R = nil then
+    R := L;
+  FFxInR := R;
+end;
+
+function TGranularEngine.FxInSilent(Frames: Integer): Boolean;
+begin
+  Result := (FFxInL = nil) or (FParams[Ord(gpFxInSend)] <= 0) or InputSilent(FFxInL, FFxInR, Frames);
 end;
 
 procedure TGranularEngine.ProcessEcho(N: Integer);

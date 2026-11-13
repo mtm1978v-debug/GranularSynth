@@ -6,6 +6,20 @@ Unter **Hinweis** steht, was sich für vorhandene Presets, Projekte oder die Ins
 
 ---
 
+## Version 2.27 – 13.11.2026
+
+### Neu
+- **FX-Variante: Eingang → Echo/Hall** (Reiter Echo / Hall): Im Mixer läuft der Eingang der Spur zusätzlich durch unser Echo und unseren Hall, zusammen mit den selbst erzeugten Tönen. Das trockene Signal bleibt unverändert, dazu kommt nur der Echo-/Hall-Anteil. Kostet keine Rechenzeit, solange der Regler auf 0 steht. Presets ändern den Wert nicht, DAW-Projekte speichern ihn.
+
+### Geändert
+- Resampling-Presets 170–173: ein leicht verstimmtes Echo (±0,1–0,3 Halbtöne) speist bei jedem Durchlauf neues Material ein, statt nur das Vorhandene zu verwischen.
+
+### Entfernt
+- Presets 05, 11, 21, 28, 29, 38, 39, 85, 96 und 169 aussortiert. Die Nummern bleiben frei.
+
+### Hinweis
+- Projekte, die eines der entfernten Presets geladen hatten, behalten ihren Klang (die Einstellungen stehen im Projekt).
+
 ## Version 2.26 – 10.11.2026
 
 ### Neu

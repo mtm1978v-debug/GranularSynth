@@ -286,6 +286,10 @@ begin
   end;
 end;
 
+var
+  { FX-Send 'Eingang Echo/Hall' gehoert zur Mixer-Spur: Preset-Dateien aendern ihn nicht, DAW-Projekte schon }
+  GLoadingPresetFile: Boolean = False;
+
 function LoadChunk(Engine: TGranularEngine; const Data: TBytes; out SamplePath: string): Boolean;
 type
   TEntry = record
@@ -688,12 +692,14 @@ begin
   // Regler, die das Preset nicht kennt (aeltere Presets): Standardwert statt Rest vom vorigen
   // Preset. Master und Tempo gehoeren nicht zum Klang und bleiben.
   for I := 0 to NAMED_COUNT - 1 do
-    if not IdIn(TGranularParamId(I), [gpMaster, gpTempo, gpPerformance, gpRenderHQ, gpOversample, gpOscModel]) then
+    if not IdIn(TGranularParamId(I), [gpMaster, gpTempo, gpPerformance, gpRenderHQ, gpOversample, gpOscModel]) and
+       not ((I = Ord(gpFxInSend)) and GLoadingPresetFile) then
       Engine.SetParam(I, PlainToParam(TGranularParamId(I), GetParamInfo(I).DefV));
   // Leistungsstufe gehoert zum Rechner, nicht zum Klang: Presets aendern sie nicht
   for I := 0 to High(Entries) do
     if (Entries[I].Index <> Ord(gpPerformance)) and (Entries[I].Index <> Ord(gpRenderHQ)) and
-      (Entries[I].Index <> Ord(gpOversample)) and (Entries[I].Index <> Ord(gpOscModel)) then
+      (Entries[I].Index <> Ord(gpOversample)) and (Entries[I].Index <> Ord(gpOscModel)) and
+      not ((Entries[I].Index = Ord(gpFxInSend)) and GLoadingPresetFile) then
       Engine.SetParam(Entries[I].Index, Entries[I].Value);
   for I := 0 to FREE_LFO_COUNT - 1 do
     Engine.FreeLfo[I]^ := Free[I];
@@ -1100,8 +1106,20 @@ begin
       ChunkLen := -1;
   end;
   if ChunkLen < 0 then
-    Exit(LoadChunk(Engine, Data, SamplePath));
-  Result := LoadChunk(Engine, Copy(Data, 0, ChunkLen), SamplePath);
+  begin
+    GLoadingPresetFile := True;
+    try
+      Exit(LoadChunk(Engine, Data, SamplePath));
+    finally
+      GLoadingPresetFile := False;
+    end;
+  end;
+  GLoadingPresetFile := True;
+  try
+    Result := LoadChunk(Engine, Copy(Data, 0, ChunkLen), SamplePath);
+  finally
+    GLoadingPresetFile := False;
+  end;
   if not Result or (BaseDir = '') then
     Exit;
   Map := TStringList.Create;

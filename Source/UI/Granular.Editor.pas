@@ -203,6 +203,7 @@ type
     FMixSpectrum: TSpectrumView;   // dasselbe Frequenzband im Mischpult (laeuft nur, wenn der Reiter sichtbar ist)
     FLevelView, FOutLevelView: TLevelView;
     FTrigPanel: TPanel;
+    FFxInPanel: TPanel;                  // Reiter Echo / Hall: 'Eingang → Echo/Hall' (nur FX-Variante sichtbar)
     FEchoView, FHallView: TFxCurveView;   // Reiter Echo / Hall: Diagramme (nur bei Reglerwechsel neu)
     FInLevels: TLabel;        // Mischpult: Pegel der vier VST-Eingaenge
     FProcStat: TLabel;        // Reiter Leistung: Laufzeit-Statistik des Plugins
@@ -2313,6 +2314,24 @@ begin
     Tr('Größe = Raumgröße, Zeit = Nachhallzeit, Dämpfung = wie schnell die Höhen verklingen, Raum = Wandmaterial. ' +
     'Bass-/Höhen-Schnitt filtern nur den Hall (der trockene Klang bleibt): Bass-Schnitt hoch = kein Dröhnen.');
   AddStretch(L, 10);
+  // FX-Variante (im Mixer): der Eingang der Spur laeuft zusaetzlich durch Echo und Hall
+  FFxInPanel := TPanel.Create(Self);
+  FFxInPanel.Parent := PInfo;
+  FFxInPanel.BevelOuter := bvNone;
+  FFxInPanel.ParentBackground := False;
+  FFxInPanel.Color := PInfo.Color;
+  FFxInPanel.SetBounds(0, 24 + 9 * ROW_H, 360, 2 * ROW_H + 40);
+  AddParam(FFxInPanel, Ord(gpFxInSend), 8, 0, 120, 62, 150, Tr('Eingang → Echo/Hall'));
+  L := TLabel.Create(Self);
+  L.Parent := FFxInPanel;
+  L.SetBounds(8, ROW_H + 2, 290, 2 * ROW_H + 8);
+  L.AutoSize := False;
+  L.WordWrap := True;
+  L.Font.Color := $00A0A0A0;
+  L.Transparent := True;
+  L.Caption := Tr('FX-Variante: Der Eingang der Mixer-Spur läuft zusätzlich durch Echo und Hall. ' +
+    'Das trockene Signal bleibt unverändert.');
+  FFxInPanel.Visible := GetEnvironmentVariable('GRANULAR_FXTEST') = '1';
 end;
 
 { --- Reiter "Schnell": Makros, Variieren, Undo, A/B, Qualitaet --- }
@@ -5815,6 +5834,8 @@ end;
 procedure TGranularEditor.SetFormatName(const Value: string);
 begin
   FBanner.FormatName := Value;
+  if FFxInPanel <> nil then
+    FFxInPanel.Visible := (Pos('FX', Value) > 0) or (GetEnvironmentVariable('GRANULAR_FXTEST') = '1');
 end;
 
 { Rechtsklick > "Automation in der DAW": Regler bei der DAW als zuletzt geaendert melden. In FL Studio

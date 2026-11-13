@@ -25,7 +25,7 @@ uses
   System.SysUtils, Granular.Params;
 
 const
-  PARAM_HINTS: array[0..317, 0..1] of string = (
+  PARAM_HINTS: array[0..318, 0..1] of string = (
     ('Anlauf an', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Anlauf-Start', 'Anlauf / Anlauf-Start: Note beginnt vor der Auswahl beim Anlauf-Start und läuft einmal in die Auswahl hinein.'),
     ('Arp Latch', 'Latch: Wie beim microKORG: losgelassene Tasten spielen im Arp weiter, bis neue Tasten angeschlagen werden - der neue Akkord ersetzt den alten. Solange Tasten gedrückt sind, kommen weitere dazu. Stoppen: Latch aus oder "Alle Noten aus".'),
@@ -72,6 +72,7 @@ const
     ('Echo Zeit', 'Echo: Zeit / Sync / Rückkopplung / Dämpfung / Mix: Verzögerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.'),
     ('Echo an', 'Echo: Zeit / Sync / Rückkopplung / Dämpfung / Mix: Verzögerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.'),
     ('Effekt-Reihenfolge', 'Reihenfolge der Effekte: In welcher Reihenfolge Gate, Crusher, Chorus und Phaser das Signal bearbeiten (24 Möglichkeiten). Beispiele: Crusher vor Chorus = breiter Lo-Fi-Klang; Chorus vor Crusher = der Crusher zerhackt auch die Schwebung; Gate am Ende = auch die Effekte werden zerhackt. Lern-Preset L46.'),
+    ('Eingang Echo/Hall', 'Eingang → Echo/Hall: Nur in der FX-Variante (im Mixer): schickt den Eingang der Spur zusätzlich durch Echo und Hall. Das trockene Signal bleibt unverändert, dazu kommt nur der Echo-/Hall-Anteil. Wird von Presets nicht verändert.'),
     ('F-Attack', 'Hüllkurve (Menge) + Filter-Hüllkurve: Eigene ADSR, die mit jeder Note das Filter öffnet und schließt.'),
     ('F-Decay', 'Hüllkurve (Menge) + Filter-Hüllkurve: Eigene ADSR, die mit jeder Note das Filter öffnet und schließt.'),
     ('F-Release', 'Hüllkurve (Menge) + Filter-Hüllkurve: Eigene ADSR, die mit jeder Note das Filter öffnet und schließt.'),
@@ -345,7 +346,7 @@ const
     ('Verz. Note an', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).'),
     ('Verz. Note an Takt', 'Verzögerung je Ereignis: Jedes Ereignis, das einen LFO neu startet (Note an, Note aus, Ende Partner-LFO, Sidechain-Trigger, SC-Ton, Schwellen-Tor, Ruhe, Ausgang > Schwelle), kann verzögert wirken: frei in ms oder im Takt (2/1 bis 1/32, punktiert und triolisch; der Notenwert gewinnt). Note an bei LFOs je Note: bis dahin ruht der LFO dieser Note - z.B. Geige mit Vibrato erst nach einer halben Note (Preset 159).')
   );
-  CAPTION_HINTS: array[0..113, 0..1] of string = (
+  CAPTION_HINTS: array[0..114, 0..1] of string = (
     ('A ↔ B tauschen', 'Bearbeitungstausch: A und B tauschen die Plätze (Regler, Matrix, LFO-Formen, Arp-Muster, EQ, Sample), Morph wird gespiegelt - der Klang bleibt gleich, die Regler zeigen jetzt Klang B. Nochmal klicken = zurück.'),
     ('A/B', 'Zwischen zwei Fassungen hin- und herschalten und vergleichen.'),
     ('Alle Noten aus', 'Beendet sofort alle klingenden Noten (Notbremse).'),
@@ -373,6 +374,7 @@ const
     ('Echo Pitch', 'Jede Wiederholung wird um diese Halbtöne verschoben - steigende oder fallende Treppen.'),
     ('Echo: Zeit / Sync / Rückkopplung / Dämpfung / Mix', 'Verzögerung, Anzahl der Wiederholungen, Helligkeit und Anteil der Echos.'),
     ('Eigener Filter', 'Filter nur für diesen Oszillator, an Filter 1/2 vorbei (z.B. Rausch-Hats per Hochpass).'),
+    ('Eingang → Echo/Hall', 'Nur in der FX-Variante (im Mixer): schickt den Eingang der Spur zusätzlich durch Echo und Hall. Das trockene Signal bleibt unverändert, dazu kommt nur der Echo-/Hall-Anteil. Wird von Presets nicht verändert.'),
     ('Eingänge (DAW)', 'Pegel der Host-Eingänge E1-E4 und Auswahl, welches Paar Sidechain 1 bzw. 2 speist. Sidechain 2 liefert der Matrix seinen Pegel (Quelle "Sidechain 2") und seine Tonhöhe (Quelle "SC2-Tonhöhe", wird nur gerechnet, wenn eine Zeile sie nutzt).'),
     ('Einmal', 'Der LFO läuft nur einen Durchgang und bleibt dann stehen (Melodien, Effekt-Einsatz).'),
     ('FM-Klangfarbe', 'Eigene Hüllkurve für die FM-Menge (nicht die Lautstärke): hell im Anschlag, dann weich.'),
